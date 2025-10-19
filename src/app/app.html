@@ -1,0 +1,14 @@
+<div class="app-container">
+  <header class="app-header">
+    <h2>Deep Learning Blocks</h2>
+    <button
+      mat-icon-button
+      (click)="toggleTheme()"
+      [attr.aria-label]="isDarkMode() ? 'Switch to light mode' : 'Switch to dark mode'"
+    >
+      <mat-icon>{{ isDarkMode() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
+  </header>
+  <div class="container">
+  </div>
+</div>

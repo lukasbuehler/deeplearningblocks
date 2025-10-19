@@ -1,0 +1,55 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh; // Use dynamic viewport height for mobile
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  height: 100%;
+  box-sizing: border-box;
+
+  // Remove padding on mobile
+  @media (max-width: 768px) {
+    padding: 0;
+  }
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  @media (max-width: 768px) {
+    margin-bottom: 0;
+    padding: 12px 16px;
+  }
+}
+
+h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.container {
+  border-radius: 12px;
+  overflow: hidden;
+  flex-grow: 1;
+  background-color: #e0e0e0;
+
+  @media (max-width: 768px) {
+    border-radius: 0;
+  }
+}
+
+// Dark theme styles
+:host-context(.dark-theme) {
+  .container {
+    background-color: #2c2c2c;
+  }
+}
