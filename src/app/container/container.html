@@ -1,17 +1,62 @@
 @if (isBrowser()) {
-  <ko-stage [config]="configStage">
+  <ko-stage [config]="configStage()" (stageInit)="handleStageInit($any($event))">
     <ko-layer>
       @if (gridImage()) {
+        <ko-image [config]="gridConfig()"></ko-image>
+      }
+    </ko-layer>
+    <ko-layer>
+      @for (arrow of arrowConfigs(); track arrow.id) {
         <ko-image
-          [config]="{ image: gridImage(), x: 0, y: 0, width: configStage.width, height: configStage.height }"
+          [config]="{
+            image: arrow.image,
+            x: arrow.x,
+            y: arrow.y,
+            width: arrow.width,
+            height: arrow.height,
+            listening: false,
+          }"
         ></ko-image>
       }
     </ko-layer>
     <ko-layer>
-      @if (circleImage()) {
-        <ko-image
-          [config]="{ image: circleImage(), x: 50, y: 50, width: 300, height: 300 }"
-        ></ko-image>
+      @for (blockView of blockViews(); track blockView.id) {
+        <ko-group
+          [config]="{
+            id: blockView.id,
+            x: blockView.x,
+            y: blockView.y,
+            draggable: true,
+          }"
+          (dragstart)="onBlockDragStart($any($event))"
+          (dragmove)="onBlockDragMove($any($event))"
+          (dragend)="onBlockDragEnd($any($event))"
+        >
+          <ko-image
+            [config]="{
+              image: blockView.blockImage,
+              width: blockView.width,
+              height: blockView.height,
+              listening: false,
+            }"
+          ></ko-image>
+          <ko-text
+            [config]="{
+              text: blockView.text,
+              x: 0,
+              y: 0,
+              width: blockView.width,
+              height: blockView.height,
+              align: 'center',
+              verticalAlign: 'middle',
+              padding: 16,
+              fontSize: 20,
+              fontStyle: 'bold',
+              fill: blockView.textColor,
+              listening: false,
+            }"
+          ></ko-text>
+        </ko-group>
       }
     </ko-layer>
   </ko-stage>

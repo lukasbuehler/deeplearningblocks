@@ -1,0 +1,11 @@
+<ko-group
+  [config]="groupConfig()"
+  (dragstart)="onDragStart($any($event))"
+  (dragmove)="onDragMove($any($event))"
+  (dragend)="onDragEnd($any($event))"
+  (mouseenter)="onMouseEnter($any($event))"
+  (mouseleave)="onMouseLeave($any($event))"
+>
+  <ko-image [config]="imageConfig()"></ko-image>
+  <ko-text [config]="textConfig()"></ko-text>
+</ko-group>
