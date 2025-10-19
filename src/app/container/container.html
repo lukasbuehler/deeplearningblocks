@@ -1,0 +1,11 @@
+@if (isBrowser()) {
+  <ko-stage [config]="configStage">
+    <ko-layer>
+      @if (circleImage()) {
+        <ko-image
+          [config]="{ image: circleImage(), x: 50, y: 50, width: 300, height: 300 }"
+        ></ko-image>
+      }
+    </ko-layer>
+  </ko-stage>
+}

@@ -9,11 +9,11 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
-
+import { Container } from './container/container';
 
 @Component({
   selector: 'app-root',
-  imports: [MatIconButton, MatIcon],
+  imports: [MatIconButton, MatIcon, Container],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
