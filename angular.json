@@ -27,7 +27,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss", "node_modules/leaflet/dist/leaflet.css"],
+            "styles": ["src/styles.scss"],
             "server": "src/main.server.ts",
             "prerender": false,
             "ssr": {
@@ -85,7 +85,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss", "node_modules/leaflet/dist/leaflet.css"]
+            "styles": ["src/styles.scss"]
           }
         }
       }
