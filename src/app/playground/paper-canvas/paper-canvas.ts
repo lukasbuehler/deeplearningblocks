@@ -28,68 +28,11 @@ import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget } from '../geometry';
 import { GameService } from '../game.service';
 import { BlockCard } from '../block-card/block-card';
 import { routeWire, roundedWire } from '../wire-router';
-import { Activation } from '../../learning/curriculum';
-interface Tile {
-  kind: BlockKind;
-  activation?: Activation;
-  name: string;
-  description: string;
-  era: number;
-  icon: string;
-}
-export const TILES: Tile[] = [
-  { kind: 'image', name: 'Image', description: 'A tiny handwritten digit', era: 0, icon: '▦' },
-  { kind: 'flatten', name: 'Flatten', description: 'Picture → list of numbers', era: 0, icon: '↳' },
-  {
-    kind: 'dense',
-    name: 'Dense',
-    description: 'Neurons that learn connections',
-    era: 0,
-    icon: '✳',
-  },
-  {
-    kind: 'activation',
-    activation: 'linear',
-    name: 'Linear',
-    description: 'Let the numbers pass through',
-    era: 0,
-    icon: '╱',
-  },
-  {
-    kind: 'activation',
-    activation: 'sigmoid',
-    name: 'Sigmoid',
-    description: 'Squeeze between 0 and 1',
-    era: 1,
-    icon: '∿',
-  },
-  {
-    kind: 'activation',
-    activation: 'tanh',
-    name: 'Tanh',
-    description: 'A twist centered on zero',
-    era: 1,
-    icon: '∿',
-  },
-  {
-    kind: 'activation',
-    activation: 'relu',
-    name: 'ReLU',
-    description: 'Keep the positive numbers',
-    era: 2,
-    icon: '⌁',
-  },
-  {
-    kind: 'classifier',
-    name: 'Digit guess',
-    description: '10 neurons + softmax',
-    era: 0,
-    icon: '?',
-  },
-];
+import { TILES, Tile, blockName } from '../block-catalog';
+import { BlockIcon } from '../block-icon/block-icon';
 @Component({
   selector: 'app-paper-canvas',
-  imports: [CdkDrag, BlockCard],
+  imports: [CdkDrag, BlockCard, BlockIcon],
   templateUrl: './paper-canvas.html',
   styleUrl: './paper-canvas.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -99,6 +42,7 @@ export class PaperCanvas {
   readonly paper = viewChild.required<ElementRef<HTMLDivElement>>('paper');
   readonly definitions = BLOCKS;
   readonly tiles = TILES;
+  readonly blockName = blockName;
   readonly tray = signal(false);
   readonly pending = signal<string | null>(null);
   readonly selectedEdge = signal<Edge | null>(null);
@@ -117,7 +61,7 @@ export class PaperCanvas {
       return {
         ...edge,
         path: roundedWire(routeWire(from, to, this.visualNodes())),
-        label: `${BLOCKS[from.kind].title} to ${BLOCKS[to.kind].title}`,
+        label: `${blockName(from)} to ${blockName(to)}`,
         type: BLOCKS[from.kind].output,
       };
     }),

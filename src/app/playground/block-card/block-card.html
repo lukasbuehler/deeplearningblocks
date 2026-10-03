@@ -7,18 +7,19 @@
   (touchstart)="stopControls($event)"
 >
   <header>
-    <span class="block-icon">{{ definition().icon }}</span
-    ><span class="eyebrow">{{ definition().subtitle }}</span
+    <app-block-icon [kind]="node().kind" [activation]="node().activation" /><span class="eyebrow">{{
+      definition().subtitle
+    }}</span
     ><button
       class="delete"
       [disabled]="busy()"
       (click)="$event.stopPropagation(); remove.emit()"
-      [attr.aria-label]="'Delete ' + definition().title"
+      [attr.aria-label]="'Delete ' + name()"
     >
       ×
     </button>
   </header>
-  <h2>{{ node().kind === 'activation' ? activationName() : definition().title }}</h2>
+  <h2>{{ name() }}</h2>
   @switch (node().kind) {
     @case ('image') {
       <div class="image-content">
@@ -70,19 +71,12 @@
     }
     @case ('activation') {
       <div class="activation-controls">
-        <select
-          aria-label="Activation function"
-          [ngModel]="node().activation"
-          (ngModelChange)="changeActivation($event)"
-          [disabled]="busy()"
-        >
-          @for (a of activations(); track a.value) {
-            <option [value]="a.value">{{ a.label }}</option>
-          }</select
-        ><svg viewBox="0 0 120 64" role="img" [attr.aria-label]="activationName() + ' function'">
-          <path d="M0 32H120 M60 0V64" stroke="currentColor" opacity=".3" />
-          <polyline [attr.points]="sketch()" fill="none" stroke="currentColor" stroke-width="3" />
-        </svg>
+        <app-block-icon
+          class="function-sketch"
+          kind="activation"
+          [activation]="node().activation"
+        />
+        <b>{{ activationDetail() }}</b>
       </div>
       <p class="detail">
         {{

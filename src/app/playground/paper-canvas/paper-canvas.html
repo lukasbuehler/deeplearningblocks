@@ -62,7 +62,7 @@
         [style.z-index]="compatible(node.id) ? 3 : 1"
         tabindex="0"
         role="group"
-        [attr.aria-label]="definitions[node.kind].title + ' block ' + (i + 1)"
+        [attr.aria-label]="blockName(node) + ' block ' + (i + 1)"
         (focus)="selectNode(node.id)"
         cdkDrag
         [cdkDragFreeDragPosition]="{
@@ -86,7 +86,7 @@
             [class.waiting]="pending() && !compatible(node.id)"
             [attr.data-input]="node.id"
             [disabled]="game.trainer.busy()"
-            [attr.aria-label]="'Input of ' + definitions[node.kind].title + ' ' + (i + 1)"
+            [attr.aria-label]="'Input of ' + blockName(node) + ' ' + (i + 1)"
             (pointerdown)="$event.stopPropagation()"
             (click)="$event.stopPropagation(); finishConnection(node.id)"
           >
@@ -108,7 +108,6 @@
           [custom]="!!game.drawing()"
           (draw)="game.drawingOpen.set(true)"
           [busy]="game.trainer.busy()"
-          [activations]="game.activations()"
           [pixels]="game.pixels()"
           [actual]="game.trainer.test()?.labels?.[game.sample()] ?? undefined"
           [probabilities]="game.probabilities()"
@@ -125,7 +124,7 @@
             [class.image-port]="definitions[node.kind].output === 'image'"
             [class.active]="pending() === node.id"
             [disabled]="game.trainer.busy()"
-            [attr.aria-label]="'Output of ' + definitions[node.kind].title + ' ' + (i + 1)"
+            [attr.aria-label]="'Output of ' + blockName(node) + ' ' + (i + 1)"
             (pointerdown)="outputStart($event, node)"
             (pointermove)="outputMove($event)"
             (pointerup)="outputEnd($event)"
@@ -202,8 +201,9 @@
             (click)="tileClick($event, tile)"
             [attr.aria-label]="'Add ' + tile.name + (locked(tile) ? ' (locked)' : '')"
           >
-            <span>{{ tile.icon }}</span
-            ><b>{{ tile.name }}</b
+            <app-block-icon [kind]="tile.kind" [activation]="tile.activation" /><b>{{
+              tile.name
+            }}</b
             ><small>{{
               locked(tile)
                 ? tile.era === 1
@@ -224,7 +224,8 @@
       [style.left.px]="ghost.point.x - 70"
       [style.top.px]="ghost.point.y - 30"
     >
-      {{ ghost.tile.icon }} {{ ghost.tile.name }}
+      <app-block-icon [kind]="ghost.tile.kind" [activation]="ghost.tile.activation" />
+      {{ ghost.tile.name }}
     </div>
   }
 </div>
