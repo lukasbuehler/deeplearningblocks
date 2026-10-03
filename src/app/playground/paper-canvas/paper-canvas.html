@@ -3,6 +3,7 @@
   class="paper"
   aria-label="Network playground"
   [class.panning]="panning()"
+  [style.--zoom]="game.board().viewport.zoom"
   (pointerdown)="panStart($event)"
   (pointermove)="paperMove($event)"
   (pointerup)="panEnd()"
@@ -107,7 +108,7 @@
           [busy]="game.trainer.busy()"
           [activations]="game.activations()"
           [pixels]="game.pixels()"
-          [actual]="game.trainer.test()?.labels?.[game.sample()]"
+          [actual]="game.trainer.test()?.labels?.[game.sample()] ?? undefined"
           [probabilities]="game.probabilities()"
           (choose)="selectNode(node.id)"
           (remove)="deleteNode(node.id)"
@@ -204,7 +205,9 @@
             ><b>{{ tile.name }}</b
             ><small>{{
               locked(tile)
-                ? 'Unlock in ' + (tile.era === 1 ? '1986' : '2010')
+                ? tile.era === 1
+                  ? 'Train a Dense network to unlock'
+                  : 'Train Sigmoid or Tanh to unlock'
                 : exists(tile)
                   ? 'Already on your paper'
                   : tile.description

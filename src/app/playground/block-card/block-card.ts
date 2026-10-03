@@ -40,7 +40,7 @@ export class BlockCard {
       const a = this.node().activation;
       const y =
         a === 'sigmoid'
-          ? 2 / (1 + Math.exp(-x)) - 1
+          ? 1 / (1 + Math.exp(-x))
           : a === 'tanh'
             ? Math.tanh(x)
             : a === 'relu'

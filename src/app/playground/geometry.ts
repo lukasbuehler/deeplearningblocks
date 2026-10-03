@@ -1,5 +1,5 @@
 import { BlockNode, Board, Point, Viewport, connectionError, portPosition } from './graph';
-export const MIN_ZOOM = 0.35,
+export const MIN_ZOOM = 0.1,
   MAX_ZOOM = 1.6;
 export function toWorld(point: Point, viewport: Viewport): Point {
   return { x: (point.x - viewport.x) / viewport.zoom, y: (point.y - viewport.y) / viewport.zoom };

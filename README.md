@@ -21,28 +21,37 @@ Open the localhost URL printed by Wrangler (normally http://localhost:8787).
 
 ## First lesson
 
-1. Add a dense block and train. A single linear hidden layer explores weighted connections, with historical context from Rosenblatt’s 1958 perceptron.
-2. Finishing that experiment unlocks the 1986 backpropagation chapter and sigmoid/tanh activations. Change the activation and train again.
-3. That experiment unlocks the 2010 ReLU milestone. Stack up to three hidden layers, change their width, drag to reorder, or use the accessible Move buttons.
-4. Compare test accuracy and loss in the notebook. Inspect individual unseen digits and the model’s output probabilities. Hints are optional.
+1. Open **+ Blocks**, drag Flatten and Dense onto the paper, then connect Image → Flatten → Dense → Digit guess. You can also tap a tile to add it and tap an output followed by an input to connect.
+2. Train for five passes to unlock the 1986 chapter, Sigmoid and Tanh.
+3. Select a wire or occupied port, choose Disconnect, and insert an activation. Train with Sigmoid or Tanh to unlock ReLU and the 2010 chapter.
+4. Try a second Dense layer, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six Dense layers can be connected.
+
+Drag the paper to pan, scroll to zoom, or use the zoom and Fit all controls. Compatible nearby studs snap together within 24 screen pixels. Blocks stay connected when moved apart. Select a block to read its explanation in the optional guide. Delete removes its incident wires; Undo and Redo recover complete edits, including an entire drag.
+
+Keyboard: Tab to a block or port. Enter selects ports; arrows move a focused block (Shift for larger steps). Delete/Backspace removes the selection. ⌘/Ctrl Z undoes, with Shift to redo. Escape clears the current gesture or selection. Inputs retain their native keyboard behavior.
+
+**Sandbox** has every implemented block unlocked and its own board and notebook. Experiments there never advance Journey. A fresh board always has two disconnected endpoints.
 
 The dates refer to influential papers, not exclusive invention claims. The lab consistently uses modern Adam optimization and softmax classification; it is not a historical implementation of the perceptron. Source links are embedded in each chapter. Later architectures and datasets remain future work.
 
 ## What actually runs
 
-TensorFlow.js loads only when training starts. It builds a fresh model from the visible blocks and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from MNIST’s official test split. No model or digit data is uploaded. WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
+TensorFlow.js loads only when training starts. It compiles the connected image-to-classifier path into a fresh model and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from MNIST’s official test split. No model or digit data is uploaded. WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
 
 Input pixels are normalized to [0, 1], hidden layers have 16, 32, 64, or 128 neurons, and the fixed ten-neuron output uses softmax. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
 
-Blocks, unlocks, and the last eight experiments are saved in localStorage. Trained weights are kept in memory only. Changing blocks invalidates predictions; reloading requires training again. Storage failures do not block the lesson.
+Positioned blocks, explicit wires, viewport, unlocks, and the last eight experiments per mode are saved in `dlb-playground-v2` localStorage. Legacy `dlb-lab-v1` networks migrate to connected boards with separate activation blocks; that key remains untouched as a recovery copy. Trained weights stay in memory. Changing the active computation invalidates predictions; moving, zooming, and editing unused blocks preserves them. Reloading requires retraining. During training, layout and viewing remain available while computational edits are disabled. Storage failures do not block the lesson.
 
 ## Project structure
 
-- `src/app/learning/curriculum.ts`: historical chapters, activation catalog, unlock rules and parameter counts.
-- `src/app/learning/network-editor/`: accessible block editor and drag reordering.
-- `src/app/learning/training.service.ts`: model lifecycle, cancellation, progress, evaluation and inference.
-- `src/app/learning/mnist.ts`: validated binary dataset loading.
-- `src/app/learning/progress.ts`: versioned, validated local progress.
+- `src/app/playground/graph.ts`: block definitions, typed ports, shape inference, graph validation, path compilation and unlock rules.
+- `src/app/playground/geometry.ts`: viewport transforms, wires and snapping, independent of lesson state.
+- `src/app/playground/history.ts` and `storage.ts`: undo/redo snapshots, validated versioned saves and legacy migration.
+- `src/app/playground/game.service.ts`: mode isolation, training coordination, invalidation and progression.
+- `src/app/playground/paper-canvas/`: CDK free dragging, SVG wires, connection gestures and toy box.
+- `src/app/playground/block-card/` and `experiment-notebook/`: accessible HTML controls, predictions and results.
+- `src/app/playground/model-builder.ts`: explicit TensorFlow Flatten, Dense, Activation and softmax layers.
+- `src/app/learning/`: historical source notes, model lifecycle, cancellation, inference and validated dataset loading. `progress.ts` remains the legacy reader.
 - `public/data/`: deterministic, locally served MNIST subset (about 570 KB compressed).
 
 The old canvas prototype and Amplify scaffolding are preserved in Git history. This app needs no AWS resources, server-side rendering, accounts, database, or remote training service.

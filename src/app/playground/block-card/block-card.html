@@ -47,7 +47,7 @@
             (ngModelChange)="changeUnits($event)"
             [disabled]="busy()"
           >
-            @for (units of [16, 32, 64, 128]; track units) {
+            @for (units of definition().widths; track units) {
               <option [value]="units">{{ units }}</option>
             }
           </select></label

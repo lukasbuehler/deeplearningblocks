@@ -132,7 +132,12 @@
           </p>
           <p>
             <b>Make it yours.</b> Drag blocks by their bodies. Drag the paper to move around. Select
-            a wire to unplug it. Use × to delete a block, or Undo to bring it back.
+            a wire or an occupied port to unplug it. Use × to delete a block, or Undo to bring it
+            back.
+          </p>
+          <p>
+            <b>Use the keyboard.</b> Tab to blocks or ports. Enter connects, arrows move a focused
+            block, and Delete removes it. Undo works with ⌘/Ctrl Z.
           </p>
           <p>
             <b>Let it learn.</b> Weights are adjustable connections. One pass means seeing all 3,000
@@ -179,9 +184,7 @@
         @if (resetRequested()) {
           <div class="reset-confirm">
             <p>
-              Reset this {{ game.mode() }} board{{
-                game.mode() === 'journey' ? ', unlocks' : ''
-              }}
+              Reset this {{ game.mode() }} board{{ game.mode() === 'journey' ? ', unlocks' : '' }}
               and its notebook?
             </p>
             <button (click)="reset()">Start fresh</button
@@ -216,96 +219,4 @@
     }
   </main>
 </div>
-<section class="experiment-dock" [class.expanded]="notebook()" aria-label="Experiment notebook">
-  <div class="dock-bar">
-    <button (click)="notebook.set(!notebook())" [attr.aria-expanded]="notebook()">
-      <span class="notebook-icon">▤</span> My experiments
-      <span class="experiment-count">{{ game.workspace().experiments.length }}</span
-      ><span>{{ notebook() ? '▾' : '▴' }}</span>
-    </button>
-    <p role="status">
-      {{
-        game.trainer.busy()
-          ? game.trainer.status()
-          : game.compilation().network
-            ? (game.compilation().network!.parameters | number) + ' learnable weights & biases'
-            : game.compilation().issues[0]?.message
-      }}
-    </p>
-    <span class="board-count"
-      >{{ game.board().nodes.length }} blocks · {{ game.board().edges.length }} connections</span
-    >
-  </div>
-  @if (notebook()) {
-    <div class="dock-content">
-      <div class="training-summary">
-        <span class="eyebrow">TRY. CHANGE. DISCOVER.</span>
-        <h2>{{ game.trainer.status() }}</h2>
-        <p>3,000 examples · 5 passes · 500 test digits</p>
-        @if (game.trainer.busy()) {
-          <progress
-            [value]="game.trainer.epochs().length"
-            max="5"
-            aria-label="Training progress"
-          ></progress>
-        }
-        @if (latest(); as result) {
-          <div class="score">
-            <strong>{{ result.accuracy | percent: '1.1-1' }}</strong
-            ><span>last test accuracy<br />random guessing ≈ 10%</span>
-          </div>
-        } @else {
-          <p>Finish an experiment to put your first result here.</p>
-        }
-      </div>
-      <div class="loss-chart">
-        <span class="eyebrow">LEARNING CURVE / TRAINING LOSS</span>
-        @if (game.trainer.epochs().length) {
-          <svg viewBox="0 0 230 80" role="img" aria-label="Training loss by pass">
-            <path
-              d="M10 15H220 M10 42H220 M10 70H220"
-              fill="none"
-              stroke="#c9c1af"
-              stroke-dasharray="4 4"
-            />
-            <polyline [attr.points]="lossPoints()" fill="none" stroke="#171717" stroke-width="3" />
-          </svg>
-          <p>
-            Pass {{ game.trainer.epochs().length }} ·
-            {{ game.trainer.epochs().at(-1)?.loss | number: '1.3-3' }} loss
-          </p>
-        } @else {
-          <div class="empty-curve">
-            A little learning goes a long way.<span>Train to watch the loss change.</span>
-          </div>
-        }
-      </div>
-      <div class="notebook-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Try</th>
-              <th>Your recipe</th>
-              <th>Test accuracy</th>
-              <th>Test loss</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (run of game.workspace().experiments; track $index) {
-              <tr>
-                <td>{{ $index + 1 }}</td>
-                <td>{{ run.layers }}</td>
-                <td>{{ run.accuracy | percent: '1.1-1' }}</td>
-                <td>{{ run.loss | number: '1.3-3' }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-        <p>
-          Last 8 tries. Change one thing at a time. Results vary; this small test set is a learning
-          aid.
-        </p>
-      </div>
-    </div>
-  }
-</section>
+<app-experiment-notebook [(expanded)]="notebook" />

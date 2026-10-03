@@ -506,135 +506,6 @@ p {
   background: none;
   font-size: 22px;
 }
-.experiment-dock {
-  border-top: 3px solid #171717;
-  flex-shrink: 0;
-  background: #fffdf1;
-  z-index: 9;
-}
-.dock-bar {
-  height: 48px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 0 24px;
-}
-.dock-bar > button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: none;
-  font-size: 12px;
-  font-weight: 850;
-  white-space: nowrap;
-  padding: 0;
-}
-.notebook-icon {
-  font-size: 22px;
-}
-.experiment-count {
-  border: 1.5px solid #171717;
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-size: 9px;
-  background: var(--yellow);
-}
-.dock-bar > p {
-  font-size: 10px;
-  color: #5f594d;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.board-count {
-  margin-left: auto;
-  white-space: nowrap;
-  font-size: 10px;
-}
-.dock-content {
-  display: grid;
-  grid-template-columns: 255px 220px minmax(0, 1fr);
-  gap: 25px;
-  padding: 10px 25px 20px;
-  height: 190px;
-  overflow: auto;
-  border-top: 1px solid #d9d2c0;
-}
-.training-summary h2 {
-  font-size: 15px;
-  letter-spacing: -0.4px;
-  margin: 11px 0;
-}
-.training-summary p {
-  font-size: 10px;
-  line-height: 1.5;
-  margin: 8px 0;
-}
-.training-summary progress {
-  width: 100%;
-  accent-color: #171717;
-}
-.score {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 10px;
-}
-.score strong {
-  font-size: 31px;
-  font-weight: 900;
-  letter-spacing: -1px;
-}
-.score span {
-  font-size: 9px;
-  line-height: 1.6;
-}
-.loss-chart svg {
-  width: 100%;
-  height: 86px;
-  margin-top: 10px;
-}
-.loss-chart p {
-  font-size: 9px;
-}
-.empty-curve {
-  font-size: 14px;
-  font-family: Georgia, serif;
-  font-style: italic;
-  padding-top: 27px;
-  line-height: 1.5;
-}
-.empty-curve span {
-  display: block;
-  font:
-    10px 'Avenir Next',
-    sans-serif;
-  margin-top: 10px;
-}
-.notebook-table {
-  overflow: auto;
-}
-.notebook-table table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 10px;
-}
-.notebook-table th,
-.notebook-table td {
-  padding: 8px;
-  border-bottom: 1px solid #d9d2c0;
-}
-.notebook-table th {
-  font-size: 9px;
-  white-space: nowrap;
-}
-.notebook-table p {
-  font-size: 9px;
-  line-height: 1.5;
-  color: #615a4b;
-  margin-top: 10px;
-}
 button:disabled {
   cursor: not-allowed;
 }
@@ -662,10 +533,7 @@ button:disabled {
   .guide {
     padding: 20px 17px;
   }
-  .dock-content {
-    grid-template-columns: 210px 180px minmax(0, 1fr);
-    gap: 18px;
-  }
+
   .brand {
     min-width: 126px;
   }
@@ -712,16 +580,6 @@ button:disabled {
   .train-button {
     gap: 13px;
     padding: 9px 12px;
-  }
-  .dock-content {
-    grid-template-columns: 1fr 1fr;
-    height: 220px;
-  }
-  .notebook-table {
-    grid-column: 1/-1;
-  }
-  .board-count {
-    display: none;
   }
 }
 @media (max-width: 600px) {
@@ -773,32 +631,7 @@ button:disabled {
     padding: 4px 10px;
     font-size: 10px;
   }
-  .dock-bar {
-    padding: 0 14px;
-    gap: 10px;
-    height: 46px;
-  }
-  .dock-bar > button {
-    font-size: 11px;
-    gap: 7px;
-  }
-  .dock-bar > p {
-    font-size: 9px;
-  }
-  .dock-content {
-    padding: 10px 14px;
-    gap: 15px;
-    height: 220px;
-  }
-  .training-summary h2 {
-    font-size: 12px;
-  }
-  .training-summary p {
-    font-size: 9px;
-  }
-  .loss-chart .eyebrow {
-    font-size: 7px;
-  }
+
   .toast {
     font-size: 10px;
     top: 12px;

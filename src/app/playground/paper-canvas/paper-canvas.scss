@@ -98,6 +98,16 @@
   cursor: crosshair;
   touch-action: none;
 }
+// Keep connector hit targets usable when the paper is zoomed out.
+.port::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(54px, calc(44px / var(--zoom)));
+  height: max(30px, calc(44px / var(--zoom)));
+}
 .input {
   top: -15px;
 }

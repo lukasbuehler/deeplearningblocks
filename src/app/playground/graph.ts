@@ -32,10 +32,16 @@ export interface BlockDefinition {
   output?: PortType;
   height: number;
   help: string;
+  config?: 'units' | 'activation';
+  widths?: readonly number[];
+  inferWidth: (node: BlockNode, input?: number) => number | undefined;
+  operation: (node: BlockNode) => Step | null;
 }
 export const BLOCK_WIDTH = 236;
 export const BLOCKS: Record<BlockKind, BlockDefinition> = {
   image: {
+    inferWidth: () => undefined,
+    operation: () => null,
     title: 'Handwritten digit',
     subtitle: 'THE STARTING POINT',
     icon: '▦',
@@ -44,6 +50,8 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     help: 'A tiny grayscale picture. Each pixel is a number between 0 and 1. Connect it to Flatten to make a list of numbers.',
   },
   flatten: {
+    inferWidth: () => 784,
+    operation: () => ({ kind: 'flatten' }),
     title: 'Flatten',
     subtitle: 'UNROLL THE PICTURE',
     icon: '↳',
@@ -53,6 +61,10 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     help: 'Turn 28 × 28 pixels into one list of 784 numbers. Nothing is learned or thrown away here. Only the shape changes.',
   },
   dense: {
+    config: 'units',
+    widths: [16, 32, 64, 128],
+    inferWidth: (node) => node.units,
+    operation: (node) => ({ kind: 'dense', units: node.units! }),
     title: 'Dense layer',
     subtitle: 'MAKE CONNECTIONS',
     icon: '✳',
@@ -62,6 +74,9 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     help: 'Every input connects to every neuron. Training adjusts the weights and biases. The input size comes from the block before this one.',
   },
   activation: {
+    config: 'activation',
+    inferWidth: (_, input) => input,
+    operation: (node) => ({ kind: 'activation', activation: node.activation! }),
     title: 'Activation',
     subtitle: 'GIVE IT A LITTLE TWIST',
     icon: '∿',
@@ -71,6 +86,8 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     help: 'Change each number without changing the length of the list. Nonlinear activations help stacked layers learn more than a single linear transformation.',
   },
   classifier: {
+    inferWidth: () => 10,
+    operation: () => ({ kind: 'classifier' }),
     title: 'Digit guess',
     subtitle: '10 NEURONS + SOFTMAX',
     icon: '?',
@@ -92,6 +109,7 @@ export interface NetworkSpec {
 }
 export interface GraphIssue {
   nodeId?: string;
+  port?: 'input' | 'output';
   message: string;
 }
 export interface Compilation {
@@ -157,16 +175,7 @@ export function inferShapes(board: Board): Map<string, { input?: number; output?
   while (node && !visited.has(node.id)) {
     visited.add(node.id);
     const input = width;
-    width =
-      node.kind === 'image'
-        ? undefined
-        : node.kind === 'flatten'
-          ? 784
-          : node.kind === 'dense'
-            ? node.units
-            : node.kind === 'classifier'
-              ? 10
-              : width;
+    width = BLOCKS[node.kind].inferWidth(node, width);
     shapes.set(node.id, { input, output: width });
     const next = board.edges.find((e) => e.from === node!.id)?.to;
     node = board.nodes.find((n) => n.id === next);
@@ -184,7 +193,7 @@ export function compileBoard(board: Board): Compilation {
   }
   for (const edge of board.edges) {
     const message = connectionError(checked, edge.from, edge.to);
-    if (message) issues.push({ nodeId: edge.to, message });
+    if (message) issues.push({ nodeId: edge.to, port: 'input', message });
     else checked.edges.push(edge);
   }
   if (issues.length) return { network: null, issues };
@@ -200,6 +209,7 @@ export function compileBoard(board: Board): Compilation {
         issues: [
           {
             nodeId: node.id,
+            port: 'output',
             message: `Connect ${BLOCKS[node.kind].title.toLowerCase()} to the next block. Follow the studs to your digit guess.`,
           },
         ],
@@ -216,22 +226,21 @@ export function compileBoard(board: Board): Compilation {
     parameters = 0;
   for (const block of path.slice(1)) {
     if (block.kind === 'dense') {
-      if (![16, 32, 64, 128].includes(block.units!))
+      if (!BLOCKS.dense.widths!.includes(block.units!))
         return {
           network: null,
           issues: [{ nodeId: block.id, message: 'Choose 16, 32, 64 or 128 neurons.' }],
         };
       parameters += (width + 1) * block.units!;
       width = block.units!;
-      steps.push({ kind: 'dense', units: block.units! });
     } else if (block.kind === 'activation') {
       if (!['linear', 'sigmoid', 'tanh', 'relu'].includes(block.activation!))
         return { network: null, issues: [{ nodeId: block.id, message: 'Choose an activation.' }] };
-      steps.push({ kind: 'activation', activation: block.activation! });
     } else if (block.kind === 'classifier') {
       parameters += (width + 1) * 10;
-      steps.push({ kind: 'classifier' });
-    } else if (block.kind === 'flatten') steps.push({ kind: 'flatten' });
+    }
+    const operation = BLOCKS[block.kind].operation(block);
+    if (operation) steps.push(operation);
   }
   return {
     network: {

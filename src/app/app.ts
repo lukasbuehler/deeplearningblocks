@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from '@angular/core';
-import { DecimalPipe, PercentPipe } from '@angular/common';
 import { inject } from '@angular/core';
 import { GameService } from './playground/game.service';
 import { PaperCanvas } from './playground/paper-canvas/paper-canvas';
 import { BLOCKS } from './playground/graph';
 import { ERAS, ACTIVATIONS } from './learning/curriculum';
+import { ExperimentNotebook } from './playground/experiment-notebook/experiment-notebook';
 import { Mode } from './playground/storage';
 @Component({
   selector: 'app-root',
-  imports: [PaperCanvas, DecimalPipe, PercentPipe],
+  imports: [PaperCanvas, ExperimentNotebook],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,12 +38,6 @@ export class App {
         ? 'Unplug one wire. Add Sigmoid or Tanh after a Dense block. Reconnect and train to discover ReLU.'
         : 'Try ReLU and another Dense block. Does a bigger network make a better guess?',
   );
-  readonly lossPoints = computed(() => {
-    const rows = this.game.trainer.epochs(),
-      max = Math.max(1, ...rows.map((r) => r.loss));
-    return rows.map((r, i) => `${10 + i * 52},${70 - (r.loss / max) * 55}`).join(' ');
-  });
-  readonly latest = computed(() => this.game.workspace().experiments.at(-1));
   switchMode(mode: Mode): void {
     this.game.switchMode(mode);
     this.viewedEra.set(null);

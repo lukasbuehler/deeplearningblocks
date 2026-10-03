@@ -1,3 +1,4 @@
+import { MIN_ZOOM, MAX_ZOOM } from './geometry';
 import { Experiment } from '../learning/curriculum';
 import { readProgress } from '../learning/progress';
 import { ACTIVATIONS } from '../learning/curriculum';
@@ -37,8 +38,8 @@ function validBoard(value: unknown, era: number): value is Board {
   if (
     !b.viewport ||
     ![b.viewport.x, b.viewport.y, b.viewport.zoom].every(Number.isFinite) ||
-    b.viewport.zoom < 0.35 ||
-    b.viewport.zoom > 1.6
+    b.viewport.zoom < MIN_ZOOM ||
+    b.viewport.zoom > MAX_ZOOM
   )
     return false;
   if (

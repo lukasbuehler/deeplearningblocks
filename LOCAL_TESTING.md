@@ -1,43 +1,43 @@
-# Local validation, 3 October 2026
+# Playground validation, 3 October 2026
 
-Validated the production Angular build through `wrangler dev` on localhost:8787, using Codex computer use in the in-app browser. This is local evidence, not production deployment or physical-device verification.
+The production Angular app was exercised through local `wrangler dev` and Codex computer use. These results cover local browser behavior, not a live Cloudflare deployment or physical touch devices. Journey testing used a separate 127.0.0.1 origin so the existing localhost experiments were preserved.
 
-## Observed flows
+## Learning and training
 
-- Fresh lesson starts at 1958 with only Linear available. Later chapters are locked.
-- Adding a 32-neuron dense layer creates 25,450 trainable parameters.
-- Five passes over the real MNIST training subset completed; the first linear experiment scored 91.4% on 500 held-out examples and unlocked 1986.
-- Selecting sigmoid, training again, and evaluating scored 89.8% and unlocked 2010/ReLU.
-- A 64 ReLU → 32 ReLU network trained and evaluated at 90.2%; a repeat run reached 93.2%. Individual test predictions changed when Next digit was pressed (including a correctly predicted 6).
-- Results are examples from this run, not guaranteed scores. A deeper network did not automatically win.
-- Changing blocks cleared predictions and requested retraining. Neuron and activation selections matched the actual network after the dropdown fix.
-- Reordering via both the Move buttons and an actual pointer drag retained the corresponding layer configuration. Dragging 64 → 32 into 32 → 64 updated the parameter count from 52,650 to 27,882. Removing a block worked. Adding a third block disabled the add button.
-- Stop training returned control to the editor without adding a completed experiment or advancing the lesson.
-- Optional hints expanded to explain dense layers, activations, epochs and the selected activation formula.
-- Reload preserved the blocks, notebook and unlocks, while predictions correctly required retraining.
-- A deliberately unavailable test asset produced a visible error and Retry button on a fresh local origin. Restoring the asset and clicking Retry loaded the digit and re-enabled Next digit.
-- Start over displays a confirmation. Keep exploring preserves progress. Restart lesson cleared blocks, notebook and unlocks; the fresh 1958 state persisted after reload. The local preview was left in this fresh state.
-- Visual inspection at 1440 × 1000 and 390 × 844 confirmed responsive layouts. At 390 px, document width equaled viewport width with no horizontal overflow.
-- No console errors were observed in normal training. The intentionally missing asset generated the expected failed request in the separate recovery test.
+- A fresh board contained two loose endpoints. Dragging Flatten from the tray and adding Dense created the first chain.
+- Image → Dense was rejected with an instruction to add Flatten. Tap-to-connect linked Image → Flatten; an actual wire drag linked Flatten → Dense. Moving the classifier socket near the Dense output snapped and connected it at 87% zoom.
+- The first five-pass experiment reached 90.0% on the 500 held-out digits and unlocked Sigmoid/Tanh.
+- Disconnecting the classifier, inserting Sigmoid, and retraining reached 88.8% and unlocked ReLU.
+- ReLU plus a second Dense layer reached 91.0%. A repeat run on the final build reached 90.4%. These are observations, not guaranteed scores. The notebook retained all four recipes and results.
+- Classifier probabilities and digit predictions were visible. Moving trained blocks and changing the viewport preserved the displayed prediction. Computational changes cleared it.
+- Stop cancelled an actual run and returned control without adding an experiment or unlocking anything.
+- Sandbox started with a separate empty board and notebook, exposed every activation, and trained a keyboard-connected Flatten → classifier model at 89.8%. Switching back restored Journey's board, chapter and notebook. Automated tests also verify that a Sandbox run at Journey chapter zero cannot advance Journey.
 
-## Automated checks
+## Interaction and recovery
 
-- Six Node tests cover parameter dimensions, unlock conditions, all local dataset records, invalid records, corrupt progress, locked/oversized restored networks and unavailable storage.
-- Four Angular/ChromeHeadless tests cover app creation/title, select-value synchronization across unlocks, and disabling edits/layer limits during training.
-- Production build passes. TensorFlow loads lazily: initial transfer estimate about 79 KB, training runtime about 196 KB, plus the approximately 570 KB compressed dataset.
-- `wrangler deploy --dry-run` passes. No Cloudflare account resources or DNS changes were made.
-- `npm audit --omit=dev` reports zero vulnerabilities. The full development tree still reports advisories rooted in `braces` and `http-cache-semantics`; their latest registry releases have no patched versions at the time of this check. They are not shipped in the static app. The compatible Piscina 5.3.2 override removes the build-tool critical advisory. Revisit these overrides and advisories during a future toolchain upgrade.
+- Exercised tray dragging and tap/Enter placement, wire dragging, port tapping and keyboard connections, magnetic snapping, moving connected blocks apart, occupied-port disconnection, selecting a visible SVG wire, deleting blocks, undoing incident-wire deletion, redo, and arrow-key movement.
+- Scaled pointer dragging was checked at 87%, 83%, 90% and 100% views. Phone-width controls, tap placement, deletion/undo and the guide overlay were also exercised. Both guide-open and guide-closed layouts were inspected.
+- Zoom controls and Fit all were exercised. Narrow-screen testing exposed an overly restrictive 35% minimum zoom; it now permits 10% so spread-out small networks fit on phones. Connector hit targets remain at least 44 screen pixels while the visual studs scale with the board.
+- Reload retained board configuration, positions, mode, unlocks and experiments. Model weights intentionally did not survive reload.
+- A disposable copy on port 8788 deliberately omitted the test dataset. The visible Retry digits control recovered after the asset was restored. This did not alter the normal preview's assets.
+- Fresh paper's Keep playing action retained the disposable board. Start fresh restored two loose endpoints, zero results and the first chapter, and this state survived reload.
+- Exact 390 × 844 DOM viewport checks confirmed no horizontal document overflow. Larger desktop and intermediate layouts were visually inspected. Screenshots are in `docs/screenshots/playground-desktop.jpg` and `playground-mobile.jpg`.
 
-## Fixes found during validation
+## Automated verification
 
-The first native select implementation bound its value before Angular rendered its options, so the visible neuron count could fall back to 16 while the model held 32. `ngModel` now keeps the select and model aligned, with a regression test. Editing blocks also clears the previous learning curve so it cannot be mistaken for a run of the modified network.
+- 15 Node tests pass: port compatibility and occupancy, cycle prevention, shape propagation, connection-ordered compilation, parameter counts, six-layer limits, loose-node exclusion, deletion/undo, scale-aware snapping, migration, corrupt/unavailable storage, dataset validation, and all four explicit activation functions matching equivalent embedded TensorFlow activations on image-shaped tensors.
+- 8 Angular/ChromeHeadless tests pass: app rendering, reduced-motion styling, prediction retention for layout and loose-node edits, invalidation and undo for computational changes, movement versus computational edits during training, separate modes/notebooks/unlocks, cancellation, and dataset retry state. The browser suite also ran with `--force-prefers-reduced-motion`.
+- Production build and `wrangler deploy --dry-run` pass. Initial transfer estimate is approximately 87 KB; the lazy TensorFlow runtime is approximately 196 KB, plus the bundled dataset.
+- No deployment, account changes or DNS edits were performed.
 
-The original app was a draggable canvas prototype with no model execution. Its AWS-specific hosting scaffolding has been replaced by Workers Static Assets; real training is implemented entirely in the browser. This work did not diagnose why the former AWS deployment stopped serving.
+## Bugs found and corrected
 
-## Deliberate limits
+CDK stores free-drag positions in screen pixels and applies its scale internally, while the graph stores paper coordinates. Passing paper coordinates directly caused misplaced blocks and wires when zooming. Conversion now happens at the CDK boundary.
 
-Three history chapters, dense layers only, one fixed small dataset, fixed training settings, and in-memory model weights. Pointer drag and accessible button-based reordering were exercised. Physical touch devices still need cross-device testing. CPU-only training speed was not benchmarked. Future chapters, custom drawing, model export, accounts and cross-device synchronization are not included.
+Snapped blocks hide their connection under touching ports. Occupied ports now select the connection and expose Disconnect. Compatible destination blocks are raised while connecting so a neighboring output cannot intercept the intended socket.
 
-## Screenshots
+Angular template optional chaining can produce null for missing dimensions. Explicit nullish handling now displays Needs input and keeps Next digit disabled until data is loaded.
 
-The completed experiment is captured in [desktop](docs/screenshots/learning-lab-desktop.jpg) and [mobile](docs/screenshots/learning-lab-mobile.jpg) views. The visible local preview is reset to the first lesson.
+## Remaining validation limits
+
+Computer use exercised mouse and keyboard input at phone and desktop viewport sizes. Physical multitouch behavior and device-specific GPU/CPU performance still need hardware testing. The project intentionally supports a single chain, the existing three chapters, the fixed MNIST subset and in-memory weights. Historical dates refer to influential papers, with the existing source notes retained. No server-side training or accounts are introduced.

@@ -23,4 +23,14 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('h1')?.textContent).toContain('Big ideas.');
   });
+  it('respects reduced motion when the browser requests it', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.componentInstance.game.celebration.set('A new discovery');
+    fixture.detectChanges();
+    const banner = fixture.nativeElement.querySelector('.celebration') as HTMLElement;
+    expect(banner).toBeTruthy();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches)
+      expect(getComputedStyle(banner).animationName).toBe('none');
+    else expect(getComputedStyle(banner).animationName).toContain('pop');
+  });
 });

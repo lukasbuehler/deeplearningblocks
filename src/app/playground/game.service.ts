@@ -38,6 +38,11 @@ export class GameService {
   });
   constructor() {
     effect(() => this.storageWarning.set(!saveGame(this.save())));
+    effect((onCleanup) => {
+      if (!this.celebration()) return;
+      const timer = setTimeout(() => this.celebration.set(''), 8000);
+      onCleanup(() => clearTimeout(timer));
+    });
     void this.loadPreview();
   }
   async loadPreview(): Promise<void> {

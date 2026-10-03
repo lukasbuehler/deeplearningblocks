@@ -101,3 +101,40 @@ test('unavailable storage starts with loose endpoints', () => {
   });
   assert.deepEqual(loadGame().journey.board, freshBoard());
 });
+test('six connected dense layers are allowed, a seventh is rejected, loose layers are excluded', () => {
+  const board = network();
+  board.nodes = board.nodes.filter((n) => n.kind !== 'activation');
+  const classifier = board.nodes.pop()!;
+  for (let i = 0; i < 5; i++)
+    board.nodes.push({ id: `extra${i}`, kind: 'dense', units: 16, x: 0, y: 0 });
+  board.nodes.push(classifier);
+  board.edges = board.nodes.slice(1).map((n, i) => ({ from: board.nodes[i].id, to: n.id }));
+  assert.ok(compileBoard(board).network);
+  board.nodes.push({ id: 'loose', kind: 'dense', units: 16, x: 0, y: 0 });
+  assert.ok(compileBoard(board).network);
+  assert.equal(inferShapes(board).get('loose'), undefined);
+  board.edges.pop();
+  board.edges.push({ from: 'extra4', to: 'loose' }, { from: 'loose', to: classifier.id });
+  assert.match(compileBoard(board).issues[0].message, /six/);
+});
+test('invalid versioned saves recover safely and valid independent workspaces round-trip', () => {
+  const storage = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    },
+  });
+  storage.set(SAVE_KEY, '{bad json');
+  assert.deepEqual(loadGame().journey.board, freshBoard());
+  const save = loadGame();
+  save.era = 2;
+  save.journey.board = network();
+  save.journey.board.viewport.zoom = 0.2;
+  storage.set(SAVE_KEY, JSON.stringify(save));
+  assert.deepEqual(loadGame(), save);
+  save.journey.board.edges.push({ from: 'd', to: 'c' });
+  storage.set(SAVE_KEY, JSON.stringify(save));
+  assert.equal(loadGame().journey.board.edges.length, 0);
+});

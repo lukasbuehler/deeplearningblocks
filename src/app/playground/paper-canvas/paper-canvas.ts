@@ -24,7 +24,7 @@ import {
   portPosition,
   removeNode,
 } from '../graph';
-import { toWorld, wirePath, zoomAt, snapTarget } from '../geometry';
+import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget } from '../geometry';
 import { GameService } from '../game.service';
 import { BlockCard } from '../block-card/block-card';
 import { Activation } from '../../learning/curriculum';
@@ -158,7 +158,10 @@ export class PaperCanvas {
       minY = Math.min(...nodes.map((n) => n.y));
     const width = Math.max(...nodes.map((n) => n.x + BLOCK_WIDTH)) - minX,
       height = Math.max(...nodes.map((n) => n.y + BLOCKS[n.kind].height)) - minY;
-    const zoom = Math.max(0.35, Math.min(1, (r.width - 100) / width, (r.height - 130) / height));
+    const zoom = Math.max(
+      MIN_ZOOM,
+      Math.min(1, (r.width - 100) / width, (r.height - 130) / height),
+    );
     this.game.setViewport({
       x: (r.width - width * zoom) / 2 - minX * zoom,
       y: (r.height - 60 - height * zoom) / 2 - minY * zoom,
