@@ -1,26 +1,127 @@
-    <section class="workbench" aria-labelledby="network-title">
-      <div class="section-heading"><div><p class="eyebrow">01 / BUILD</p><h2 id="network-title">Your network</h2></div><span class="count">{{ parameters() | number }} weights & biases</span></div>
-      <p class="workbench-caption">Snap in a layer. Follow the flow.</p>
-      <div class="network">
-        <div class="network-block input-block"><span class="block-icon">▦</span><div><h3>Handwritten digit</h3><p>28 × 28 pixels → 784 numbers</p></div><span class="block-tag">INPUT</span></div>
-        <div class="connector"><span>784 pixel values</span><i>↓</i></div>
-        <div cdkDropList [cdkDropListData]="blocks()" [cdkDropListDisabled]="busy()" (cdkDropListDropped)="drop($event)" class="layer-list">
-          @for (block of blocks(); track block.id; let i = $index) {
-            <div cdkDrag class="layer-wrapper">
-              <article class="network-block dense-block">
-                <div class="studs"><i></i><i></i><i></i></div>
-                <div class="block-top"><span cdkDragHandle class="drag-handle" aria-hidden="true">⠿</span><h3>Dense layer</h3><span class="block-tag">HIDDEN {{ i + 1 }}</span><button class="icon-button" [disabled]="busy()" (click)="removeBlock(block.id)" [attr.aria-label]="'Remove layer ' + (i + 1)">×</button></div>
-                <div class="block-fields"><label>Neurons<select [value]="block.units" [disabled]="busy()" (change)="updateBlock(block.id, 'units', $event)" [attr.aria-label]="'Layer ' + (i + 1) + ' neurons'">@for (units of [16, 32, 64, 128]; track units) {<option [value]="units">{{ units }}</option>}</select></label><label>Activation<select [value]="block.activation" [disabled]="busy()" (change)="updateBlock(block.id, 'activation', $event)" [attr.aria-label]="'Layer ' + (i + 1) + ' activation'">@for (a of activations(); track a.value) {<option [value]="a.value">{{ a.label }}</option>}</select></label></div>
-                @if (tips()) {<p class="activation-hint">{{ activationHint(block.activation) }}</p>}
-                @if (blocks().length > 1) {<div class="reorder"><button [disabled]="i === 0 || busy()" (click)="move(i, -1)" [attr.aria-label]="'Move layer ' + (i + 1) + ' up'">↑ Move up</button><button [disabled]="i === blocks().length - 1 || busy()" (click)="move(i, 1)" [attr.aria-label]="'Move layer ' + (i + 1) + ' down'">↓ Move down</button></div>}
-              </article>
-              <div class="connector"><span>{{ block.units }} values</span><i>↓</i></div>
-            </div>
-          }
-        </div>
-        <button class="add-layer" (click)="addBlock()" [disabled]="blocks().length >= 3 || busy()"><span>+</span><b>{{ blocks().length >= 3 ? 'Your stack is full' : 'Add a dense block' }}</b><small>{{ blocks().length >= 3 ? 'Up to 3 hidden layers in this little lab' : blocks().length === 0 ? 'Start here. Every connection can learn.' : 'Give your network another layer' }}</small></button>
-        <div class="connector"><i>↓</i></div>
-        <div class="network-block output-block"><span class="block-icon">⑩</span><div><h3>Which digit?</h3><p>10 outputs · softmax probabilities</p></div><span class="block-tag">OUTPUT</span></div>
+<section class="workbench" aria-labelledby="network-title">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">01 / BUILD</p>
+      <h2 id="network-title">Your network</h2>
+    </div>
+    <span class="count">{{ parameters() | number }} weights & biases</span>
+  </div>
+  <p class="workbench-caption">Snap in a layer. Follow the flow.</p>
+  <div class="network">
+    <div class="network-block input-block">
+      <span class="block-icon">▦</span>
+      <div>
+        <h3>Handwritten digit</h3>
+        <p>28 × 28 pixels → 784 numbers</p>
       </div>
-      <div class="library"><span class="eyebrow">YOUR ACTIVATIONS</span><div>@for (a of activations(); track a.value) {<span class="activation-chip">{{ a.label }}</span>}@if (era() < 2) {<span class="locked-chip">+ {{ era() === 0 ? '3' : '1' }} to discover</span>}</div></div>
-    </section>
+      <span class="block-tag">INPUT</span>
+    </div>
+    <div class="connector"><span>784 pixel values</span><i>↓</i></div>
+    <div
+      cdkDropList
+      [cdkDropListData]="blocks()"
+      [cdkDropListDisabled]="busy()"
+      (cdkDropListDropped)="drop($event)"
+      class="layer-list"
+    >
+      @for (block of blocks(); track block.id; let i = $index) {
+        <div cdkDrag class="layer-wrapper">
+          <article class="network-block dense-block">
+            <div class="studs"><i></i><i></i><i></i></div>
+            <div class="block-top">
+              <span cdkDragHandle class="drag-handle" aria-hidden="true">⠿</span>
+              <h3>Dense layer</h3>
+              <span class="block-tag">HIDDEN {{ i + 1 }}</span
+              ><button
+                class="icon-button"
+                [disabled]="busy()"
+                (click)="removeBlock(block.id)"
+                [attr.aria-label]="'Remove layer ' + (i + 1)"
+              >
+                ×
+              </button>
+            </div>
+            <div class="block-fields">
+              <label
+                >Neurons<select
+                  [ngModel]="block.units"
+                  [disabled]="busy()"
+                  (ngModelChange)="updateBlock(block.id, 'units', $event)"
+                  [attr.aria-label]="'Layer ' + (i + 1) + ' neurons'"
+                >
+                  @for (units of [16, 32, 64, 128]; track units) {
+                    <option [value]="units">{{ units }}</option>
+                  }
+                </select></label
+              ><label
+                >Activation<select
+                  [ngModel]="block.activation"
+                  [disabled]="busy()"
+                  (ngModelChange)="updateBlock(block.id, 'activation', $event)"
+                  [attr.aria-label]="'Layer ' + (i + 1) + ' activation'"
+                >
+                  @for (a of activations(); track a.value) {
+                    <option [value]="a.value">{{ a.label }}</option>
+                  }
+                </select></label
+              >
+            </div>
+            @if (tips()) {
+              <p class="activation-hint">{{ activationHint(block.activation) }}</p>
+            }
+            @if (blocks().length > 1) {
+              <div class="reorder">
+                <button
+                  [disabled]="i === 0 || busy()"
+                  (click)="move(i, -1)"
+                  [attr.aria-label]="'Move layer ' + (i + 1) + ' up'"
+                >
+                  ↑ Move up</button
+                ><button
+                  [disabled]="i === blocks().length - 1 || busy()"
+                  (click)="move(i, 1)"
+                  [attr.aria-label]="'Move layer ' + (i + 1) + ' down'"
+                >
+                  ↓ Move down
+                </button>
+              </div>
+            }
+          </article>
+          <div class="connector">
+            <span>{{ block.units }} values</span><i>↓</i>
+          </div>
+        </div>
+      }
+    </div>
+    <button class="add-layer" (click)="addBlock()" [disabled]="blocks().length >= 3 || busy()">
+      <span>+</span><b>{{ blocks().length >= 3 ? 'Your stack is full' : 'Add a dense block' }}</b
+      ><small>{{
+        blocks().length >= 3
+          ? 'Up to 3 hidden layers in this little lab'
+          : blocks().length === 0
+            ? 'Start here. Every connection can learn.'
+            : 'Give your network another layer'
+      }}</small>
+    </button>
+    <div class="connector"><i>↓</i></div>
+    <div class="network-block output-block">
+      <span class="block-icon">⑩</span>
+      <div>
+        <h3>Which digit?</h3>
+        <p>10 outputs · softmax probabilities</p>
+      </div>
+      <span class="block-tag">OUTPUT</span>
+    </div>
+  </div>
+  <div class="library">
+    <span class="eyebrow">YOUR ACTIVATIONS</span>
+    <div>
+      @for (a of activations(); track a.value) {
+        <span class="activation-chip">{{ a.label }}</span>
+      }
+      @if (era() < 2) {
+        <span class="locked-chip">+ {{ era() === 0 ? '3' : '1' }} to discover</span>
+      }
+    </div>
+  </div>
+</section>
