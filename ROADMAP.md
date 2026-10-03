@@ -6,15 +6,15 @@ Planning snapshot: 3 October 2026. This is a staged product and learning roadmap
 
 A colorful construction game where people discover how neural networks work by making, breaking, comparing and repairing them. Keep the cream paper, saturated block colors, chunky letters, physical connectors and visible data shapes. The name is **Deep Learning Blocks**.
 
-The long-term destination is a small, genuinely trainable, character-level transformer that the player assembles and trains on Shakespeare. It should be possible to open the transformer and understand its parts because those parts were introduced through earlier games.
+MNIST is one level in a collection of architecture-building games. The long-term destination includes a character-level Shakespeare transformer that the player assembles and understands. Training is an optional experiment, offered locally only where supported and through export where appropriate. Players must be able to complete the level without training. See [LEVELS.md](LEVELS.md) for the proposed levels, completion rules and execution modes.
 
 Keep these distinctions visible:
 
 - Journey introduces concepts gradually; Sandbox exposes the implemented tools without advancing Journey.
 - An interactive illustration, a real training run, and a supplied trained model must be labeled accurately.
-- A checkpoint means the player tried and noticed something. It does not require a lucky accuracy score, an expensive device or perfect answers.
+- Level completion rewards a valid construction and a small exploration that demonstrates the central idea. It never requires training, an accuracy score, a GPU or a Colab account. Experiment checkpoints and level-completion badges are separate concepts.
 - History supplies context and people, not a reason to mislabel modern implementations as their original historical algorithms.
-- Browser training stays local. PyTorch/Colab remains an explicit route for larger experiments.
+- Browser training stays local and is enabled per level/configuration, not assumed for every architecture. Supplied compatible models, tiny numerical demonstrations and labeled reference traces offer other exploration routes. PyTorch/Colab remains an optional route for supported exports.
 
 ### What exists today
 
@@ -53,7 +53,9 @@ Proposed appearance: a small yellow connector creature, thick black outline, two
 
 Implement a pure rule engine that consumes graph analysis, lesson state, experiment summaries and recent actions. Return a stable rule ID, priority, target reference and short copy. Keep rule evaluation, hint scheduling, target geometry and character rendering separate. Cooldowns and configuration-aware dismissal prevent repeating the same hint after every move. Validation remains authoritative; Pip interprets it. No LLM or remote request is needed.
 
-## How a lesson plays
+## Levels and how a lesson plays
+
+The level catalog in [LEVELS.md](LEVELS.md) is the product structure. The concept inventory below supplies small games within those levels; it is not a requirement to make MNIST teach every subject. The current app still gates chapter unlocks on MNIST training. A future level-engine change must replace that requirement while preserving earned progress.
 
 Target a few minutes of interaction per small game, with longer training optional. This is a design target, not a measured completion-time promise.
 
@@ -62,7 +64,7 @@ Target a few minutes of interaction per small game, with longer training optiona
 3. Let them manipulate the relevant thing directly.
 4. Show the consequence with real values, examples or a clearly labeled illustration.
 5. Offer one sentence explaining what happened and an optional history card.
-6. Save the experiment, invite a comparison and unlock the next useful piece.
+6. Save completion from the construction/exploration, invite a comparison and unlock the next useful piece. Save training results separately if the player chose an experiment.
 
 Prefer “move this boundary,” “sort these cards,” “compare these guesses,” and “repair this socket” to quizzes about vocabulary. Revisit the same concept at a larger scale. A correct connection is evidence of shape compatibility, not evidence that the player has learned every concept.
 
@@ -111,7 +113,7 @@ This is the curriculum inventory. Rows are small games, not a requirement to bui
 | 9 | Self-attention, multiple heads, head dimensions | **A team of spotters:** inspect separate heads, combine them and project back. | Heads can learn different patterns, but do not promise each has a neat human-assigned role. |
 | 10. A transformer of your own | Layer normalization, residuals, position-wise feed-forward network, GELU | **Assemble a decoder room:** combine familiar subassemblies and open them to inspect shapes. | Attention, an MLP and stable skip paths work together. |
 | 10 | Repeated decoder layers and independent parameters | **Build another floor:** duplicate a decoder module and compare depth versus cost. | Repeated structure is modular; each layer normally learns its own weights. |
-| 10 | Character-level language modeling, token cross-entropy, perplexity | **Shakespeare's apprentice:** compare untrained output, a short training run and a later checkpoint. | Lower held-out token loss reflects better prediction on that corpus, not general intelligence. Explain perplexity only after cross-entropy. |
+| 10 | Character-level language modeling, token cross-entropy, perplexity | **Shakespeare's apprentice:** compare untrained output with clearly labeled supplied checkpoints; offer personal training as an optional experiment. | Lower held-out token loss reflects better prediction on that corpus, not general intelligence. Explain perplexity only after cross-entropy. |
 | 10 | Generation loop, context truncation, temperature and optional top-k | **Direct the little theatre:** change a prompt and sampling settings while keeping the model fixed. | Sampling changes outputs without retraining. Inspect one generated character at a time. |
 | 10 | Reproducibility, checkpoints and export | **Pack your laboratory:** save a model recipe, dataset identity, seed, settings and supported weights; continue elsewhere. | Separate a recipe from a trained checkpoint. Browser and Python results need not be bit-identical. |
 
@@ -235,7 +237,7 @@ Inside each decoder module, the updates are sequential: `x = x + attention(Layer
 
 Introduce the attention block by opening its internals: projections for Q/K/V, head reshaping, scaled QKᵀ scores, causal masking, row-wise softmax, weighted values, head concatenation and output projection. Show `[batch, time, features]` and then `[batch, heads, time, head width]` when the player asks for detail. Validate that feature width divides by the head count and residual Add inputs agree. Dropout can be added after the minimal model is understood and its train/evaluation behavior is tested.
 
-A short run should show a measurable learning process even if the text is still messy. Do not promise coherent Shakespeare after a few seconds. Reward assembling, training, inspecting attention and comparing a sample/checkpoint. Offer longer local runs or the matching PyTorch notebook. Supplied trained examples, if added later, are clearly labeled and never presented as the player's work. The attention picture is a view of weights, not a definitive explanation of the model's reasoning.
+Reward assembling the transformer, inspecting attention and tracing a generation step. Completion never requires training or downloading a large checkpoint. Offer compatible supplied checkpoints or clearly labeled recorded reference traces; do not present their results as the player's own training. Local training is optional for validated configurations, with a matching PyTorch notebook where supported. A short optional run may still produce messy text; do not promise coherent Shakespeare after a few seconds. The attention picture is a view of weights, not a definitive explanation of the model's reasoning.
 
 ## Delivery milestones and dependencies
 
@@ -245,14 +247,14 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 | --- | --- | --- | --- |
 | M1. Clearer block identities | Dedicated activation tiles/cards and consistent SVG icons | Existing registry and saves | Existing models retain their behavior, individual activations can be added/trained/exported, and keyboard/phone controls work. |
 | M2. Pip's first appearance | One character, manual Help, Mute and three targeted rules: shape mismatch, incomplete path, unnecessary Flatten | M1; stable target references | Pip points correctly through pan/zoom, never obstructs a drag, handles deleted/offscreen targets, and stays quiet when muted. |
-| M3. Loss and learning games | Accuracy-versus-loss, confidence/cross-entropy and learning-rate games; connect these to current MNIST metrics | Lesson IDs and reusable activity shell | A learner can compare two outcomes and identify what improved without memorizing terminology. Existing progress migrates intact. |
+| M3. Levels and learning games | Construction-based completion, per-level execution modes, loss and learning mini-games | Stable lesson IDs and reusable activity shell | Levels can be completed without training or a GPU; build/exploration evidence is recorded separately from experiments; existing unlocks migrate intact. |
 | M4. Fair experiments | Training/validation/test design, curves, limited-data overfitting game and checkpoint comparison | M3; experiment schema and configurable training settings | Evaluation data never updates weights, validation is used for tuning, and the final check is separated and accurately labeled. |
 | M5. Group a useful pattern | Local chain groups, collapse/expand, ungroup, names and template copies | M1; canonical computational identity | Grouping preserves predictions and parameter totals; copies have independent parameters; saves and undo round-trip. |
-| M6. Runtime feasibility gate | Worker spike, backend status, bounded preflight, tiny real attention forward/backward test, device benchmark table | Can begin as a limited research spike after M3, before committing to full attention UI | At least one supported browser backend trains the smallest attention model with finite gradients, stable memory and responsive cancellation. A go/no-go decision and export fallback are recorded. |
-| M7. Branches and richer tensors | Named ports, fan-out, Add, Concatenate, rank-aware shapes and general modules | M5; M6 evidence informs runtime | Topological compilation, source-linked errors, save migration, parameter accounting and exports agree on branched models. |
-| M8. Text playground | Character encoding, shifted targets, disjoint splits, bigram baseline, embeddings and sampling games | M3/M4; dataset abstraction and sequence tensors | A small real text model trains locally, generation is inspectable, and no context window leaks across splits. |
-| M9. Build attention | Q/K/V and mixing games, causal mask, one head then multiple heads | M6/M7/M8 | Causality, head reshaping, softmax axis and gradients match a reference implementation. Pip can point at tokens, matrix cells and edges. |
-| M10. Shakespeare workshop | Expandable decoder module, repeat instances, normalization, GELU, training/checkpoints and matching code export | M4 through M9 | Players assemble and train a tiny transformer, inspect its components, compare outputs and recover from cancellation or device loss. |
+| M6. Optional training feasibility | Worker spike, backend status, bounded preflight, tiny real attention forward/backward test, device benchmark table | Can begin as a limited research spike after M3, before committing to full attention UI | Record which configurations can train with finite gradients, stable memory and responsive cancellation. A no-go restricts local training only; it does not block construction levels or reference exploration. |
+| M7. Branches and richer tensors | Named ports, fan-out, Add, Concatenate, rank-aware shapes and general modules | M5; M6 informs optional execution | Topological compilation, source-linked errors, save migration, parameter accounting and exports agree on branched models. |
+| M8. Text playground | Character encoding, shifted targets, disjoint splits, bigram baseline, embeddings and sampling games | M3/M4; dataset abstraction and sequence tensors | Players assemble a text model and inspect next-token behavior using a compatible supplied example or tiny baseline; optional training preserves split isolation. |
+| M9. Build attention | Q/K/V and mixing games, causal mask, one head then multiple heads | M7/M8; M6 only for optional local training | Causality, head reshaping, softmax axis and gradients match a reference implementation. Pip can point at tokens, matrix cells and edges. |
+| M10. Shakespeare workshop | Expandable decoder module, repeat instances, normalization, GELU, training/checkpoints and matching code export | M4/M5/M7/M8/M9; M6 only for optional local training | Players assemble a tiny transformer and inspect its components without a training requirement. Supported experiments and supplied checkpoints have honest labels and recovery behavior. |
 | Optional image/history branch | Convolution and pooling games, tiny CNN; optional RNN/LSTM history path | Richer tensors and relevant runtime checks | The branch adds intuition without blocking the main transformer journey. |
 
 **Recommended next implementation:** M1 only. Then M2 with three simple Pip rules. Avoid combining icons, the entire helper, loss games and new backends in one change.
@@ -260,7 +262,7 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 ## Architecture guardrails
 
 - **Block catalog versus operations:** display variants, icons, unlock metadata and hints belong in the catalog; shared mathematical operations belong in the compiler/runtime. Distinct activation blocks need not duplicate activation code.
-- **Lesson engine:** stable lesson IDs, prerequisites, activity state, optional history sources and observable completion events. Keep rewards separate from validation and from runtime success/failure. Sandbox cannot emit Journey completion events.
+- **Lesson engine:** stable lesson IDs, prerequisites, activity state, optional history sources and observable completion events. Keep rewards separate from training and runtime success/failure. Construction validation and a small exploration supply level-completion evidence; no training-complete event is required. Sandbox cannot emit Journey completion events.
 - **Experiment recipe:** dataset/version/splits, preprocessing, graph signature, seed, optimizer, loss, batch size, run budget and backend. Notebook rows need this information for comparisons; label old rows as legacy experiments when the split protocol changes.
 - **Execution contract:** graph compiler returns executable operations, full tensor shapes/dtypes, parameter counts and source mappings. Runtime adapters expose capabilities, training, evaluation, prediction, stop and eventually checkpoint import/export. Do not create multiple backend implementations before needed.
 - **Tensor contracts:** add rank, axes, dtype and symbolic dimensions incrementally. Token IDs differ from floating-point features. Batch/time/feature conventions must be explicit, including browser versus PyTorch image layout differences.
@@ -272,7 +274,7 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 
 ## Verification gates
 
-For each new game, test its learning claim with actual examples, not only its rendering. Review the wording for misconceptions and whether a player can complete it by doing something meaningful.
+For each new game, verify it can be completed without training or a capable GPU. Test its learning claim with actual examples, not only its rendering. Review the wording for misconceptions and whether a player can complete it by doing something meaningful.
 
 For new graph features, test valid and invalid shapes, input occupancy, cycles, disconnected components, grouping/ungrouping, copy versus sharing, undo, migration and computational signatures. Layout-only operations must keep predictions.
 

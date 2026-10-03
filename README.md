@@ -100,6 +100,8 @@ Completed connections use an obstacle-aware orthogonal router with rounded corne
 
 ## Learning roadmap and Pip
 
+The candidate architecture levels and construction-first completion rules are in [LEVELS.md](LEVELS.md). Training is an optional, per-level experiment.
+
 The long-term learning path, small-game concept inventory, Pip's pointing/highlighting behavior, separate activation blocks, SVG icon refresh, group blocks, browser GPU feasibility and the Shakespeare transformer capstone are recorded in [ROADMAP.md](ROADMAP.md).
 
 Pip is the working helper name. Dot and Nori have been rejected. The helper remains a deterministic, optional proposal; it is not implemented yet. The recommended next implementation is dedicated activation blocks and consistent icons, followed by a small Pip pass. The roadmap preserves the current playground while introducing new concepts one small game at a time.
