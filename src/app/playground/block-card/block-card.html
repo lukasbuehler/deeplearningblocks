@@ -22,21 +22,30 @@
   @switch (node().kind) {
     @case ('image') {
       <div class="image-content">
-        <app-digit-preview [pixels]="pixels()" [label]="'MNIST digit ' + (actual() ?? 'loading')" />
+        <app-digit-preview
+          [pixels]="pixels()"
+          [label]="custom() ? 'Your handwritten digit' : 'MNIST digit ' + (actual() ?? 'loading')"
+        />
         <div>
           <b>28 × 28</b><span>little pixels</span
           ><button
             (click)="$event.stopPropagation(); nextDigit.emit()"
-            [disabled]="actual() === undefined || busy()"
+            [disabled]="(!custom() && actual() === undefined) || busy()"
           >
-            Next digit ↻
+            {{ custom() ? 'MNIST digits ↻' : 'Next digit ↻' }}</button
+          ><br /><button
+            class="draw-button"
+            (click)="$event.stopPropagation(); draw.emit()"
+            [disabled]="busy()"
+          >
+            ✎ Draw your own
           </button>
         </div>
       </div>
     }
     @case ('flatten') {
       <div class="flatten-picture"><span>▦</span><b>→</b><span>▪▪▪▪▪▪▪</span></div>
-      <p class="detail">Same pixels. One long list.</p>
+      <p class="detail">28 × 28 × 1 → <b>784 numbers</b></p>
     }
     @case ('dense') {
       <div class="settings">
@@ -55,7 +64,7 @@
         <div class="neurons" aria-hidden="true">● ● ●<br />╲│╱<br />● ● ●</div>
       </div>
       <p class="detail">
-        {{ inputSize() === undefined ? 'Needs input' : inputSize() + ' inputs' }} →
+        {{ inputSize() === undefined ? 'Needs a vector' : inputSize() + ' inputs' }} →
         {{ node().units }} neurons
       </p>
     }
@@ -76,7 +85,11 @@
         </svg>
       </div>
       <p class="detail">
-        {{ outputSize() === undefined ? 'Needs input' : 'Keeps ' + outputSize() + ' numbers' }}
+        {{
+          outputSize() === undefined
+            ? 'Vector N → same N numbers'
+            : outputSize() + ' in → ' + outputSize() + ' out'
+        }}
       </p>
     }
     @case ('classifier') {
@@ -85,7 +98,11 @@
         <div>
           <b>{{ prediction() === null ? 'What digit is it?' : 'My guess!' }}</b
           ><span>{{
-            prediction() === null ? 'Connect, then train.' : 'Actual digit: ' + actual()
+            prediction() === null
+              ? 'Connect, then train.'
+              : custom()
+                ? 'Your handwriting'
+                : 'Actual digit: ' + actual()
           }}</span>
           @if (prediction() !== null) {
             <span>{{ probabilities()[prediction()!] | percent: '1.0-0' }} confidence</span>

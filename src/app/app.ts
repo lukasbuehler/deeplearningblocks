@@ -5,10 +5,11 @@ import { PaperCanvas } from './playground/paper-canvas/paper-canvas';
 import { BLOCKS } from './playground/graph';
 import { ERAS, ACTIVATIONS } from './learning/curriculum';
 import { ExperimentNotebook } from './playground/experiment-notebook/experiment-notebook';
+import { DigitPad } from './playground/digit-pad/digit-pad';
 import { Mode } from './playground/storage';
 @Component({
   selector: 'app-root',
-  imports: [PaperCanvas, ExperimentNotebook],
+  imports: [PaperCanvas, ExperimentNotebook, DigitPad],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

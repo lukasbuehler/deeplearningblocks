@@ -30,6 +30,8 @@ describe('Playground state', () => {
     loadPreview: jasmine.Spy;
     train: jasmine.Spy;
     predict: jasmine.Spy;
+    predictPixels: jasmine.Spy;
+    trained: ReturnType<typeof signal<boolean>>;
   };
   beforeEach(() => {
     trainer = {
@@ -41,6 +43,8 @@ describe('Playground state', () => {
       loadPreview: jasmine.createSpy().and.resolveTo(),
       train: jasmine.createSpy().and.resolveTo({ accuracy: 0.9, loss: 0.2 }),
       predict: jasmine.createSpy().and.returnValue([0.1]),
+      predictPixels: jasmine.createSpy().and.returnValue([0.9]),
+      trained: signal(true),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -107,5 +111,21 @@ describe('Playground state', () => {
     trainer.loadPreview.and.resolveTo();
     await game.loadPreview();
     expect(game.error()).toBe('');
+  });
+  it('uses drawings for inference without changing the network or notebook', async () => {
+    const pixels = new Float32Array(784).fill(0.5),
+      board = game.board();
+    game.useDrawing(pixels);
+    expect(game.pixels()).toBe(pixels);
+    expect(game.probabilities()).toEqual([0.9]);
+    expect(trainer.predictPixels).toHaveBeenCalledWith(pixels);
+    expect(trainer.invalidate).not.toHaveBeenCalled();
+    expect(game.board()).toBe(board);
+    expect(game.workspace().experiments.length).toBe(0);
+    await game.train();
+    expect(game.probabilities()).toEqual([0.9]);
+    game.nextSample();
+    expect(game.drawing()).toBeNull();
+    expect(game.probabilities()).toEqual([0.1]);
   });
 });

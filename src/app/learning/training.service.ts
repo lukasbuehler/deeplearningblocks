@@ -117,18 +117,15 @@ export class TrainingService {
     }
   }
   predict(index: number): number[] {
+    const data = this.test();
+    return data ? this.predictPixels(data.pixels.slice(index * 784, (index + 1) * 784)) : [];
+  }
+  predictPixels(pixels: Float32Array): number[] {
     const tf = this.tf,
-      model = this.model,
-      data = this.test();
-    if (!tf || !model || !data || !this.trained()) return [];
+      model = this.model;
+    if (!tf || !model || !this.trained() || pixels.length !== 784) return [];
     return tf.tidy(() =>
-      Array.from(
-        (
-          model.predict(
-            tf.tensor4d(data.pixels.slice(index * 784, (index + 1) * 784), [1, 28, 28, 1]),
-          ) as TF.Tensor
-        ).dataSync(),
-      ),
+      Array.from((model.predict(tf.tensor4d(pixels, [1, 28, 28, 1])) as TF.Tensor).dataSync()),
     );
   }
 }

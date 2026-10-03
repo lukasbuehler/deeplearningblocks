@@ -95,8 +95,8 @@
               definitions[node.kind].input === 'image'
                 ? '28 × 28 × 1'
                 : shapes().get(node.id)?.input == null
-                  ? 'Needs input'
-                  : shapes().get(node.id)?.input + ' numbers'
+                  ? 'Vector · N'
+                  : 'Vector · ' + shapes().get(node.id)?.input
             }}</span>
           </button>
         }
@@ -105,6 +105,8 @@
           [inputSize]="shapes().get(node.id)?.input ?? undefined"
           [outputSize]="shapes().get(node.id)?.output ?? undefined"
           [selected]="game.selected() === node.id"
+          [custom]="!!game.drawing()"
+          (draw)="game.drawingOpen.set(true)"
           [busy]="game.trainer.busy()"
           [activations]="game.activations()"
           [pixels]="game.pixels()"
@@ -134,9 +136,8 @@
             ><span class="port-label">{{
               node.kind === 'image'
                 ? '28 × 28 × 1'
-                : shapes().get(node.id)?.output == null
-                  ? 'Needs input'
-                  : shapes().get(node.id)?.output + ' numbers'
+                : 'Vector · ' +
+                  (shapes().get(node.id)?.output ?? definitions[node.kind].inferWidth(node) ?? 'N')
             }}</span>
           </button>
         }

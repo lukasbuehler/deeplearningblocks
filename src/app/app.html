@@ -220,3 +220,7 @@
   </main>
 </div>
 <app-experiment-notebook [(expanded)]="notebook" />
+
+@if (game.drawingOpen()) {
+  <app-digit-pad (close)="game.drawingOpen.set(false)" />
+}

@@ -1,0 +1,42 @@
+<div class="backdrop" (click)="close.emit()"></div>
+<section
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="draw-title"
+  cdkTrapFocus
+  [cdkTrapFocusAutoCapture]="true"
+  (keydown.escape)="close.emit()"
+>
+  <button class="close" aria-label="Close drawing pad" (click)="close.emit()">×</button>
+  <span class="eyebrow">YOUR HANDWRITING. ITS BEST GUESS.</span>
+  <h2 id="draw-title">Draw a little digit.</h2>
+  <p>Pick any number from 0 to 9. Draw it big in the box.</p>
+  <canvas
+    #pad
+    width="280"
+    height="280"
+    aria-label="Draw a digit with a mouse, pen or finger"
+    (pointerdown)="draw($event)"
+    (pointermove)="draw($event)"
+    (pointerup)="finish()"
+    (pointercancel)="finish()"
+  ></canvas>
+  <div class="preview">
+    <app-digit-preview [pixels]="preview()" label="Your normalized 28 by 28 digit" />
+    <p>What the network sees:<br /><b>28 × 28 little pixels</b></p>
+  </div>
+  <p class="note">
+    {{
+      game.trainer.trained()
+        ? 'Your trained network will guess. It may get your handwriting wrong!'
+        : 'You can keep your drawing now. Train a connected network to get a guess.'
+    }}
+    This drawing is for trying the model, not training it.
+  </p>
+  <div class="actions">
+    <button (click)="clear()">Clear</button
+    ><button class="use" [disabled]="!preview()" (click)="use()">
+      {{ game.trainer.trained() ? 'Guess my digit →' : 'Use my digit →' }}
+    </button>
+  </div>
+</section>

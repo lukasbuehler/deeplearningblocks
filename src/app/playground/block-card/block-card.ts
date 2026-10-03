@@ -19,6 +19,8 @@ export class BlockCard {
   readonly busy = input(false);
   readonly pixels = input<Float32Array>();
   readonly actual = input<number>();
+  readonly custom = input(false);
+  readonly draw = output<void>();
   readonly probabilities = input<number[]>([]);
   readonly activations = input(ACTIVATIONS);
   readonly choose = output<void>();

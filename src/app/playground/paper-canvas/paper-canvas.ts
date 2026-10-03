@@ -27,6 +27,7 @@ import {
 import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget } from '../geometry';
 import { GameService } from '../game.service';
 import { BlockCard } from '../block-card/block-card';
+import { routeWire, roundedWire } from '../wire-router';
 import { Activation } from '../../learning/curriculum';
 interface Tile {
   kind: BlockKind;
@@ -115,7 +116,7 @@ export class PaperCanvas {
         to = this.visualNodes().find((n) => n.id === edge.to)!;
       return {
         ...edge,
-        path: wirePath(portPosition(from, 'output'), portPosition(to, 'input')),
+        path: roundedWire(routeWire(from, to, this.visualNodes())),
         label: `${BLOCKS[from.kind].title} to ${BLOCKS[to.kind].title}`,
         type: BLOCKS[from.kind].output,
       };
@@ -425,7 +426,7 @@ export class PaperCanvas {
   }
   @HostListener('document:keydown', ['$event']) key(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;
-    if (target.closest('input,select,textarea,[contenteditable="true"]')) return;
+    if (target.closest('input,select,textarea,[contenteditable="true"],[role="dialog"]')) return;
     if (event.key === 'Escape') {
       this.clearSelection();
       return;

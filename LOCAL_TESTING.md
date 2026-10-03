@@ -41,3 +41,14 @@ Angular template optional chaining can produce null for missing dimensions. Expl
 ## Remaining validation limits
 
 Computer use exercised mouse and keyboard input at phone and desktop viewport sizes. Physical multitouch behavior and device-specific GPU/CPU performance still need hardware testing. The project intentionally supports a single chain, the existing three chapters, the fixed MNIST subset and in-memory weights. Historical dates refer to influential papers, with the existing source notes retained. No server-side training or accounts are introduced.
+
+## Follow-up: wire routing, shape contracts and drawing
+
+- Replaced unconstrained cubic wires with orthogonal obstacle routing and rounded bends. Tests inspect every segment against source, target and intervening card interiors, including upward routes and snapped ports. Browser inspection confirmed the previously crossing connections now travel around the cards.
+- Flatten now explicitly shows 28 × 28 × 1 → 784 numbers. Output contracts remain visible without an input; unknown vector widths are labeled N. Activation shows equal input/output widths.
+- Added a pointer/pen/touch drawing pad, normalized image preview, Clear, Escape and focus restoration. Blank input disables submission. Drawings feed inference without altering model configuration or training/evaluation examples.
+- Computer use drew a seven with two strokes, inspected its normalized preview, submitted it, and observed a trained model predict 7. Clear disabled submission again. The dialog was also inspected at phone width without horizontal overflow. Physical pen/touch hardware remains untested.
+- Low-zoom testing found expanded connector hit targets covering the new drawing button. Their extra hit area now extends outward from each card instead of covering its controls.
+- Added normalization, obstacle routing and custom inference state tests. Current totals: 18 Node tests and 9 Angular browser tests.
+- Screenshots: `docs/screenshots/draw-digit.jpg` and `docs/screenshots/routed-wires-drawing.jpg`.
+- Helper names and deterministic hint behavior are recorded as proposals in README. No assistant has been added yet, and the overfitting lesson remains deferred.

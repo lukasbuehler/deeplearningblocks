@@ -58,7 +58,7 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     input: 'image',
     output: 'vector',
     height: 148,
-    help: 'Turn 28 × 28 pixels into one list of 784 numbers. Nothing is learned or thrown away here. Only the shape changes.',
+    help: 'Turn 28 × 28 pixels into one list of 784 numbers. Nothing is learned or thrown away here. Only the shape changes. Use it once where the picture becomes a vector. Dense layers already produce vectors.',
   },
   dense: {
     config: 'units',

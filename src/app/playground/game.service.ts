@@ -23,8 +23,12 @@ export class GameService {
   readonly storageWarning = signal(false);
   readonly sample = signal(0);
   readonly probabilities = signal<number[]>([]);
-  readonly pixels = computed(() =>
-    this.trainer.test()?.pixels.slice(this.sample() * 784, (this.sample() + 1) * 784),
+  readonly drawingOpen = signal(false);
+  readonly drawing = signal<Float32Array | null>(null);
+  readonly pixels = computed(
+    () =>
+      this.drawing() ??
+      this.trainer.test()?.pixels.slice(this.sample() * 784, (this.sample() + 1) * 784),
   );
   readonly historyVersion = signal(0);
   private readonly histories = { journey: new BoardHistory(), sandbox: new BoardHistory() };
@@ -130,9 +134,26 @@ export class GameService {
     this.message.set('Fresh paper. A new little adventure.');
     this.trainer.status.set('Ready when you are');
   }
+  useDrawing(pixels: Float32Array): void {
+    this.drawing.set(pixels);
+    this.refreshPrediction();
+    this.message.set(
+      this.trainer.trained()
+        ? 'Your drawing, your network’s guess. Try another!'
+        : 'Your drawing is ready. Train the network to see its guess.',
+    );
+  }
+  private refreshPrediction(): void {
+    this.probabilities.set(
+      this.drawing()
+        ? this.trainer.predictPixels(this.drawing()!)
+        : this.trainer.predict(this.sample()),
+    );
+  }
   nextSample(): void {
+    this.drawing.set(null);
     this.sample.update((i) => (i + 1) % (this.trainer.test()?.count ?? 1));
-    this.probabilities.set(this.trainer.predict(this.sample()));
+    this.refreshPrediction();
   }
   async train(): Promise<void> {
     const network = this.compilation().network;
@@ -166,7 +187,7 @@ export class GameService {
           `${ERAS[unlocked].year} unlocked! ${unlocked === 1 ? 'Meet Sigmoid & Tanh.' : 'ReLU joins your toy box.'}`,
         );
       else this.message.set('An experiment in the books! Change one thing and try again.');
-      this.probabilities.set(this.trainer.predict(this.sample()));
+      this.refreshPrediction();
     } catch (error) {
       this.error.set(
         error instanceof Error ? error.message : 'That experiment could not finish. Try again.',

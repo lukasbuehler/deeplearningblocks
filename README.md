@@ -89,3 +89,25 @@ npm run deploy
 ```
 
 Then attach the existing domain as a Custom Domain in the Worker’s Domains & Routes settings. Confirm the zone and any existing DNS records before changing them. No domain or account identifiers are hard-coded. Local preview and dry-run validation do not publish the app or modify DNS.
+
+## Drawing and shape guidance
+
+Choose **Draw your own** inside the yellow image block. White ink is cropped, scaled into a 20-pixel box and centered by its mass on a 28 × 28 black image. The pad previews that normalized input before submission. A trained model predicts immediately; otherwise the drawing waits until training completes. **MNIST digits** returns to dataset samples. Drawings and weights stay in memory and are never added to the training set or held-out evaluation.
+
+Ports distinguish image tensors from vectors. Flatten advertises its fixed 784-number output even while disconnected; Dense advertises its configured width; Activation preserves the incoming width. Unknown vector widths use N. Flatten is needed at the image-to-vector boundary, not after every Dense layer.
+
+Completed connections use an obstacle-aware orthogonal router with rounded corners. It routes around card bounds and follows moved blocks. Physically overlapping cards can still cover a port; separating the cards exposes it again.
+
+## Helper brainstorm (proposal, not implemented)
+
+- **Pip:** a little yellow connector creature with black eyes and a pink cable tail. Recommended direction: a curious companion that points at sockets and folds into a small sticker when quiet.
+- **Dot:** a round neuron with tiny branching arms. Good for explaining numbers moving through the network.
+- **Nori:** a folded-paper creature that lives on the dotted paper. Good for the first-book theme, with less literal circuitry.
+
+The first implementation should be deterministic. A pure rule function can inspect graph shape, chapter and recent actions, then return a stable hint ID, severity, target block and short explanation. No LLM, account or network request is needed. Keep invalid-connection enforcement in the graph validator; helper advice stays nonblocking.
+
+Show one hint after the player pauses, never while dragging or drawing. Start with discovery prompts, then offer explanations for specific patterns. Include Why?, Not now and Mute controls. Remember dismissals per rule and board configuration, and remember mute across reloads. Never rearrange, insert or delete blocks automatically.
+
+Useful initial rules: a missing image-to-vector conversion; an incomplete path when trying to train; unused blocks excluded from the experiment; adjacent Dense layers without an intervening nonlinear activation; repeated ReLU operations with no learned layer between them. Suppress nonlinear-activation advice in the first Journey chapter, which intentionally explores a linear baseline. Do not insist on activation after every Dense block. The classifier already includes softmax. Do not diagnose overfitting from network size alone.
+
+A later **Memorizing or learning?** lesson could compare training and validation curves as a small network and a larger network train for longer on limited examples. Let players discover that training improvement can stop transferring to unseen examples. Keep a separate final test set untouched by lesson tuning. This lesson is deferred.

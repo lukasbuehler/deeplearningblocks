@@ -103,10 +103,15 @@
   content: '';
   position: absolute;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   width: max(54px, calc(44px / var(--zoom)));
   height: max(30px, calc(44px / var(--zoom)));
+}
+.output::before {
+  top: 15px;
+}
+.input::before {
+  bottom: 15px;
 }
 .input {
   top: -15px;
