@@ -8,6 +8,7 @@ import { ExperimentNotebook } from './playground/experiment-notebook/experiment-
 import { DigitPad } from './playground/digit-pad/digit-pad';
 import { Brand } from './playground/brand/brand';
 import { CodeExport } from './playground/code-export/code-export';
+import { blockName } from './playground/block-catalog';
 import { Mode } from './playground/storage';
 @Component({
   selector: 'app-root',
@@ -28,6 +29,7 @@ export class App {
   readonly viewedEra = signal<number | null>(null);
   readonly chapter = computed(() => ERAS[this.viewedEra() ?? this.game.era()]);
   readonly definitions = BLOCKS;
+  readonly blockName = blockName;
   readonly selectedHint = computed(() => {
     const node = this.game.selectedNode();
     if (!node) return '';
@@ -37,9 +39,9 @@ export class App {
   });
   readonly challenge = computed(() =>
     (this.viewedEra() ?? this.game.era()) === 0
-      ? 'Add Flatten and Dense. Connect the image all the way to the digit guess, then train.'
+      ? 'Add Flatten and Dense. Connect the image all the way to the digit guess, then check your build. Training is optional.'
       : (this.viewedEra() ?? this.game.era()) === 1
-        ? 'Unplug one wire. Add Sigmoid or Tanh after a Dense block. Reconnect and train to discover ReLU.'
+        ? 'Unplug one wire. Add Sigmoid or Tanh after a Dense block. Reconnect and check your build to discover ReLU.'
         : 'Try ReLU and another Dense block. Does a bigger network make a better guess?',
   );
   switchMode(mode: Mode): void {

@@ -1,0 +1,60 @@
+@if (!suppressed()) {
+  @if (open() && !prefs().muted) {
+    <section class="bubble" aria-label="Blocky's clue" (keydown.escape)="dismiss()">
+      <header>
+        <b>Blocky has a clue</b
+        ><button aria-label="Dismiss Blocky's clue" (click)="dismiss()">×</button>
+      </header>
+      <p role="status">{{ hint().text }}</p>
+      @if (details()) {
+        <p class="why">{{ hint().why }}</p>
+      }
+      <div class="actions">
+        <button (click)="show.emit()">Show me ↗</button
+        ><button (click)="details.set(!details())" [attr.aria-expanded]="details()">Why?</button
+        ><button (click)="mute()">Mute</button>
+      </div>
+      @if (journey() && canCheck()) {
+        <button class="check" (click)="check.emit()" [disabled]="!canCheck()">
+          Check my build ✓
+        </button>
+      }
+      <button class="later" (click)="dismiss()">Got it, let me build</button>
+    </section>
+  }
+  <button
+    class="character"
+    [attr.aria-label]="prefs().muted ? 'Unmute Blocky and ask for a clue' : 'Ask Blocky for a clue'"
+    [attr.aria-expanded]="open() && !prefs().muted"
+    (click)="ask()"
+  >
+    <svg viewBox="0 0 120 88" aria-hidden="true">
+      <g stroke="#171717" stroke-width="3" stroke-linejoin="round">
+        <g
+          [attr.transform]="
+            'rotate(' + (open() && (angle() > 90 || angle() < -90) ? angle() - 180 : 40) + ' 29 43)'
+          "
+        >
+          <path d="M32 37H11V31H0V45H7V50H32Z" fill="#ff6962" />
+        </g>
+        <g
+          [attr.transform]="
+            'rotate(' + (open() && angle() >= -90 && angle() <= 90 ? angle() : 35) + ' 83 43)'
+          "
+        >
+          <path d="M80 37H101V31H114V45H107V50H80Z" fill="#ff6962" />
+        </g>
+        <rect x="35" y="14" width="16" height="13" rx="3" fill="#ffe14a" />
+        <rect x="66" y="14" width="16" height="13" rx="3" fill="#ffe14a" />
+        <rect x="33" y="27" width="57" height="51" rx="9" fill="#171717" />
+        <rect x="29" y="23" width="57" height="51" rx="9" fill="#ffe14a" />
+        <path d="M47 58Q58 67 69 58" fill="none" stroke-linecap="round" />
+      </g>
+      <ellipse cx="45" cy="43" rx="4" ry="6" fill="#171717" />
+      <ellipse cx="69" cy="43" rx="4" ry="6" fill="#171717" />
+      <circle cx="37" cy="54" r="4" fill="#ff6962" />
+      <circle cx="77" cy="54" r="4" fill="#ff6962" />
+    </svg>
+    <span>Blocky · {{ prefs().muted ? 'muted' : 'clue?' }}</span>
+  </button>
+}

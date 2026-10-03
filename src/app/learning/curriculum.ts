@@ -18,7 +18,7 @@ export const ERAS = [
     description:
       'Frank Rosenblatt’s perceptron showed how a machine could learn weights from examples. Start with the same big idea: pixels go in, weighted connections make a decision.',
     challenge:
-      'Build a first network. Add a dense block, then train it to recognize handwritten digits.',
+      'Build a first network. Connect Flatten and Dense, then check your build. Try training to recognize handwritten digits.',
     note: 'Our lab uses softmax and a modern optimizer, not the original perceptron rule. Dates mark influential milestones, not the invention of every ingredient.',
     source:
       'https://web.stanford.edu/class/psych209a/ReadingsByDate/01_30/Rosenblatt58Perceptron.pdf',
@@ -31,7 +31,7 @@ export const ERAS = [
     description:
       'Rumelhart, Hinton and Williams helped popularize backpropagation: send an error backward to improve the weights in hidden layers. Smooth nonlinear activations make those layers useful.',
     challenge:
-      'Change a block’s activation to sigmoid or tanh, then train again. Compare the result with your first experiment.',
+      'Add a Sigmoid or Tanh block and check your build. Try training again. Compare the result with your first experiment.',
     note: 'Backpropagation has earlier roots. 1986 marks an influential demonstration. Stacking only linear layers still gives a linear transformation.',
     source: 'https://www.cs.toronto.edu/~hinton/backprop.html',
     sourceLabel: 'The 1986 backpropagation papers',

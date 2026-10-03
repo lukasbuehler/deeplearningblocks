@@ -12,6 +12,7 @@ export interface GameSave {
   version: 2;
   mode: Mode;
   era: number;
+  checkedChapters?: number[];
   journey: Workspace;
   sandbox: Workspace;
 }
@@ -21,6 +22,7 @@ export function freshGame(): GameSave {
     version: 2,
     mode: 'journey',
     era: 0,
+    checkedChapters: [],
     journey: { board: freshBoard(), experiments: [] },
     sandbox: { board: freshBoard(), experiments: [] },
   };
@@ -138,6 +140,9 @@ export function loadGame(): GameSave {
       return freshGame();
     return {
       ...save,
+      checkedChapters: Array.isArray(save.checkedChapters)
+        ? [...new Set(save.checkedChapters.filter((n) => Number.isInteger(n) && n >= 0 && n <= 2))]
+        : [],
       journey: {
         board: save.journey.board,
         experiments: validExperiments(save.journey.experiments),

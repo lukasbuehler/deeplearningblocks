@@ -8,6 +8,7 @@ import {
   signal,
   viewChild,
   HostListener,
+  DestroyRef,
 } from '@angular/core';
 import { CdkDrag, CdkDragMove, CdkDragEnd, CdkDragStart } from '@angular/cdk/drag-drop';
 import {
@@ -30,9 +31,11 @@ import { BlockCard } from '../block-card/block-card';
 import { routeWire, roundedWire } from '../wire-router';
 import { TILES, Tile, blockName } from '../block-catalog';
 import { BlockIcon } from '../block-icon/block-icon';
+import { Blocky } from '../blocky/blocky';
+import { blockyHint, hintContext } from '../blocky-hints';
 @Component({
   selector: 'app-paper-canvas',
-  imports: [CdkDrag, BlockCard, BlockIcon],
+  imports: [CdkDrag, BlockCard, BlockIcon, Blocky],
   templateUrl: './paper-canvas.html',
   styleUrl: './paper-canvas.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -75,12 +78,109 @@ export class PaperCanvas {
   readonly snap = computed(() =>
     this.draft() && !this.game.trainer.busy() ? snapTarget(this.game.board(), this.draft()!) : null,
   );
+  private readonly destroyRef = inject(DestroyRef);
+  readonly paperSize = signal({ width: 0, height: 0 });
+  readonly helperVisible = signal(false);
+  readonly rejected = signal<{ edge: Edge; context: string } | null>(null);
+  readonly helperContext = computed(() =>
+    hintContext(this.game.board(), this.game.era(), this.game.mode()),
+  );
+  readonly helperHint = computed(() =>
+    blockyHint(
+      this.game.board(),
+      this.game.era(),
+      this.game.mode(),
+      this.rejected()?.context === this.helperContext() ? this.rejected()!.edge : undefined,
+    ),
+  );
+  readonly helperSuppressed = computed(
+    () =>
+      !!(
+        this.draft() ||
+        this.panning() ||
+        this.tray() ||
+        this.pending() ||
+        this.game.drawingOpen() ||
+        this.game.trainer.busy()
+      ),
+  );
+  readonly helperTarget = computed(() =>
+    this.helperVisible() && !this.helperSuppressed() ? this.helperHint().target : null,
+  );
+  readonly highlightedNode = computed(() => {
+    const t = this.helperTarget();
+    return t?.kind === 'node' ? t.id : null;
+  });
+  readonly highlightedEdge = computed(() => {
+    const t = this.helperTarget();
+    return t?.kind === 'edge' ? t.from : null;
+  });
+  readonly targetPoint = computed(() => {
+    const t = this.helperHint().target,
+      nodes = this.visualNodes();
+    if (t.kind === 'tray') return null;
+    if (t.kind === 'node') {
+      const n = nodes.find((n) => n.id === t.id);
+      return n ? { x: n.x - 12, y: n.y + BLOCKS[n.kind].height / 2 } : null;
+    }
+    const from = nodes.find((n) => n.id === t.from),
+      to = nodes.find((n) => n.id === t.to);
+    if (!from || !to) return null;
+    const points = routeWire(from, to, nodes),
+      i = Math.floor((points.length - 1) / 2);
+    return { x: (points[i].x + points[i + 1].x) / 2, y: (points[i].y + points[i + 1].y) / 2 };
+  });
+  readonly pointerGeometry = computed(() => {
+    const p = this.targetPoint(),
+      v = this.game.board().viewport,
+      size = this.paperSize();
+    if (!p) return null;
+    const end = { x: p.x * v.zoom + v.x, y: p.y * v.zoom + v.y };
+    const start = {
+      x: end.x < size.width - 78 ? size.width - 109 : size.width - 55,
+      y: size.height - 145,
+    };
+    return {
+      path: `M${start.x},${start.y} L${end.x},${end.y}`,
+      angle: (Math.atan2(end.y - start.y, end.x - start.x) * 180) / Math.PI,
+      visible: end.x > 0 && end.y > 0 && end.x < size.width && end.y < size.height - 50,
+      end,
+    };
+  });
+  showClueTarget(): void {
+    this.game.message.set('');
+    const target = this.helperHint().target;
+    if (target.kind === 'tray') {
+      this.tray.set(true);
+      return;
+    }
+    const p = this.targetPoint();
+    if (!p) return;
+    if (target.kind === 'edge') this.chooseEdge(target);
+    const size = this.paperSize(),
+      v = this.game.board().viewport;
+    this.game.setViewport({
+      ...v,
+      x: size.width * 0.3 - p.x * v.zoom,
+      y: size.height * (size.width < 650 ? 0.12 : 0.3) - p.y * v.zoom,
+    });
+    const selector =
+      target.kind === 'node'
+        ? `[data-node="${CSS.escape(target.id)}"]`
+        : `[data-edge-from="${CSS.escape(target.from)}"]`;
+    this.paper().nativeElement.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
+  }
   private panOrigin?: { point: Point; view: Board['viewport'] };
   private wireStart?: Point;
   private tileDrag?: { tile: Tile; start: Point; pointerId: number };
   private dragged = false;
   constructor() {
     afterNextRender(() => {
+      const observer = new ResizeObserver(([entry]) =>
+        this.paperSize.set({ width: entry.contentRect.width, height: entry.contentRect.height }),
+      );
+      observer.observe(this.paper().nativeElement);
+      this.destroyRef.onDestroy(() => observer.disconnect());
       const v = this.game.board().viewport;
       if (v.x === 0 && v.y === 0) this.fit();
     });
@@ -125,14 +225,14 @@ export class PaperCanvas {
     );
   }
   wheel(event: WheelEvent): void {
-    if ((event.target as HTMLElement).closest('.tray,.canvas-tools')) return;
+    if ((event.target as HTMLElement).closest('.tray,.canvas-tools,app-blocky')) return;
     event.preventDefault();
     this.zoom(Math.exp(-event.deltaY * 0.002), this.local(event));
   }
   panStart(event: PointerEvent): void {
     if (
       event.button !== 0 ||
-      (event.target as HTMLElement).closest('.node,button,.tray,.wire-hit,.canvas-tools')
+      (event.target as HTMLElement).closest('.node,button,.tray,.wire-hit,.canvas-tools,app-blocky')
     )
       return;
     this.game.selected.set(null);
@@ -253,6 +353,8 @@ export class PaperCanvas {
     const error = connectionError(this.game.board(), from, id);
     if (error) {
       this.game.message.set(error);
+      this.rejected.set({ edge: { from, to: id }, context: this.helperContext() });
+      this.cancelWire();
       return;
     }
     this.game.edit(connect(this.game.board(), from, id));
@@ -370,7 +472,8 @@ export class PaperCanvas {
   }
   @HostListener('document:keydown', ['$event']) key(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;
-    if (target.closest('input,select,textarea,[contenteditable="true"],[role="dialog"]')) return;
+    if (target.closest('input,select,textarea,[contenteditable="true"],[role="dialog"],app-blocky'))
+      return;
     if (event.key === 'Escape') {
       this.clearSelection();
       return;

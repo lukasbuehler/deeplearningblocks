@@ -31,6 +31,9 @@
   >
     <svg class="wires" aria-label="Network connections">
       @for (wire of wires(); track wire.from) {
+        @if (highlightedEdge() === wire.from) {
+          <path class="blocky-wire" [attr.d]="wire.path" />
+        }
         <path class="wire-outline" [attr.d]="wire.path" />
         <path
           class="wire"
@@ -40,6 +43,7 @@
         />
         <path
           class="wire-hit"
+          [attr.data-edge-from]="wire.from"
           [attr.d]="wire.path"
           role="button"
           tabindex="0"
@@ -57,6 +61,7 @@
     @for (node of game.board().nodes; track node.id; let i = $index) {
       <div
         class="node"
+        [class.blocky-target]="highlightedNode() === node.id"
         [attr.data-node]="node.id"
         [attr.data-kind]="node.kind"
         [style.z-index]="compatible(node.id) ? 3 : 1"
@@ -143,6 +148,24 @@
       </div>
     }
   </div>
+  @if (helperTarget() && pointerGeometry()?.visible) {
+    <svg class="blocky-pointer" aria-hidden="true">
+      <path [attr.d]="pointerGeometry()!.path" />
+      <circle [attr.cx]="pointerGeometry()!.end.x" [attr.cy]="pointerGeometry()!.end.y" r="6" />
+    </svg>
+  }
+  <app-blocky
+    [style.--paper-height.px]="paperSize().height"
+    [hint]="helperHint()"
+    [context]="helperContext()"
+    [suppressed]="helperSuppressed()"
+    [angle]="pointerGeometry()?.angle ?? 90"
+    [journey]="game.mode() === 'journey'"
+    [canCheck]="!!game.compilation().network && !game.trainer.busy()"
+    (highlight)="helperVisible.set($event)"
+    (show)="showClueTarget()"
+    (check)="game.checkBuild()"
+  />
   @if (game.board().edges.length === 0 && game.board().nodes.length === 2) {
     <div class="first-prompt">
       <span>1.</span> Open the toy box.<br /><span>2.</span> Add Flatten + Dense.<br /><span
@@ -207,8 +230,8 @@
             ><small>{{
               locked(tile)
                 ? tile.era === 1
-                  ? 'Train a Dense network to unlock'
-                  : 'Train Sigmoid or Tanh to unlock'
+                  ? 'Check a Dense build to unlock'
+                  : 'Check Sigmoid or Tanh to unlock'
                 : exists(tile)
                   ? 'Already on your paper'
                   : tile.description

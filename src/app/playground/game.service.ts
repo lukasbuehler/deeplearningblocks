@@ -124,7 +124,7 @@ export class GameService {
     this.probabilities.set([]);
     this.save.update((save) => ({
       ...save,
-      ...(save.mode === 'journey' ? { era: 0 } : {}),
+      ...(save.mode === 'journey' ? { era: 0, checkedChapters: [] } : {}),
       [save.mode]: { board: freshBoard(), experiments: [] },
     }));
     this.histories[this.mode()].clear();
@@ -154,6 +154,51 @@ export class GameService {
     this.drawing.set(null);
     this.sample.update((i) => (i + 1) % (this.trainer.test()?.count ?? 1));
     this.refreshPrediction();
+  }
+  checkBuild(): void {
+    if (this.trainer.busy()) return;
+    const network = this.compilation().network;
+    if (!network) {
+      this.message.set(this.compilation().issues[0]?.message ?? 'Connect your blocks first.');
+      return;
+    }
+    if (this.mode() === 'sandbox') {
+      this.message.set('Your Sandbox path works! Journey discoveries stay in Journey.');
+      return;
+    }
+    const era = this.era(),
+      dense = network.steps.filter((s) => s.kind === 'dense').length;
+    const has = (name: string) =>
+      network.steps.some((s) => s.kind === 'activation' && s.activation === name);
+    const complete =
+      era === 0
+        ? dense > 0
+        : era === 1
+          ? dense > 0 && (has('sigmoid') || has('tanh'))
+          : dense >= 2 && has('relu');
+    if (!complete) {
+      this.message.set(
+        era === 0
+          ? 'Connect a Dense block in your path.'
+          : era === 1
+            ? 'Try Sigmoid or Tanh in your connected path.'
+            : 'Try a second Dense and ReLU in your connected path.',
+      );
+      return;
+    }
+    this.save.update((save) => ({
+      ...save,
+      era: Math.min(2, era + 1),
+      checkedChapters: [...new Set([...(save.checkedChapters ?? []), era])],
+    }));
+    this.celebration.set(
+      era === 0
+        ? 'First build discovered! Sigmoid & Tanh are in your toy box.'
+        : era === 1
+          ? 'Nonlinearity discovered! ReLU joins your toy box.'
+          : 'A deeper network discovered! Try training and compare your guesses.',
+    );
+    this.message.set('Build checked. Training is an optional experiment.');
   }
   async train(): Promise<void> {
     const network = this.compilation().network;

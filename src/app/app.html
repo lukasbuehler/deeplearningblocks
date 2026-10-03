@@ -94,7 +94,13 @@
               (click)="viewedEra.set(i)"
               [attr.aria-current]="(viewedEra() ?? game.era()) === i ? 'step' : null"
             >
-              <span>{{ i < game.era() ? '✓' : i > game.era() ? '○' : i + 1 }}</span
+              <span>{{
+                i < game.era() || game.save().checkedChapters?.includes(i)
+                  ? '✓'
+                  : i > game.era()
+                    ? '○'
+                    : i + 1
+              }}</span
               ><strong>{{ era.year }}</strong
               ><small>{{ era.short }}</small>
             </button>
@@ -104,9 +110,17 @@
           <span class="sticker">YOUR MISSION</span>
           <h2>{{ chapter().title }}</h2>
           <p>{{ challenge() }}</p>
+          <button
+            class="hint-button"
+            [hidden]="(viewedEra() ?? game.era()) !== game.era()"
+            (click)="game.checkBuild()"
+            [disabled]="!game.compilation().network || game.trainer.busy()"
+          >
+            Check my build ✓
+          </button>
           <div class="mission-steps">
             <span [class.done]="game.board().nodes.length > 2">✳ Build</span
-            ><span [class.done]="!!game.compilation().network">↳ Connect</span><span>▶ Train</span>
+            ><span [class.done]="!!game.compilation().network">↳ Connect</span><span>✓ Check</span>
           </div>
         </div>
         <details class="story">
@@ -154,7 +168,7 @@
       @if (game.selectedNode(); as node) {
         <section class="selected-explanation" [attr.data-kind]="node.kind">
           <span class="eyebrow">WHAT’S THIS LITTLE BLOCK?</span>
-          <h3>{{ definitions[node.kind].title }}</h3>
+          <h3>{{ blockName(node) }}</h3>
           <p>{{ selectedHint() }}</p>
           <button (click)="canvas()?.deleteNode(node.id)" [disabled]="game.trainer.busy()">
             Delete this block ×

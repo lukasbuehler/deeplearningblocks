@@ -22,9 +22,9 @@ Open the localhost URL printed by Wrangler (normally http://localhost:8787).
 ## First lesson
 
 1. Open **+ Blocks**, drag Flatten and Dense onto the paper, then connect Image → Flatten → Dense → Digit guess. You can also tap a tile to add it and tap an output followed by an input to connect.
-2. Train for five passes to unlock the 1986 chapter, Sigmoid and Tanh.
-3. Select a wire or occupied port, choose Disconnect, and insert an activation. Train with Sigmoid or Tanh to unlock ReLU and the 2010 chapter.
-4. Try a second Dense layer, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six Dense layers can be connected.
+2. Choose **Check my build** in the guide or Blocky’s bubble to unlock the 1986 chapter, Sigmoid and Tanh. Training is optional.
+3. Select a wire or occupied port, choose Disconnect, and insert an activation. Check the connected Sigmoid or Tanh build to unlock ReLU and the 2010 chapter.
+4. Try a second Dense layer with ReLU and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six Dense layers can be connected.
 
 Drag the paper to pan, scroll to zoom, or use the zoom and Fit all controls. Compatible nearby studs snap together within 24 screen pixels. Blocks stay connected when moved apart. Select a block to read its explanation in the optional guide. Delete removes its incident wires; Undo and Redo recover complete edits, including an entire drag.
 
@@ -98,13 +98,17 @@ Ports distinguish image tensors from vectors. Flatten advertises its fixed 784-n
 
 Completed connections use an obstacle-aware orthogonal router with rounded corners. It routes around card bounds and follows moved blocks. Physically overlapping cards can still cover a port; separating the cards exposes it again.
 
-## Learning roadmap and Pip
+## Blocky and the learning roadmap
 
 The candidate architecture levels and construction-first completion rules are in [LEVELS.md](LEVELS.md). Training is an optional, per-level experiment.
 
-The long-term learning path, small-game concept inventory, Pip's pointing/highlighting behavior, separate activation blocks, SVG icon refresh, group blocks, browser GPU feasibility and the Shakespeare transformer capstone are recorded in [ROADMAP.md](ROADMAP.md).
+The long-term learning path, small-game concept inventory, Blocky’s pointing/highlighting behavior, separate activation blocks, SVG icon refresh, group blocks, browser GPU feasibility and the Shakespeare transformer capstone are recorded in [ROADMAP.md](ROADMAP.md).
 
-Pip is the working helper name. Dot and Nori have been rejected. The helper remains a deterministic, optional proposal; it is not implemented yet. The recommended next implementation is dedicated activation blocks and consistent icons, followed by a small Pip pass. The roadmap preserves the current playground while introducing new concepts one small game at a time.
+**Blocky** is a yellow block with two red connector arms. The optional helper points at a relevant block or wire, gives one short clue, and offers **Why?**, **Show me**, dismissal and mute. Asking Blocky again restores a dismissed clue; clicking the muted character unmutes it. Mute and configuration-specific dismissals are saved locally in `dlb-blocky-v1`. Moving or zooming does not reset a dismissal. Blocky hides during wiring, dragging, training, drawing and tray interactions. Its rules are local and deterministic, with no LLM or remote service.
+
+Linear, Sigmoid, Tanh and ReLU have distinct names and curve icons on the paper, without an activation dropdown. They retain the existing saved operation format. `block-catalog.ts` owns the tray identities, `blocky-hints.ts` owns pure advice rules, the canvas resolves target geometry, and the Blocky component owns presentation and preferences.
+
+The three existing chapters now support construction checks independently of experiments. Checked chapters are saved separately from the notebook, existing unlocks remain valid, and Sandbox cannot advance Journey. The broader level engine, loss games, grouping and transformer remain roadmap work.
 
 ## From blocks to PyTorch
 

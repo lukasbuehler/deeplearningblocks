@@ -18,29 +18,29 @@ Keep these distinctions visible:
 
 ### What exists today
 
-Angular playground, positioned blocks and routed wires, a single connected trainable chain, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST browser training, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations currently share one block with a dropdown. There is no Pip, grouping, general branching, transformer or hardware preflight yet.
+Angular playground, positioned blocks and routed wires, a single connected trainable chain, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST browser training, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Grouping, general branching, transformers, hardware preflight and the general level engine remain future work.
 
-## Pip: a helper with somewhere to point
+## Blocky: a helper with somewhere to point
 
-**Working name: Pip.** It was a short character-name suggestion, not an acronym or a deliberate reference to Python's package installer. A pip as a tiny seed is a useful association, but the Python overlap is real. Keep it as a working name rather than inventing a retrospective acronym. Dot and Nori are rejected options and are no longer candidates.
+**Chosen name: Blocky.** A yellow block with two red connector arms, expressive eyes and a thick black outline. The arms point toward highlighted blocks or connections. Earlier names are retired.
 
-Proposed appearance: a small yellow connector creature, thick black outline, two expressive eyes and a pink cable tail ending in a little pointing hand or plug. It can sit at the edge of the paper, lean toward a socket and point along a wire. Use a compact original SVG character so it scales cleanly and can be posed without a large animation runtime. Final character artwork remains a design decision.
+Implemented first slice: missing-piece and incomplete-path clues, rejected-connection explanations, current chapter clues and optional advice about linear stacks in Sandbox. Manual clues, Show me, Why, dismiss and persistent mute are available. The SVG character uses static poses with no animation, including under reduced-motion preferences. The behavior below remains the broader design target, including future chart, port and group targets.
 
 ### Behavior
 
-- Pip points at an actual block, port, wire, tensor badge or training chart. A speech bubble identifies the thing: “This Flatten turns the picture into 784 numbers.”
+- Blocky points at an actual block, port, wire, tensor badge or training chart. A speech bubble identifies the thing: “This Flatten turns the picture into 784 numbers.”
 - Highlight the target with a contrasting outline or double stroke. For wires, draw an overlay of the existing routed path. Do not change computational graph colors or rely on color alone.
 - Keep highlights attached through pan, zoom, resize and group expansion. Reference stable IDs, not stored screen coordinates. Resolve geometry through the canvas view layer.
 - If the target is off screen, offer **Show me**. Do not unexpectedly pan or zoom the board. If it was deleted or the advice is no longer true, withdraw the hint.
-- One short thought at a time. Offer **Why?**, **Got it**, **Not now** and **Mute Pip**. The small Pip button provides an obvious way to unmute or ask for a hint.
+- One short thought at a time. Offer **Why?**, **Got it**, **Not now** and **Mute Blocky**. The small Blocky button provides an obvious way to unmute or ask for a hint.
 - Do not interrupt a drag, drawing stroke, connection gesture or active text input. Avoid covering ports, buttons and the finger's working area, especially on phones.
 - Reduced motion uses a still pose and outline. No mandatory speech, blinking, bouncing or sound. Keyboard users can request the same explanations and move focus to a named target through Show me.
 - Muting silences the mascot and its proactive highlighting, not necessary inline validation or training errors. Remember mute and dismissals across reloads.
-- Pip never changes the model, replaces a block or performs an experiment automatically.
+- Blocky never changes the model, replaces a block or performs an experiment automatically.
 
 ### First deterministic rules
 
-| Situation | Pip's invitation | Important qualification |
+| Situation | Blocky's invitation | Important qualification |
 | --- | --- | --- |
 | Image connected toward a vector input | “This block needs a list. Flatten can unfold the picture.” | Point at the incompatible socket and its shape badge. |
 | Train attempted with a gap | “These two ends aren't talking yet.” | Show a specific missing link, not a generic lecture. |
@@ -51,11 +51,11 @@ Proposed appearance: a small yellow connector creature, thick black outline, two
 | Training loss improves while validation loss worsens over several checks | “Practice is improving. New examples aren't. Want to compare?” | A tentative observation, not an overfitting diagnosis from one noisy point or model size. |
 | Later attention head dimensions disagree | “Each head needs the same number of features.” | Point at the exact dimensions and explain divisibility. |
 
-Implement a pure rule engine that consumes graph analysis, lesson state, experiment summaries and recent actions. Return a stable rule ID, priority, target reference and short copy. Keep rule evaluation, hint scheduling, target geometry and character rendering separate. Cooldowns and configuration-aware dismissal prevent repeating the same hint after every move. Validation remains authoritative; Pip interprets it. No LLM or remote request is needed.
+Implement a pure rule engine that consumes graph analysis, lesson state, experiment summaries and recent actions. Return a stable rule ID, priority, target reference and short copy. Keep rule evaluation, hint scheduling, target geometry and character rendering separate. Cooldowns and configuration-aware dismissal prevent repeating the same hint after every move. Validation remains authoritative; Blocky interprets it. No LLM or remote request is needed.
 
 ## Levels and how a lesson plays
 
-The level catalog in [LEVELS.md](LEVELS.md) is the product structure. The concept inventory below supplies small games within those levels; it is not a requirement to make MNIST teach every subject. The current app still gates chapter unlocks on MNIST training. A future level-engine change must replace that requirement while preserving earned progress.
+The level catalog in [LEVELS.md](LEVELS.md) is the product structure. The concept inventory below supplies small games within those levels; it is not a requirement to make MNIST teach every subject. The current three chapters now accept construction checks without training and preserve earned unlocks. A future level engine must add stable lesson IDs and exploration evidence.
 
 Target a few minutes of interaction per small game, with longer training optional. This is a design target, not a measured completion-time promise.
 
@@ -160,11 +160,11 @@ Build reuse in three steps so the player and implementation grow together.
 2. **Reusable templates:** save a group in a personal tray and instantiate independent copies. Embed its definition in the saved board so reopening does not depend on an external template library. Treat instances as snapshots initially; editing one does not silently update others. Sharing weights is a later, explicit feature.
 3. **General modules:** groups can contain directed acyclic graphs with named, typed ports. This supports residual paths, attention projections and repeated transformer modules. Groups cannot recursively contain themselves. Validate nesting and expanded node limits before compilation.
 
-Give moving, grouping, ungrouping, instantiation and deletion clear undo boundaries. Deleting a group must say that its contained blocks and incident edges will be removed. Ungroup is a separate action. Keep nested targets addressable so Pip can point into a group, offering to open it first.
+Give moving, grouping, ungrouping, instantiation and deletion clear undo boundaries. Deleting a group must say that its contained blocks and incident edges will be removed. Ungroup is a separate action. Keep nested targets addressable so Blocky can point into a group, offering to open it first.
 
 The present graph has one edge per port and only a sequential active path. Transformers require a deliberate evolution: named input/output ports, controlled output fan-out, multiple named inputs, Add/Concatenate semantics, topological execution and shape checking across branches. Inputs still reject implicit replacement; graph cycles remain invalid. Start with one source and one selected prediction/loss path; defer multiple unrelated training objectives.
 
-Preserve visual and computational identity separately. A collapsed or expanded representation must compile to the same canonical executable graph. Repeated instances receive distinct parameter namespaces. Flattening a module for runtime/export must preserve intended sharing only when sharing is explicitly enabled. Keep source-node mappings for errors and Pip highlights.
+Preserve visual and computational identity separately. A collapsed or expanded representation must compile to the same canonical executable graph. Repeated instances receive distinct parameter namespaces. Flattening a module for runtime/export must preserve intended sharing only when sharing is explicitly enabled. Keep source-node mappings for errors and Blocky highlights.
 
 ## Browser training and device limits
 
@@ -246,18 +246,18 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 | Milestone | Small deliverable | Dependencies | Ready to move on when |
 | --- | --- | --- | --- |
 | M1. Clearer block identities | Dedicated activation tiles/cards and consistent SVG icons | Existing registry and saves | Existing models retain their behavior, individual activations can be added/trained/exported, and keyboard/phone controls work. |
-| M2. Pip's first appearance | One character, manual Help, Mute and three targeted rules: shape mismatch, incomplete path, unnecessary Flatten | M1; stable target references | Pip points correctly through pan/zoom, never obstructs a drag, handles deleted/offscreen targets, and stays quiet when muted. |
+| M2. Blocky's first appearance | One character, manual Help, Mute and three targeted rules: shape mismatch, incomplete path, unnecessary Flatten | M1; stable target references | Blocky points correctly through pan/zoom, never obstructs a drag, handles deleted/offscreen targets, and stays quiet when muted. |
 | M3. Levels and learning games | Construction-based completion, per-level execution modes, loss and learning mini-games | Stable lesson IDs and reusable activity shell | Levels can be completed without training or a GPU; build/exploration evidence is recorded separately from experiments; existing unlocks migrate intact. |
 | M4. Fair experiments | Training/validation/test design, curves, limited-data overfitting game and checkpoint comparison | M3; experiment schema and configurable training settings | Evaluation data never updates weights, validation is used for tuning, and the final check is separated and accurately labeled. |
 | M5. Group a useful pattern | Local chain groups, collapse/expand, ungroup, names and template copies | M1; canonical computational identity | Grouping preserves predictions and parameter totals; copies have independent parameters; saves and undo round-trip. |
 | M6. Optional training feasibility | Worker spike, backend status, bounded preflight, tiny real attention forward/backward test, device benchmark table | Can begin as a limited research spike after M3, before committing to full attention UI | Record which configurations can train with finite gradients, stable memory and responsive cancellation. A no-go restricts local training only; it does not block construction levels or reference exploration. |
 | M7. Branches and richer tensors | Named ports, fan-out, Add, Concatenate, rank-aware shapes and general modules | M5; M6 informs optional execution | Topological compilation, source-linked errors, save migration, parameter accounting and exports agree on branched models. |
 | M8. Text playground | Character encoding, shifted targets, disjoint splits, bigram baseline, embeddings and sampling games | M3/M4; dataset abstraction and sequence tensors | Players assemble a text model and inspect next-token behavior using a compatible supplied example or tiny baseline; optional training preserves split isolation. |
-| M9. Build attention | Q/K/V and mixing games, causal mask, one head then multiple heads | M7/M8; M6 only for optional local training | Causality, head reshaping, softmax axis and gradients match a reference implementation. Pip can point at tokens, matrix cells and edges. |
+| M9. Build attention | Q/K/V and mixing games, causal mask, one head then multiple heads | M7/M8; M6 only for optional local training | Causality, head reshaping, softmax axis and gradients match a reference implementation. Blocky can point at tokens, matrix cells and edges. |
 | M10. Shakespeare workshop | Expandable decoder module, repeat instances, normalization, GELU, training/checkpoints and matching code export | M4/M5/M7/M8/M9; M6 only for optional local training | Players assemble a tiny transformer and inspect its components without a training requirement. Supported experiments and supplied checkpoints have honest labels and recovery behavior. |
 | Optional image/history branch | Convolution and pooling games, tiny CNN; optional RNN/LSTM history path | Richer tensors and relevant runtime checks | The branch adds intuition without blocking the main transformer journey. |
 
-**Recommended next implementation:** M1 only. Then M2 with three simple Pip rules. Avoid combining icons, the entire helper, loss games and new backends in one change.
+**Progress:** M1 is implemented. M2 has its first deterministic clue and pointing slice; richer rule coverage remains incremental. Construction checks are implemented for the three existing chapters. **Recommended next implementation:** a small M3 level-engine slice with one exploration task, followed by the first loss game. Keep new datasets, backends and grouping in separate changes.
 
 ## Architecture guardrails
 
@@ -270,7 +270,7 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 - **Checkpoints:** separate optional large weights in IndexedDB from small board/progress state. Include architecture and dataset signatures plus optimizer state for a true training resume. Handle quotas and missing checkpoints. Today weights remain memory-only; this is future work.
 - **Loss and optimizer controls:** begin in a training bench/panel with clear contracts. They are not ordinary feature-transform blocks in the forward path. If later drawn on paper, give supervision and optimization their own connection semantics.
 - **Exports:** advance browser execution and PyTorch/notebook export together for every new supported operation. Reject unsupported exports explicitly. Groups become readable modules; tests check shapes, causal behavior, losses and parameter counts, not merely code strings.
-- **No silent fixes:** incompatible ports explain the mismatch. Suggested smaller models are previews the user chooses. Pip can help find an error but does not repair the graph uninvited.
+- **No silent fixes:** incompatible ports explain the mismatch. Suggested smaller models are previews the user chooses. Blocky can help find an error but does not repair the graph uninvited.
 
 ## Verification gates
 
@@ -280,13 +280,13 @@ For new graph features, test valid and invalid shapes, input occupancy, cycles, 
 
 For training, test finite losses/gradients, a tiny-batch overfit sanity check, train/evaluation mode changes, split isolation, cancellation, resource disposal, restart/resume semantics and CPU/GPU tolerance where supported. Validate causal masking by changing future tokens and checking that earlier outputs do not change in evaluation mode.
 
-For Pip, test priority, cooldown, mute persistence, target deletion, offscreen targets, blocked gestures, keyboard navigation and reduced motion. Advice must not treat every unconventional architecture as invalid.
+For Blocky, test priority, cooldown, mute persistence, target deletion, offscreen targets, blocked gestures, keyboard navigation and reduced motion. Advice must not treat every unconventional architecture as invalid.
 
 For the UI, exercise touch-sized controls with computer use at desktop and phone widths, then validate actual touch/GPU behavior on representative hardware before publishing device-support claims. Keep screenshots and measured runtime results with each milestone. A local dry run is not a live deployment or a guarantee of device support.
 
 ## Decisions to revisit at the appropriate milestone
 
-- Final Pip artwork and whether the name's Python association feels charming or confusing. Keep Pip as the current working name.
+- Refine Blocky’s yellow body and red pointing arms as the level catalog grows. The name is chosen.
 - History-map presentation versus a strictly chronological unlock path. Recommended: accurate dates plus prerequisites, preserving earned progress.
 - The exact MNIST validation subset and final-test policy. Current repeated access to the same 500 test digits is a teaching shortcut, not a pristine model-selection protocol.
 - How much of the transformer is initially expanded. Recommended: build and inspect one attention module, then allow deliberate grouping and repetition.

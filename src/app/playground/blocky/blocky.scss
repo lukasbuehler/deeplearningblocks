@@ -1,0 +1,113 @@
+:host {
+  position: absolute;
+  right: 18px;
+  bottom: 82px;
+  z-index: 7;
+  width: 120px;
+  pointer-events: none;
+}
+button,
+section {
+  pointer-events: auto;
+}
+button {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.character {
+  padding: 0;
+  width: 120px;
+  background: none;
+  border: 0;
+}
+.character svg {
+  display: block;
+  width: 120px;
+  height: 88px;
+  overflow: visible;
+}
+.character span {
+  background: #fffdf1;
+  border: 2px solid #171717;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+.bubble {
+  position: absolute;
+  bottom: 112px;
+  right: 0;
+  width: min(280px, calc(100vw - 36px));
+  background: #fffdf1;
+  padding: 14px;
+  border: 3px solid #171717;
+  border-radius: 14px;
+  box-shadow: 5px 5px 0 #171717;
+  max-height: max(80px, calc(var(--paper-height, 100dvh) - 230px));
+  overflow: auto;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+header b {
+  flex: 1;
+}
+header button {
+  border: 0;
+  background: none;
+  font-size: 24px;
+  padding: 0 5px;
+}
+p {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+.why {
+  border-left: 3px solid #75e4a0;
+  padding-left: 9px;
+}
+.actions {
+  display: flex;
+  gap: 7px;
+}
+.actions button,
+.check {
+  background: #fff;
+  border: 2px solid #171717;
+  border-radius: 5px;
+  padding: 8px 9px;
+  min-height: 36px;
+}
+.actions button:first-child {
+  background: #74a6ff;
+}
+.check {
+  background: #ffe14a;
+  width: 100%;
+  margin-top: 10px;
+}
+.check:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.later {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  padding: 10px 0 0;
+}
+@media (max-height: 550px) {
+  .bubble {
+    bottom: 0;
+    right: 126px;
+    max-height: calc(100dvh - 220px);
+    width: min(280px, calc(100vw - 170px));
+  }
+}

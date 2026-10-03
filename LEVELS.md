@@ -6,7 +6,7 @@ Planning update: 3 October 2026. These are candidate levels, not implemented fea
 
 **Build it, understand one important thing, unlock the next idea.** Training is an optional experiment, not the admission ticket to the next level. MNIST is one level in a much wider collection.
 
-The current game still ties its three chapter unlocks to completed MNIST training. Changing that behavior is a future implementation task. Preserve every existing unlock when migrating to level-based progress.
+The current three MNIST chapters now accept **Check my build** without training. Existing unlocks are preserved and training results remain separate. The general level engine and the candidate levels below are future work.
 
 A good level introduces a distinct idea, has a satisfying construction task, and shows an understandable consequence. Changing only the dataset is not automatically a new level. Use familiar data where it makes the new idea easier to see.
 
@@ -85,7 +85,7 @@ A level specifies its supported modes explicitly. These are separate from whethe
 
 Pretrained weights are not interchangeable with arbitrary player architectures. Match architecture/operation versions, dimensions, parameter names and preprocessing before loading them. If the player builds a valid alternative, award construction credit and either run it with explicitly untrained weights, offer supported training/export, or show the reference model separately. Never quietly run another architecture and call it the player's model.
 
-The primary actions become **Check my build** and **Explore**. **Train** is a level-specific extra. Pip guides construction and interpretation regardless of execution mode. A slow or unsupported GPU restricts an optional experiment, not the learning map.
+The primary actions become **Check my build** and **Explore**. **Train** is a level-specific extra. Blocky guides construction and interpretation regardless of execution mode. A slow or unsupported GPU restricts an optional experiment, not the learning map.
 
 ## What to build first
 

@@ -98,6 +98,69 @@ describe('Playground state', () => {
     expect(game.save().era).toBe(1);
     expect(game.save().journey.experiments.length).toBe(1);
   });
+  it('rewards construction without training, invalidating predictions, or fabricating experiments', () => {
+    game.probabilities.set([0.9]);
+    game.checkBuild();
+    expect(game.save().era).toBe(1);
+    expect(game.save().checkedChapters).toEqual([0]);
+    expect(game.workspace().experiments).toEqual([]);
+    expect(trainer.train).not.toHaveBeenCalled();
+    expect(trainer.invalidate).not.toHaveBeenCalled();
+    expect(game.probabilities()).toEqual([0.9]);
+    game.checkBuild();
+    expect(game.save().era).toBe(1);
+    const board = game.board();
+    game.edit({
+      ...board,
+      nodes: [...board.nodes, { id: 'a', kind: 'activation', activation: 'tanh', x: 0, y: 0 }],
+    });
+    game.checkBuild();
+    expect(game.save().era).toBe(1);
+    game.edit({
+      ...game.board(),
+      edges: [
+        ...board.edges.filter((e) => e.from !== 'd'),
+        { from: 'd', to: 'a' },
+        { from: 'a', to: 'c' },
+      ],
+    });
+    game.checkBuild();
+    expect(game.save().era).toBe(2);
+    expect(game.save().checkedChapters).toEqual([0, 1]);
+    game.checkBuild();
+    expect(game.save().checkedChapters).toEqual([0, 1]);
+    game.edit({
+      ...game.board(),
+      nodes: [
+        ...game.board().nodes,
+        { id: 'r', kind: 'activation', activation: 'relu', x: 100, y: 0 },
+        { id: 'd2', kind: 'dense', units: 16, x: 100, y: 200 },
+      ],
+      edges: [
+        ...game.board().edges.filter((e) => e.from !== 'a'),
+        { from: 'a', to: 'r' },
+        { from: 'r', to: 'd2' },
+        { from: 'd2', to: 'c' },
+      ],
+    });
+    game.checkBuild();
+    expect(game.save().checkedChapters).toEqual([0, 1, 2]);
+    game.checkBuild();
+    expect(game.save().checkedChapters).toEqual([0, 1, 2]);
+    game.switchMode('sandbox');
+    game.edit(connected());
+    game.checkBuild();
+    expect(game.save().checkedChapters).toEqual([0, 1, 2]);
+  });
+  it('rejects incomplete builds and leaves progress alone while training', () => {
+    game.edit({ ...game.board(), edges: [] });
+    game.checkBuild();
+    expect(game.save().era).toBe(0);
+    game.edit(connected());
+    trainer.busy.set(true);
+    game.checkBuild();
+    expect(game.save().era).toBe(0);
+  });
   it('does not record cancelled training or unlock a chapter', async () => {
     trainer.train.and.resolveTo(null);
     await game.train();
