@@ -1,6 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import type * as TF from './tensorflow';
 import { DenseBlock } from './curriculum';
+import { NetworkSpec, Step } from '../playground/graph';
+import { buildModel } from '../playground/model-builder';
 import { DigitSet, loadDigits } from './mnist';
 
 export interface EpochResult {
@@ -36,8 +38,29 @@ export class TrainingService {
     if (this.model) this.model.stopTraining = true;
     this.status.set('Stopping…');
   }
-  async train(blocks: readonly DenseBlock[]): Promise<{ accuracy: number; loss: number } | null> {
+  async train(
+    input: readonly DenseBlock[] | NetworkSpec,
+  ): Promise<{ accuracy: number; loss: number } | null> {
     if (this.busy()) return null;
+    const steps: Step[] = Array.isArray(input)
+      ? [
+          { kind: 'flatten' },
+          ...input.flatMap(
+            (b) =>
+              [
+                { kind: 'dense', units: b.units },
+                { kind: 'activation', activation: b.activation },
+              ] as Step[],
+          ),
+          { kind: 'classifier' },
+        ]
+      : (input as NetworkSpec).steps;
+    const network: NetworkSpec = {
+      steps,
+      signature: JSON.stringify(steps),
+      parameters: 0,
+      nodeIds: [],
+    };
     this.busy.set(true);
     this.cancelled = false;
     this.epochs.set([]);
@@ -58,32 +81,14 @@ export class TrainingService {
       const train = this.trainingData!,
         test = this.test()!;
       const makeTensors = (data: DigitSet) => {
-        const x = tf.tensor2d(data.pixels, [data.count, 784]);
+        const x = tf.tensor4d(data.pixels, [data.count, 28, 28, 1]);
         const y = tf.tidy(() => tf.oneHot(tf.tensor1d(data.labels, 'int32'), 10));
         tensors.push(x, y);
         return [x, y];
       };
       const [x, y] = makeTensors(train),
         [testX, testY] = makeTensors(test);
-      const model = (this.model = tf.sequential());
-      blocks.forEach((block, index) =>
-        model.add(
-          tf.layers.dense({
-            units: block.units,
-            activation: block.activation,
-            ...(index === 0 ? { inputShape: [784] } : {}),
-            kernelInitializer: tf.initializers.glorotUniform({ seed: 1958 + index }),
-          }),
-        ),
-      );
-      model.add(
-        tf.layers.dense({
-          units: 10,
-          activation: 'softmax',
-          ...(!blocks.length ? { inputShape: [784] } : {}),
-          kernelInitializer: tf.initializers.glorotUniform({ seed: 1998 }),
-        }),
-      );
+      const model = (this.model = buildModel(tf, network));
       this.optimizer = tf.train.adam(0.003);
       model.compile({
         optimizer: this.optimizer,
@@ -142,7 +147,7 @@ export class TrainingService {
       Array.from(
         (
           model.predict(
-            tf.tensor2d(data.pixels.slice(index * 784, (index + 1) * 784), [1, 784]),
+            tf.tensor4d(data.pixels.slice(index * 784, (index + 1) * 784), [1, 28, 28, 1]),
           ) as TF.Tensor
         ).dataSync(),
       ),

@@ -10,7 +10,7 @@
     "test": "ng test",
     "preview:worker": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
-    "test:core": "node --import tsx --test src/app/learning/*.test.ts",
+    "test:core": "node --import tsx --test src/app/learning/*.test.ts src/app/playground/*.test.ts",
     "format": "prettier --write \"src/**/*.{ts,html,scss}\" angular.json package.json wrangler.jsonc"
   },
   "prettier": {
