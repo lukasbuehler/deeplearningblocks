@@ -86,6 +86,19 @@
         }}
       </p>
     }
+    @case ('softmax') {
+      <div class="flatten-picture"><b>scores</b><span>→</span><b>100%</b></div>
+      <p class="detail">
+        {{
+          inputSize() === undefined
+            ? 'Needs 10 scores'
+            : inputSize() === 10
+              ? '10 scores → 10 probabilities'
+              : 'Needs 10 scores. Got ' + inputSize() + '.'
+        }}
+      </p>
+      <p class="detail">No weights. Just probabilities.</p>
+    }
     @case ('classifier') {
       <div class="prediction">
         <strong>{{ prediction() ?? '?' }}</strong>

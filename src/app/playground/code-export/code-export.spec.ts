@@ -6,7 +6,7 @@ import { CodeExport } from './code-export';
 
 describe('Code export', () => {
   const network: NetworkSpec = {
-    steps: [{ kind: 'flatten' }, { kind: 'classifier' }],
+    steps: [{ kind: 'flatten' }, { kind: 'dense', units: 10 }, { kind: 'softmax' }],
     signature: 'test',
     parameters: 7850,
     nodeIds: ['image', 'flatten', 'guess'],

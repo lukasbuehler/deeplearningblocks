@@ -34,6 +34,11 @@ import { Activation } from '../../learning/curriculum';
         <path d="M3 26H45M24 3V45" stroke-width="1" opacity=".35" />
         <path [attr.d]="curve()" stroke-width="3.5" />
       }
+      @case ('softmax') {
+        <path d="M8 10H18M8 23H24M8 36H14M29 10L36 23L29 36" />
+        <path d="M39 8V38" />
+        <circle cx="39" cy="8" r="3" />
+      }
       @case ('classifier') {
         <rect x="5" y="7" width="38" height="34" rx="4" />
         <path d="M13 33V26M24 33V15M35 33V22" stroke-width="5" />

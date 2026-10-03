@@ -1,3 +1,4 @@
+import { splitLegacyOutput } from './board-migration';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { GameService } from './game.service';
@@ -5,20 +6,21 @@ import { TrainingService } from '../learning/training.service';
 import { Board, compileBoard } from './graph';
 import { freshGame } from './storage';
 
-const connected = (): Board => ({
-  nodes: [
-    { id: 'i', kind: 'image', x: 0, y: 0 },
-    { id: 'f', kind: 'flatten', x: 0, y: 250 },
-    { id: 'd', kind: 'dense', units: 32, x: 0, y: 450 },
-    { id: 'c', kind: 'classifier', x: 0, y: 650 },
-  ],
-  edges: [
-    { from: 'i', to: 'f' },
-    { from: 'f', to: 'd' },
-    { from: 'd', to: 'c' },
-  ],
-  viewport: { x: 0, y: 0, zoom: 1 },
-});
+const connected = (): Board =>
+  splitLegacyOutput({
+    nodes: [
+      { id: 'i', kind: 'image', x: 0, y: 0 },
+      { id: 'f', kind: 'flatten', x: 0, y: 250 },
+      { id: 'd', kind: 'dense', units: 32, x: 0, y: 450 },
+      { id: 'c', kind: 'classifier', x: 0, y: 650 },
+    ],
+    edges: [
+      { from: 'i', to: 'f' },
+      { from: 'f', to: 'd' },
+      { from: 'd', to: 'c' },
+    ],
+    viewport: { x: 0, y: 0, zoom: 1 },
+  });
 describe('Playground state', () => {
   let game: GameService;
   let trainer: {
@@ -121,7 +123,7 @@ describe('Playground state', () => {
       edges: [
         ...board.edges.filter((e) => e.from !== 'd'),
         { from: 'd', to: 'a' },
-        { from: 'a', to: 'c' },
+        { from: 'a', to: 'c-scores' },
       ],
     });
     game.checkBuild();
@@ -140,7 +142,7 @@ describe('Playground state', () => {
         ...game.board().edges.filter((e) => e.from !== 'a'),
         { from: 'a', to: 'r' },
         { from: 'r', to: 'd2' },
-        { from: 'd2', to: 'c' },
+        { from: 'd2', to: 'c-scores' },
       ],
     });
     game.checkBuild();

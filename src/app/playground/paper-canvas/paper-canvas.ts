@@ -91,6 +91,7 @@ export class PaperCanvas {
       this.game.era(),
       this.game.mode(),
       this.rejected()?.context === this.helperContext() ? this.rejected()!.edge : undefined,
+      this.game.trainer.trained() ? this.game.workspace().experiments.at(-1)?.accuracy : undefined,
     ),
   );
   readonly helperSuppressed = computed(
@@ -361,6 +362,16 @@ export class PaperCanvas {
     this.game.message.set('Click! Your blocks are connected.');
     this.cancelWire();
   }
+  portLabel(node: BlockNode, side: 'input' | 'output'): string {
+    const type = BLOCKS[node.kind][side];
+    if (type === 'image') return '28 × 28 × 1';
+    if (node.kind === 'classifier') return '10 probabilities';
+    if (node.kind === 'softmax' && side === 'input') return '10 scores needed';
+    const width =
+      this.shapes().get(node.id)?.[side] ??
+      (side === 'output' ? BLOCKS[node.kind].inferWidth(node) : undefined);
+    return `${type === 'probabilities' ? 'Probabilities' : 'Vector'} · ${width ?? 'N'}`;
+  }
   compatible(id: string): boolean {
     return !!this.pending() && !connectionError(this.game.board(), this.pending()!, id);
   }
@@ -447,7 +458,7 @@ export class PaperCanvas {
       kind: tile.kind,
       x: Math.round(center.x - BLOCK_WIDTH / 2),
       y: Math.round(center.y - BLOCKS[tile.kind].height / 2),
-      ...(tile.kind === 'dense' ? { units: 32 } : {}),
+      ...(tile.kind === 'dense' ? { units: tile.units ?? 32 } : {}),
       ...(tile.activation ? { activation: tile.activation } : {}),
     };
     // Offset overlapping placements so every new piece remains reachable.

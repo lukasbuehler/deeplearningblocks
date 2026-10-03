@@ -32,9 +32,9 @@
     </div>
     <pre tabindex="0" aria-label="Generated PyTorch code"><code>{{ code() }}</code></pre>
     <p class="translation">
-      <b>Read your blocks:</b> Dense becomes <code>Linear</code>. The digit guess is a final
-      <code>Linear(..., 10)</code>. Training uses raw scores; prediction adds softmax to make
-      probabilities.
+      <b>Read your blocks:</b> Dense becomes <code>Linear</code>. Your 10-neuron Dense becomes
+      <code>Linear(..., 10)</code>. The Softmax block runs in prediction; CrossEntropyLoss takes raw
+      scores during training. Digit guess is only a display.
     </p>
     <div class="downloads">
       <button class="python" (click)="download('py')">↓ Python <small>.py</small></button>

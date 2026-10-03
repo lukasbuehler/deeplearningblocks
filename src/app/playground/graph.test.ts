@@ -11,6 +11,7 @@ import {
   removeNode,
   unlockAfter,
 } from './graph';
+import { splitLegacyOutput } from './board-migration';
 import { BoardHistory } from './history';
 import { snapTarget, toWorld, zoomAt } from './geometry';
 import { loadGame, SAVE_KEY } from './storage';
@@ -22,11 +23,11 @@ function network(): Board {
     { id: 'd', kind: 'activation', activation: 'relu', x: 0, y: 660 },
     { id: 'e', kind: 'classifier', x: 0, y: 890 },
   ];
-  return {
+  return splitLegacyOutput({
     nodes,
     edges: nodes.slice(1).map((n, i) => ({ from: nodes[i].id, to: n.id })),
     viewport: { x: 0, y: 0, zoom: 1 },
-  };
+  });
 }
 test('explicit connections determine execution, dimensions and parameters', () => {
   const board = network();
@@ -36,7 +37,8 @@ test('explicit connections determine execution, dimensions and parameters', () =
     { kind: 'flatten' },
     { kind: 'dense', units: 32 },
     { kind: 'activation', activation: 'relu' },
-    { kind: 'classifier' },
+    { kind: 'dense', units: 10 },
+    { kind: 'softmax' },
   ]);
   assert.equal(result.parameters, 25450);
   assert.deepEqual(inferShapes(board).get('c'), { input: 784, output: 32 });
@@ -51,7 +53,7 @@ test('connections reject wrong types, occupied ports, duplicate edges and cycles
   assert.match(connectionError(b, 'a', 'c')!, /Flatten/);
   const linked = connect(b, 'c', 'd');
   assert.match(connectionError(linked, 'c', 'd')!, /already/);
-  assert.match(connectionError(linked, 'c', 'e')!, /occupied/);
+  assert.match(connectionError(linked, 'c', 'e-scores')!, /occupied/);
   assert.match(connectionError(linked, 'd', 'c')!, /loop/);
   assert.match(connectionError(b, 'c', 'c')!, /itself/);
   assert.equal(compileBoard(b).network, null);
@@ -61,7 +63,7 @@ test('delete and undo restore incident wires without automatic rewiring', () => 
     history = new BoardHistory();
   history.record(b);
   const deleted = removeNode(b, 'c');
-  assert.equal(deleted.edges.length, 2);
+  assert.equal(deleted.edges.length, 4);
   assert.equal(compileBoard(deleted).network, null);
   const restored = history.undo(deleted)!;
   assert.deepEqual(restored, b);
@@ -82,7 +84,7 @@ test('legacy progress migrates to explicit operations without losing unlocks', (
   const old = { era: 1, blocks: [{ id: 1, units: 32, activation: 'sigmoid' }], experiments: [] };
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
-    value: { getItem: (key: string) => (key === SAVE_KEY ? null : JSON.stringify(old)) },
+    value: { getItem: (key: string) => (key === 'dlb-lab-v1' ? JSON.stringify(old) : null) },
   });
   const save = loadGame();
   assert.equal(save.era, 1);
@@ -101,20 +103,19 @@ test('unavailable storage starts with loose endpoints', () => {
   });
   assert.deepEqual(loadGame().journey.board, freshBoard());
 });
-test('six connected dense layers are allowed, a seventh is rejected, loose layers are excluded', () => {
+test('six hidden Dense layers plus output are allowed; a seventh hidden layer is rejected', () => {
   const board = network();
-  board.nodes = board.nodes.filter((n) => n.kind !== 'activation');
-  const classifier = board.nodes.pop()!;
+  const tail = ['e-scores', 'e-softmax', 'e'].map((id) => board.nodes.find((n) => n.id === id)!);
+  board.nodes = board.nodes.filter((n) => !tail.includes(n) && n.kind !== 'activation');
   for (let i = 0; i < 5; i++)
     board.nodes.push({ id: `extra${i}`, kind: 'dense', units: 16, x: 0, y: 0 });
-  board.nodes.push(classifier);
+  board.nodes.push(...tail);
   board.edges = board.nodes.slice(1).map((n, i) => ({ from: board.nodes[i].id, to: n.id }));
   assert.ok(compileBoard(board).network);
   board.nodes.push({ id: 'loose', kind: 'dense', units: 16, x: 0, y: 0 });
   assert.ok(compileBoard(board).network);
-  assert.equal(inferShapes(board).get('loose'), undefined);
-  board.edges.pop();
-  board.edges.push({ from: 'extra4', to: 'loose' }, { from: 'loose', to: classifier.id });
+  board.edges = board.edges.filter((e) => e.from !== 'extra4');
+  board.edges.push({ from: 'extra4', to: 'loose' }, { from: 'loose', to: 'e-scores' });
   assert.match(compileBoard(board).issues[0].message, /six/);
 });
 test('invalid versioned saves recover safely and valid independent workspaces round-trip', () => {

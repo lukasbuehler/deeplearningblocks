@@ -1,3 +1,4 @@
+import { splitLegacyOutput } from './board-migration';
 import { MIN_ZOOM, MAX_ZOOM } from './geometry';
 import { Experiment } from '../learning/curriculum';
 import { readProgress } from '../learning/progress';
@@ -9,17 +10,18 @@ export interface Workspace {
   experiments: Experiment[];
 }
 export interface GameSave {
-  version: 2;
+  version: 3;
   mode: Mode;
   era: number;
   checkedChapters?: number[];
   journey: Workspace;
   sandbox: Workspace;
 }
-export const SAVE_KEY = 'dlb-playground-v2';
+export const PREVIOUS_SAVE_KEY = 'dlb-playground-v2';
+export const SAVE_KEY = 'dlb-playground-v3';
 export function freshGame(): GameSave {
   return {
-    version: 2,
+    version: 3,
     mode: 'journey',
     era: 0,
     checkedChapters: [],
@@ -52,7 +54,7 @@ function validBoard(value: unknown, era: number): value is Board {
         n.id.length < 100 &&
         Object.hasOwn(BLOCKS, n.kind) &&
         [n.x, n.y].every((v) => Number.isFinite(v) && Math.abs(v) < 100000) &&
-        (n.kind !== 'dense' || [16, 32, 64, 128].includes(n.units!)) &&
+        (n.kind !== 'dense' || BLOCKS.dense.widths!.includes(n.units!)) &&
         (n.kind !== 'activation' ||
           ACTIVATIONS.some((a) => a.value === n.activation && a.era <= era)),
     )
@@ -121,15 +123,22 @@ export function migrateLegacy(): GameSave {
     edges: nodes.slice(1).map((n, i) => ({ from: nodes[i].id, to: n.id })),
     viewport: { x: 0, y: 0, zoom: 0.65 },
   };
+  save.journey.board = splitLegacyOutput(save.journey.board);
   return save;
 }
 export function loadGame(): GameSave {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const current = localStorage.getItem(SAVE_KEY);
+    const raw = current ?? localStorage.getItem(PREVIOUS_SAVE_KEY);
     if (!raw) return migrateLegacy();
-    const save = JSON.parse(raw) as GameSave;
+    const save = JSON.parse(raw);
+    if (!current && save.version === 2) {
+      save.journey.board = splitLegacyOutput(save.journey.board);
+      save.sandbox.board = splitLegacyOutput(save.sandbox.board);
+      save.version = 3;
+    }
     if (
-      save.version !== 2 ||
+      save.version !== 3 ||
       !['journey', 'sandbox'].includes(save.mode) ||
       !Number.isInteger(save.era) ||
       save.era < 0 ||
@@ -141,7 +150,11 @@ export function loadGame(): GameSave {
     return {
       ...save,
       checkedChapters: Array.isArray(save.checkedChapters)
-        ? [...new Set(save.checkedChapters.filter((n) => Number.isInteger(n) && n >= 0 && n <= 2))]
+        ? [
+            ...new Set(
+              save.checkedChapters.filter((n: number) => Number.isInteger(n) && n >= 0 && n <= 2),
+            ),
+          ]
         : [],
       journey: {
         board: save.journey.board,

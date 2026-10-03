@@ -5,6 +5,7 @@ import { NetworkSpec } from './graph';
 export function buildModel(tf: typeof TF, network: NetworkSpec): TF.Sequential {
   const model = tf.sequential();
   let denseIndex = 0;
+  const lastDense = network.steps.filter((s) => s.kind === 'dense').at(-1);
   for (const step of network.steps) {
     switch (step.kind) {
       case 'flatten':
@@ -15,21 +16,17 @@ export function buildModel(tf: typeof TF, network: NetworkSpec): TF.Sequential {
           tf.layers.dense({
             units: step.units,
             activation: 'linear',
-            kernelInitializer: tf.initializers.glorotUniform({ seed: 1958 + denseIndex++ }),
+            kernelInitializer: tf.initializers.glorotUniform({
+              seed: step === lastDense ? 1998 : 1958 + denseIndex++,
+            }),
           }),
         );
         break;
       case 'activation':
         model.add(tf.layers.activation({ activation: step.activation }));
         break;
-      case 'classifier':
-        model.add(
-          tf.layers.dense({
-            units: 10,
-            activation: 'softmax',
-            kernelInitializer: tf.initializers.glorotUniform({ seed: 1998 }),
-          }),
-        );
+      case 'softmax':
+        model.add(tf.layers.softmax({ axis: -1 }));
         break;
     }
   }

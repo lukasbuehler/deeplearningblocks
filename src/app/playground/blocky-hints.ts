@@ -1,4 +1,5 @@
-import { Board, Edge, compileBoard, connectionError } from './graph';
+import { Board, Edge, compileBoard, connectionError, hasHiddenActivation } from './graph';
+import { experimentHint } from './experiment-hints';
 import { blockName } from './block-catalog';
 
 export type HintTarget =
@@ -13,7 +14,13 @@ export interface BlockyHint {
 export function hintContext(board: Board, era: number, mode: string): string {
   return JSON.stringify([mode, era, board.nodes.map(({ x, y, ...node }) => node), board.edges]);
 }
-export function blockyHint(board: Board, era: number, mode: string, rejected?: Edge): BlockyHint {
+export function blockyHint(
+  board: Board,
+  era: number,
+  mode: string,
+  rejected?: Edge,
+  accuracy?: number,
+): BlockyHint {
   const nodeTarget = (id: string): HintTarget => ({ kind: 'node', id });
   if (rejected && board.nodes.some((n) => n.id === rejected.to)) {
     const error = connectionError(board, rejected.from, rejected.to);
@@ -59,6 +66,23 @@ export function blockyHint(board: Board, era: number, mode: string, rejected?: E
       if (!next) break;
       tail = next;
     }
+    const issue = compilation.issues.find(
+      (i) => i.nodeId && board.nodes.find((n) => n.id === i.nodeId)?.kind === 'softmax',
+    );
+    if (issue)
+      return {
+        id: 'output-width',
+        text: issue.message,
+        why: 'There are ten digits: 0 through 9. Dense · 10 learns one score per digit. Softmax turns those scores into probabilities; Digit guess only displays them.',
+        target: nodeTarget(issue.nodeId!),
+      };
+    if (tail.kind === 'dense' && tail.units === 10 && !board.edges.some((e) => e.from === tail.id))
+      return {
+        id: 'add-softmax',
+        text: 'Ten scores are ready. Add Softmax, then connect it to Digit guess.',
+        why: 'Scores can be negative and do not add to 100%. Softmax converts them into probabilities.',
+        target: nodeTarget(tail.id),
+      };
     return {
       id: 'gap',
       text: `Follow the numbers from ${blockName(tail)}. Can you connect them all the way to Digit guess?`,
@@ -69,6 +93,7 @@ export function blockyHint(board: Board, era: number, mode: string, rejected?: E
     };
   }
   const network = compilation.network;
+  if (accuracy !== undefined) return experimentHint(board, network, era, accuracy);
   const dense = network.nodeIds
     .map((id) => board.nodes.find((n) => n.id === id)!)
     .find((n) => n.kind === 'dense');
@@ -81,28 +106,28 @@ export function blockyHint(board: Board, era: number, mode: string, rejected?: E
     };
   const edge = dense && board.edges.find((e) => e.from === dense.id);
   const target: HintTarget = edge ? { kind: 'edge', ...edge } : nodeTarget(image.id);
-  if (
-    mode === 'journey' &&
-    era === 1 &&
-    !network.steps.some(
-      (s) => s.kind === 'activation' && ['sigmoid', 'tanh'].includes(s.activation),
-    )
-  )
+  if (mode === 'journey' && era === 1 && !hasHiddenActivation(network, ['sigmoid', 'tanh']))
     return {
       id: 'nonlinear',
-      text: 'Give these numbers a bend. Disconnect this wire and put Sigmoid or Tanh in the gap.',
+      text:
+        network.steps.filter((s) => s.kind === 'dense').length === 1
+          ? 'Add a hidden Dense, then Sigmoid or Tanh, before Dense · 10.'
+          : 'Give these numbers a bend. Disconnect this wire and put Sigmoid or Tanh between Dense layers.',
       why: 'Nonlinear activations let stacked layers describe patterns that a chain of only linear layers cannot. You do not need an activation after every Dense.',
-      target,
+      target:
+        network.steps.filter((s) => s.kind === 'dense').length === 1
+          ? { kind: 'edge', ...board.edges.find((e) => e.to === dense!.id)! }
+          : target,
     };
   if (
     mode === 'journey' &&
     era === 2 &&
-    (!network.steps.some((s) => s.kind === 'activation' && s.activation === 'relu') ||
-      network.steps.filter((s) => s.kind === 'dense').length < 2)
+    (!hasHiddenActivation(network, ['relu']) ||
+      network.steps.filter((s) => s.kind === 'dense').length < 3)
   )
     return {
       id: 'deeper',
-      text: 'Try a ReLU block and a second Dense. What happens to the number of learnable connections?',
+      text: 'Try a ReLU block and a second hidden Dense before Dense · 10. What happens to the number of learnable connections?',
       why: 'More layers add capacity, but do not guarantee better guesses. Build first; training is an optional experiment.',
       target,
     };

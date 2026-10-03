@@ -86,6 +86,7 @@
             class="port input"
             (mousedown)="$event.stopPropagation()"
             (touchstart)="$event.stopPropagation()"
+            [class.probability-port]="definitions[node.kind].input === 'probabilities'"
             [class.image-port]="definitions[node.kind].input === 'image'"
             [class.compatible]="compatible(node.id)"
             [class.waiting]="pending() && !compatible(node.id)"
@@ -96,13 +97,7 @@
             (click)="$event.stopPropagation(); finishConnection(node.id)"
           >
             <span class="port-shape"></span
-            ><span class="port-label">{{
-              definitions[node.kind].input === 'image'
-                ? '28 × 28 × 1'
-                : shapes().get(node.id)?.input == null
-                  ? 'Vector · N'
-                  : 'Vector · ' + shapes().get(node.id)?.input
-            }}</span>
+            ><span class="port-label">{{ portLabel(node, 'input') }}</span>
           </button>
         }
         <app-block-card
@@ -126,6 +121,7 @@
             class="port output"
             (mousedown)="$event.stopPropagation()"
             (touchstart)="$event.stopPropagation()"
+            [class.probability-port]="definitions[node.kind].output === 'probabilities'"
             [class.image-port]="definitions[node.kind].output === 'image'"
             [class.active]="pending() === node.id"
             [disabled]="game.trainer.busy()"
@@ -137,12 +133,7 @@
             (click)="outputClick($event, node.id)"
           >
             <span class="port-shape"></span
-            ><span class="port-label">{{
-              node.kind === 'image'
-                ? '28 × 28 × 1'
-                : 'Vector · ' +
-                  (shapes().get(node.id)?.output ?? definitions[node.kind].inferWidth(node) ?? 'N')
-            }}</span>
+            ><span class="port-label">{{ portLabel(node, 'output') }}</span>
           </button>
         }
       </div>
@@ -168,7 +159,7 @@
   />
   @if (game.board().edges.length === 0 && game.board().nodes.length === 2) {
     <div class="first-prompt">
-      <span>1.</span> Open the toy box.<br /><span>2.</span> Add Flatten + Dense.<br /><span
+      <span>1.</span> Open the toy box.<br /><span>2.</span> Add Flatten, Dense · 10 + Softmax.<br /><span
         >3.</span
       >
       Connect the studs!

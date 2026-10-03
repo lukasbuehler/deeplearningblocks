@@ -364,6 +364,9 @@
 .dense {
   background: #ff7770;
 }
+.softmax {
+  background: #ffacdf;
+}
 .activation {
   background: #75e4a0;
 }
@@ -559,4 +562,9 @@ button:disabled {
   stroke-width: 18;
   stroke-linecap: round;
   opacity: 0.65;
+}
+
+.probability-port .port-shape {
+  border-radius: 50%;
+  background: #ffacdf;
 }

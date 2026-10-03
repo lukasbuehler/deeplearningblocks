@@ -1,7 +1,7 @@
 import { Activation } from '../learning/curriculum';
 
-export type BlockKind = 'image' | 'flatten' | 'dense' | 'activation' | 'classifier';
-export type PortType = 'image' | 'vector';
+export type BlockKind = 'image' | 'flatten' | 'dense' | 'activation' | 'softmax' | 'classifier';
+export type PortType = 'image' | 'vector' | 'probabilities';
 export interface Point {
   x: number;
   y: number;
@@ -62,7 +62,7 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
   },
   dense: {
     config: 'units',
-    widths: [16, 32, 64, 128],
+    widths: [10, 16, 32, 64, 128],
     inferWidth: (node) => node.units,
     operation: (node) => ({ kind: 'dense', units: node.units! }),
     title: 'Dense layer',
@@ -85,22 +85,33 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     height: 172,
     help: 'Change each number without changing the length of the list. Nonlinear activations help stacked layers learn more than a single linear transformation.',
   },
+  softmax: {
+    inferWidth: (_, input) => input,
+    operation: () => ({ kind: 'softmax' }),
+    title: 'Softmax',
+    subtitle: 'SCORES TO PROBABILITIES',
+    icon: '%',
+    input: 'vector',
+    output: 'probabilities',
+    height: 160,
+    help: 'Turn 10 digit scores into probabilities that add to 100%. Softmax learns no weights. Connect a Dense layer with 10 neurons before it.',
+  },
   classifier: {
     inferWidth: () => 10,
-    operation: () => ({ kind: 'classifier' }),
+    operation: () => null,
     title: 'Digit guess',
-    subtitle: '10 NEURONS + SOFTMAX',
+    subtitle: 'DISPLAY THE 10 DIGITS',
     icon: '?',
-    input: 'vector',
+    input: 'probabilities',
     height: 236,
-    help: 'A trainable layer with 10 neurons, one per digit. Softmax turns its scores into probabilities that add to 100%. A confident guess can still be wrong.',
+    help: 'A display for 10 probabilities, one per digit. It learns nothing and adds no layers. Connect Softmax to see the network’s guess. A confident guess can still be wrong.',
   },
 };
 export type Step =
   | { kind: 'flatten' }
   | { kind: 'dense'; units: number }
   | { kind: 'activation'; activation: Activation }
-  | { kind: 'classifier' };
+  | { kind: 'softmax' };
 export interface NetworkSpec {
   steps: Step[];
   signature: string;
@@ -138,6 +149,10 @@ export function connectionError(board: Board, from: string, to: string): string 
   const output = BLOCKS[source.kind].output,
     input = BLOCKS[target.kind].input;
   if (!output || !input) return 'Connect a bottom stud to a top socket.';
+  if (output !== input && (input === 'probabilities' || output === 'probabilities'))
+    return input === 'probabilities'
+      ? 'Digit guess needs 10 probabilities. Add Dense with 10 neurons, then Softmax.'
+      : 'Softmax probabilities belong in Digit guess. Put learning layers before Softmax.';
   if (output !== input)
     return output === 'image'
       ? 'This is a picture. Add Flatten before a layer that needs numbers.'
@@ -216,10 +231,10 @@ export function compileBoard(board: Board): Compilation {
       };
     node = board.nodes.find((n) => n.id === next);
   }
-  if (path.filter((n) => n.kind === 'dense').length > 6)
+  if (path.filter((n) => n.kind === 'dense').length > 7)
     return {
       network: null,
-      issues: [{ message: 'Try up to six dense layers in this little lab.' }],
+      issues: [{ message: 'Try up to six hidden Dense layers plus the 10-neuron output layer.' }],
     };
   const steps: Step[] = [];
   let width = 784,
@@ -229,15 +244,24 @@ export function compileBoard(board: Board): Compilation {
       if (!BLOCKS.dense.widths!.includes(block.units!))
         return {
           network: null,
-          issues: [{ nodeId: block.id, message: 'Choose 16, 32, 64 or 128 neurons.' }],
+          issues: [{ nodeId: block.id, message: 'Choose 10, 16, 32, 64 or 128 neurons.' }],
         };
       parameters += (width + 1) * block.units!;
       width = block.units!;
     } else if (block.kind === 'activation') {
       if (!['linear', 'sigmoid', 'tanh', 'relu'].includes(block.activation!))
         return { network: null, issues: [{ nodeId: block.id, message: 'Choose an activation.' }] };
-    } else if (block.kind === 'classifier') {
-      parameters += (width + 1) * 10;
+    } else if (block.kind === 'softmax' && width !== 10) {
+      return {
+        network: null,
+        issues: [
+          {
+            nodeId: block.id,
+            port: 'input',
+            message: `Softmax needs 10 digit scores, but gets ${width}. Set the last Dense layer to 10 neurons.`,
+          },
+        ],
+      };
     }
     const operation = BLOCKS[block.kind].operation(block);
     if (operation) steps.push(operation);
@@ -261,16 +285,20 @@ export function describeNetwork(network: NetworkSpec): string {
           ? s.activation
           : s.kind === 'flatten'
             ? 'Flatten'
-            : '10-way guess',
+            : 'Softmax',
     )
     .join(' → ');
 }
+/** Output probabilities are not a hidden nonlinearity. Look between learned layers. */
+export function hasHiddenActivation(network: NetworkSpec, names: string[]): boolean {
+  const first = network.steps.findIndex((s) => s.kind === 'dense');
+  const last = network.steps.map((s) => s.kind).lastIndexOf('dense');
+  return network.steps
+    .slice(first + 1, last)
+    .some((s) => s.kind === 'activation' && names.includes(s.activation));
+}
 export function unlockAfter(era: number, network: NetworkSpec): number {
   if (era === 0 && network.steps.some((s) => s.kind === 'dense')) return 1;
-  if (
-    era === 1 &&
-    network.steps.some((s) => s.kind === 'activation' && ['sigmoid', 'tanh'].includes(s.activation))
-  )
-    return 2;
+  if (era === 1 && hasHiddenActivation(network, ['sigmoid', 'tanh'])) return 2;
   return era;
 }

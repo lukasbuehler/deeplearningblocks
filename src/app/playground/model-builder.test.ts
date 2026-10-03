@@ -12,7 +12,8 @@ test('explicit activations match embedded activations on image-shaped tensors', 
         { kind: 'flatten' },
         { kind: 'dense', units: 16 },
         { kind: 'activation', activation },
-        { kind: 'classifier' },
+        { kind: 'dense', units: 10 },
+        { kind: 'softmax' },
       ],
       signature: '',
       parameters: 12730,
@@ -39,8 +40,11 @@ test('explicit activations match embedded activations on image-shaped tensors', 
     const b = embedded.predict(input) as tf.Tensor;
     const values = Array.from(a.dataSync());
     assert.equal(explicit.countParams(), 12730);
+    assert.equal(explicit.layers.length, 5);
+    assert.equal(explicit.layers.at(-1)!.getClassName(), 'Softmax');
     assert.deepEqual(a.shape, [2, 10]);
-    assert.deepEqual(values, Array.from(b.dataSync()));
+    const reference = Array.from(b.dataSync());
+    values.forEach((v, i) => assert.ok(Math.abs(v - reference[i]) < 1e-6));
     assert.ok(Math.abs(values.slice(0, 10).reduce((a, b) => a + b, 0) - 1) < 1e-6);
     input.dispose();
     a.dispose();

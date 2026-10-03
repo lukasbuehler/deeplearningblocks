@@ -6,6 +6,7 @@ export interface Tile {
   name: string;
   description: string;
   era: number;
+  units?: number;
 }
 export const TILES: Tile[] = [
   { kind: 'image', name: 'Image', description: 'A tiny handwritten digit', era: 0 },
@@ -16,6 +17,14 @@ export const TILES: Tile[] = [
     description: 'Neurons that learn connections',
     era: 0,
   },
+  {
+    kind: 'dense',
+    units: 10,
+    name: 'Dense · 10',
+    description: 'One learned score per digit',
+    era: 0,
+  },
+  { kind: 'softmax', name: 'Softmax', description: '10 scores → 10 probabilities', era: 0 },
   {
     kind: 'activation',
     activation: 'linear',
@@ -47,7 +56,7 @@ export const TILES: Tile[] = [
   {
     kind: 'classifier',
     name: 'Digit guess',
-    description: '10 neurons + softmax',
+    description: 'Display 10 digit probabilities',
     era: 0,
   },
 ];
@@ -55,5 +64,7 @@ export const TILES: Tile[] = [
 export function blockName(node: BlockNode): string {
   return node.kind === 'activation'
     ? ACTIVATIONS.find((a) => a.value === node.activation)!.label
-    : BLOCKS[node.kind].title;
+    : node.kind === 'dense' && node.units === 10
+      ? 'Dense · 10'
+      : BLOCKS[node.kind].title;
 }

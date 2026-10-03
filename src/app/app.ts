@@ -39,10 +39,10 @@ export class App {
   });
   readonly challenge = computed(() =>
     (this.viewedEra() ?? this.game.era()) === 0
-      ? 'Add Flatten and Dense. Connect the image all the way to the digit guess, then check your build. Training is optional.'
+      ? 'Connect Image → Flatten → Dense · 10 → Softmax → Digit guess, then check your build. Training is optional.'
       : (this.viewedEra() ?? this.game.era()) === 1
-        ? 'Unplug one wire. Add Sigmoid or Tanh after a Dense block. Reconnect and check your build to discover ReLU.'
-        : 'Try ReLU and another Dense block. Does a bigger network make a better guess?',
+        ? 'Add a hidden Dense and Sigmoid or Tanh before Dense · 10. Reconnect and check your build to discover ReLU.'
+        : 'Try ReLU and two hidden Dense layers before Dense · 10 and Softmax. Does a bigger network make a better guess?',
   );
   switchMode(mode: Mode): void {
     this.game.switchMode(mode);

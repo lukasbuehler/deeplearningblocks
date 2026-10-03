@@ -16,8 +16,8 @@ export function pytorchModel(network: NetworkSpec): string {
       }
       case 'activation':
         return `    nn.${activations[step.activation]}(),`;
-      case 'classifier':
-        return `    nn.Linear(${width}, 10),  # Ten digit scores (logits)`;
+      case 'softmax':
+        return '    # Softmax block: applied in the prediction cell, after training on logits.';
     }
   });
   return `from torch import nn
@@ -26,6 +26,7 @@ model = nn.Sequential(
 ${layers.join('\n')}
 )
 
+# Digit guess is only a display, so it adds no layer.
 # CrossEntropyLoss includes the softmax calculation during training.
 # For a digit guess, turn scores into probabilities with logits.softmax(dim=1).
 assert sum(p.numel() for p in model.parameters()) == ${network.parameters}

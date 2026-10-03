@@ -1,7 +1,15 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { TrainingService } from '../learning/training.service';
 import { ACTIVATIONS, ERAS } from '../learning/curriculum';
-import { Board, BlockNode, compileBoard, describeNetwork, freshBoard, unlockAfter } from './graph';
+import {
+  Board,
+  BlockNode,
+  compileBoard,
+  describeNetwork,
+  freshBoard,
+  unlockAfter,
+  hasHiddenActivation,
+} from './graph';
 import { BoardHistory } from './history';
 import { GameSave, Mode, loadGame, saveGame } from './storage';
 
@@ -168,21 +176,20 @@ export class GameService {
     }
     const era = this.era(),
       dense = network.steps.filter((s) => s.kind === 'dense').length;
-    const has = (name: string) =>
-      network.steps.some((s) => s.kind === 'activation' && s.activation === name);
+    const has = (name: string) => hasHiddenActivation(network, [name]);
     const complete =
       era === 0
         ? dense > 0
         : era === 1
           ? dense > 0 && (has('sigmoid') || has('tanh'))
-          : dense >= 2 && has('relu');
+          : dense >= 3 && has('relu');
     if (!complete) {
       this.message.set(
         era === 0
           ? 'Connect a Dense block in your path.'
           : era === 1
             ? 'Try Sigmoid or Tanh in your connected path.'
-            : 'Try a second Dense and ReLU in your connected path.',
+            : 'Try two hidden Dense layers and ReLU before Dense · 10 and Softmax.',
       );
       return;
     }

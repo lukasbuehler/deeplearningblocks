@@ -4,9 +4,14 @@ import { BlockNode, Board, compileBoard } from './graph';
 import { pytorchModel, pytorchNotebook, pytorchScript } from './pytorch-export';
 
 function compiled(middle: Partial<BlockNode>[]) {
-  const nodes = [{ kind: 'image' }, { kind: 'flatten' }, ...middle, { kind: 'classifier' }].map(
-    (node, i) => ({ ...node, id: String(i), x: 0, y: i * 250 }) as BlockNode,
-  );
+  const nodes = [
+    { kind: 'image' },
+    { kind: 'flatten' },
+    ...middle,
+    { kind: 'dense', units: 10 },
+    { kind: 'softmax' },
+    { kind: 'classifier' },
+  ].map((node, i) => ({ ...node, id: String(i), x: 0, y: i * 250 }) as BlockNode);
   const board: Board = {
     nodes: [...nodes].reverse().concat({ id: 'loose', kind: 'dense', units: 128, x: 800, y: 0 }),
     edges: nodes.slice(1).map((node, i) => ({ from: nodes[i].id, to: node.id })),
