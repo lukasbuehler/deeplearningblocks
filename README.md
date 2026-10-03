@@ -21,10 +21,10 @@ Open the localhost URL printed by Wrangler (normally http://localhost:8787).
 
 ## First lesson
 
-1. Open **+ Blocks**, drag Flatten and Dense onto the paper, then connect Image → Flatten → Dense → Digit guess. You can also tap a tile to add it and tap an output followed by an input to connect.
+1. Open **+ Blocks**, add Flatten, Dense · 10 and Softmax, then connect Image → Flatten → Dense · 10 → Softmax → Digit guess. You can also tap a tile to add it and tap an output followed by an input to connect.
 2. Choose **Check my build** in the guide or Blocky’s bubble to unlock the 1986 chapter, Sigmoid and Tanh. Training is optional.
-3. Select a wire or occupied port, choose Disconnect, and insert an activation. Check the connected Sigmoid or Tanh build to unlock ReLU and the 2010 chapter.
-4. Try a second Dense layer with ReLU and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six Dense layers can be connected.
+3. Select a wire or occupied port, choose Disconnect, and insert a hidden Dense with Sigmoid or Tanh before Dense · 10. Check the connected Sigmoid or Tanh build to unlock ReLU and the 2010 chapter.
+4. Try two hidden Dense layers with ReLU before Dense · 10 and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
 
 Drag the paper to pan, scroll to zoom, or use the zoom and Fit all controls. Compatible nearby studs snap together within 24 screen pixels. Blocks stay connected when moved apart. Select a block to read its explanation in the optional guide. Delete removes its incident wires; Undo and Redo recover complete edits, including an entire drag.
 
@@ -38,9 +38,9 @@ The dates refer to influential papers, not exclusive invention claims. The lab c
 
 TensorFlow.js loads only when training starts. It compiles the connected image-to-classifier path into a fresh model and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from MNIST’s official test split. No model or digit data is uploaded. WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
 
-Input pixels are normalized to [0, 1], hidden layers have 16, 32, 64, or 128 neurons, and the fixed ten-neuron output uses softmax. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
+Input pixels are normalized to [0, 1], Dense layers offer 10, 16, 32, 64 or 128 neurons. The final score vector must contain 10 values for the separate Softmax block. Digit guess displays probabilities and adds no trainable parameters. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
 
-Positioned blocks, explicit wires, viewport, unlocks, and the last eight experiments per mode are saved in `dlb-playground-v2` localStorage. Legacy `dlb-lab-v1` networks migrate to connected boards with separate activation blocks; that key remains untouched as a recovery copy. Trained weights stay in memory. Changing the active computation invalidates predictions; moving, zooming, and editing unused blocks preserves them. Reloading requires retraining. During training, layout and viewing remain available while computational edits are disabled. Storage failures do not block the lesson.
+Positioned blocks, explicit wires, viewport, unlocks, and the last eight experiments per mode are saved in `dlb-playground-v3` localStorage. V2 boards migrate by exposing the old prediction card’s hidden Dense(10) and Softmax as connected blocks, preserving notebooks and unlocks. `dlb-playground-v2` remains untouched as a recovery copy; `dlb-lab-v1` migration is also supported. Trained weights stay in memory. Changing the active computation invalidates predictions; moving, zooming, and editing unused blocks preserves them. Reloading requires retraining. During training, layout and viewing remain available while computational edits are disabled. Storage failures do not block the lesson.
 
 ## Project structure
 
@@ -94,7 +94,7 @@ Then attach the existing domain as a Custom Domain in the Worker’s Domains & R
 
 Choose **Draw your own** inside the yellow image block. White ink is cropped, scaled into a 20-pixel box and centered by its mass on a 28 × 28 black image. The pad previews that normalized input before submission. A trained model predicts immediately; otherwise the drawing waits until training completes. **MNIST digits** returns to dataset samples. Drawings and weights stay in memory and are never added to the training set or held-out evaluation.
 
-Ports distinguish image tensors from vectors. Flatten advertises its fixed 784-number output even while disconnected; Dense advertises its configured width; Activation preserves the incoming width. Unknown vector widths use N. Flatten is needed at the image-to-vector boundary, not after every Dense layer.
+Ports distinguish images, vectors and probabilities. Round pink probability connectors fit the display. Flatten advertises its fixed 784-number output even while disconnected; Dense advertises its configured width; Activation preserves the incoming width. Unknown vector widths use N. Flatten is needed at the image-to-vector boundary, not after every Dense layer.
 
 Completed connections use an obstacle-aware orthogonal router with rounded corners. It routes around card bounds and follows moved blocks. Physically overlapping cards can still cover a port; separating the cards exposes it again.
 
@@ -104,7 +104,7 @@ The candidate architecture levels and construction-first completion rules are in
 
 The long-term learning path, small-game concept inventory, Blocky’s pointing/highlighting behavior, separate activation blocks, SVG icon refresh, group blocks, browser GPU feasibility and the Shakespeare transformer capstone are recorded in [ROADMAP.md](ROADMAP.md).
 
-**Blocky** is a yellow block with two red connector arms. The optional helper points at a relevant block or wire, gives one short clue, and offers **Why?**, **Show me**, dismissal and mute. Asking Blocky again restores a dismissed clue; clicking the muted character unmutes it. Mute and configuration-specific dismissals are saved locally in `dlb-blocky-v1`. Moving or zooming does not reset a dismissal. Blocky hides during wiring, dragging, training, drawing and tray interactions. Its rules are local and deterministic, with no LLM or remote service.
+**Blocky** is a yellow block with two red connector arms. The optional helper points at a relevant block or wire, gives one short clue, and offers **Why?**, **Show me**, dismissal and mute. Asking Blocky again restores a dismissed clue; clicking the muted character unmutes it. Mute and configuration-specific dismissals are saved locally in `dlb-blocky-v1`. Moving or zooming does not reset a dismissal. Blocky hides during wiring, dragging, training, drawing and tray interactions. Its rules are local and deterministic, with no LLM or remote service. After a successful training run, Blocky suggests one controlled experiment based on the connected architecture: a hidden layer, a nonlinear activation, ReLU, a width change, or inspecting mistakes. Tips never promise higher accuracy and explain the risk of repeatedly tuning on the small test set.
 
 Linear, Sigmoid, Tanh and ReLU have distinct names and curve icons on the paper, without an activation dropdown. They retain the existing saved operation format. `block-catalog.ts` owns the tray identities, `blocky-hints.ts` owns pure advice rules, the canvas resolves target geometry, and the Blocky component owns presentation and preferences.
 
@@ -116,6 +116,6 @@ Open **PyTorch** in the toolbar (**Code** on smaller screens). **My model** show
 
 Both downloads use fresh PyTorch weights and the exact seeded 3,000/500 MNIST subset used in the browser. They export architecture and the training recipe, not trained TensorFlow weights, drawings, progress or experiment history. Scores can differ between runtimes. The first Python run downloads MNIST through torchvision; install `torch` and `torchvision` as described at the top of the script.
 
-The pure generator in `pytorch-export.ts` consumes the graph compiler's `NetworkSpec`, so execution order follows connections and unused blocks are excluded. Dense maps to `nn.Linear`; Linear activation maps to `nn.Identity`. The ten-way classifier emits logits for [PyTorch CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html); the prediction step applies softmax. Script and notebook share the same code sections. Exporting does not edit the board or change training state.
+The pure generator in `pytorch-export.ts` consumes the graph compiler's `NetworkSpec`, so execution order follows connections and unused blocks are excluded. Dense maps to `nn.Linear`; Linear activation maps to `nn.Identity`. The explicit Dense · 10 emits logits for [PyTorch CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html); the prediction step executes the board’s Softmax. It is intentionally omitted from the training model because CrossEntropyLoss consumes logits. Digit guess adds no Python layer. Script and notebook share the same code sections. Exporting does not edit the board or change training state.
 
 The product name remains **Deep Learning Blocks**. Its reusable brand component keeps the colorful, tactile lettering of the playground.

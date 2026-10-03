@@ -18,13 +18,13 @@ Keep these distinctions visible:
 
 ### What exists today
 
-Angular playground, positioned blocks and routed wires, a single connected trainable chain, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST browser training, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Grouping, general branching, transformers, hardware preflight and the general level engine remain future work.
+Angular playground, positioned blocks and routed wires, a single connected trainable chain with explicit Dense · 10 and Softmax output operations and a display-only Digit guess, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST browser training, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Grouping, general branching, transformers, hardware preflight and the general level engine remain future work.
 
 ## Blocky: a helper with somewhere to point
 
 **Chosen name: Blocky.** A yellow block with two red connector arms, expressive eyes and a thick black outline. The arms point toward highlighted blocks or connections. Earlier names are retired.
 
-Implemented first slice: missing-piece and incomplete-path clues, rejected-connection explanations, current chapter clues and optional advice about linear stacks in Sandbox. Manual clues, Show me, Why, dismiss and persistent mute are available. The SVG character uses static poses with no animation, including under reduced-motion preferences. The behavior below remains the broader design target, including future chart, port and group targets.
+Implemented first slice: missing-piece and incomplete-path clues, rejected-connection explanations, current chapter clues and optional advice about linear stacks in Sandbox and architecture-aware follow-up experiments after successful training. Manual clues, Show me, Why, dismiss and persistent mute are available. The SVG character uses static poses with no animation, including under reduced-motion preferences. The behavior below remains the broader design target, including future chart, port and group targets.
 
 ### Behavior
 
