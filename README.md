@@ -98,19 +98,11 @@ Ports distinguish image tensors from vectors. Flatten advertises its fixed 784-n
 
 Completed connections use an obstacle-aware orthogonal router with rounded corners. It routes around card bounds and follows moved blocks. Physically overlapping cards can still cover a port; separating the cards exposes it again.
 
-## Helper brainstorm (proposal, not implemented)
+## Learning roadmap and Pip
 
-- **Pip:** a little yellow connector creature with black eyes and a pink cable tail. Recommended direction: a curious companion that points at sockets and folds into a small sticker when quiet.
-- **Dot:** a round neuron with tiny branching arms. Good for explaining numbers moving through the network.
-- **Nori:** a folded-paper creature that lives on the dotted paper. Good for the first-book theme, with less literal circuitry.
+The long-term learning path, small-game concept inventory, Pip's pointing/highlighting behavior, separate activation blocks, SVG icon refresh, group blocks, browser GPU feasibility and the Shakespeare transformer capstone are recorded in [ROADMAP.md](ROADMAP.md).
 
-The first implementation should be deterministic. A pure rule function can inspect graph shape, chapter and recent actions, then return a stable hint ID, severity, target block and short explanation. No LLM, account or network request is needed. Keep invalid-connection enforcement in the graph validator; helper advice stays nonblocking.
-
-Show one hint after the player pauses, never while dragging or drawing. Start with discovery prompts, then offer explanations for specific patterns. Include Why?, Not now and Mute controls. Remember dismissals per rule and board configuration, and remember mute across reloads. Never rearrange, insert or delete blocks automatically.
-
-Useful initial rules: a missing image-to-vector conversion; an incomplete path when trying to train; unused blocks excluded from the experiment; adjacent Dense layers without an intervening nonlinear activation; repeated ReLU operations with no learned layer between them. Suppress nonlinear-activation advice in the first Journey chapter, which intentionally explores a linear baseline. Do not insist on activation after every Dense block. The classifier already includes softmax. Do not diagnose overfitting from network size alone.
-
-A later **Memorizing or learning?** lesson could compare training and validation curves as a small network and a larger network train for longer on limited examples. Let players discover that training improvement can stop transferring to unseen examples. Keep a separate final test set untouched by lesson tuning. This lesson is deferred.
+Pip is the working helper name. Dot and Nori have been rejected. The helper remains a deterministic, optional proposal; it is not implemented yet. The recommended next implementation is dedicated activation blocks and consistent icons, followed by a small Pip pass. The roadmap preserves the current playground while introducing new concepts one small game at a time.
 
 ## From blocks to PyTorch
 
