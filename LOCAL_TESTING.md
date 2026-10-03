@@ -87,3 +87,8 @@ Computer use exercised mouse and keyboard input at phone and desktop viewport si
 - Reload retained V3 boards and notebooks. At 390 × 844 CSS pixels, Show me highlighted Softmax above the bubble, with the card explicitly saying “Needs 10 scores. Got 32.” Undo restored a valid network. Desktop PyTorch view showed only Flatten and Linear(784, 10) as trainable-model operations and explained that prediction executes Softmax while CrossEntropyLoss trains on raw logits. No duplicate classifier or double softmax is exported. Physical touch hardware and a new Colab execution were not tested in this pass.
 - Final verification: 31 Node tests, 14 Angular/ChromeHeadless tests, production build and Workers dry run pass. No deployment or changes to the user's active preview saves. Temporary test viewport and server were cleaned up.
 - Screenshots: `docs/screenshots/explicit-output-blocks.png` and `docs/screenshots/softmax-width-mobile.png`.
+
+## Follow-up: keep Blocky visible while panning (3 October 2026)
+
+- Panning was included in the helper's suppression condition, which removed the character, bubble and highlight during each pan. Removed only that condition. Open explanations now stay open and target geometry continues following the viewport.
+- An Angular regression holds the canvas in its active-panning state and verifies the character, expanded explanation, highlight and updated pointer coordinates. All 15 browser tests pass; production build passes. Computer use also panned with Why expanded and confirmed the visible clue and pointer remained attached. Evidence: `docs/screenshots/blocky-pan.png`.

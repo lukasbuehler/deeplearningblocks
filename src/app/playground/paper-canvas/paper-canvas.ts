@@ -98,7 +98,6 @@ export class PaperCanvas {
     () =>
       !!(
         this.draft() ||
-        this.panning() ||
         this.tray() ||
         this.pending() ||
         this.game.drawingOpen() ||
