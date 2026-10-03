@@ -43,3 +43,5 @@ testem.log
 Thumbs.db
 
 .playwright-mcp/
+# Cloudflare local state
+.wrangler/

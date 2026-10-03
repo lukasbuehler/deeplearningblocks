@@ -1,0 +1,18 @@
+{
+  "source": "https://storage.googleapis.com/cvdf-datasets/mnist/",
+  "seed": 1958,
+  "pixels": 784,
+  "classes": 10,
+  "splits": {
+    "train": {
+      "count": 3000,
+      "bytes": 2355000,
+      "sha256": "8e05df42e45ffe66d1d02718baf56ac9e917f330e21e70a28220467d3b7669db"
+    },
+    "test": {
+      "count": 500,
+      "bytes": 392500,
+      "sha256": "c314230c7fb80e72e71437baf824f870b54aa3d1682ab144135e35b9b8d3630d"
+    }
+  }
+}

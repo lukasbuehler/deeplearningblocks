@@ -5,11 +5,12 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "build:amplify": "ng build && node scripts/amplify-adapter.js",
     "watch": "ng build --watch --configuration development",
     "dev": "ng serve --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:deeplearningblocks": "node dist/deeplearningblocks/server/server.mjs"
+    "preview:worker": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "test:core": "node --import tsx --test src/app/learning/*.test.ts"
   },
   "prettier": {
     "printWidth": 100,
@@ -25,41 +26,28 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^20.3.4",
     "@angular/cdk": "^20.2.8",
     "@angular/common": "^20.3.0",
     "@angular/compiler": "^20.3.0",
     "@angular/core": "^20.3.0",
     "@angular/forms": "^20.3.0",
-    "@angular/material": "^20.2.8",
     "@angular/platform-browser": "^20.3.0",
     "@angular/platform-browser-dynamic": "^20.3.4",
-    "@angular/platform-server": "^20.3.0",
     "@angular/router": "^20.3.0",
-    "@angular/ssr": "^20.3.1",
-    "aws-amplify": "^6.15.7",
-    "express": "^5.1.0",
-    "konva": "^10.0.2",
-    "ng2-konva": "^10.0.0",
-    "roughjs": "^4.6.6",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zone.js": "^0.15.1"
+    "zone.js": "^0.15.1",
+    "@tensorflow/tfjs-core": "^4.22.0",
+    "@tensorflow/tfjs-layers": "^4.22.0",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^20.3.5",
     "@angular/build": "^20.3.1",
     "@angular/cli": "^20.3.1",
     "@angular/compiler-cli": "^20.3.0",
-    "@aws-amplify/backend": "^1.16.1",
-    "@aws-amplify/backend-cli": "^1.8.0",
-    "@types/express": "^5.0.1",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^20.17.19",
-    "aws-cdk": "^2.1030.0",
-    "aws-cdk-lib": "^2.219.0",
-    "constructs": "^10.4.2",
-    "esbuild": "^0.24.2",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
@@ -67,6 +55,10 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "tsx": "^4.20.6",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "wrangler": "^4.147.0"
+  },
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0"
   }
 }

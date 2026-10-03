@@ -1,54 +1,70 @@
-import {
-  Component,
-  signal,
-  ChangeDetectionStrategy,
-  effect,
-  PLATFORM_ID,
-  inject,
-} from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { MatIconButton } from '@angular/material/button';
-import { MatIcon } from '@angular/material/icon';
-import { Container } from './container/container';
+import { Component, signal, ChangeDetectionStrategy, computed, effect, inject } from '@angular/core';
+import { DecimalPipe, PercentPipe } from '@angular/common';
+import { NetworkEditor } from './learning/network-editor/network-editor';
+import { DenseBlock, ERAS, Experiment, nextEra } from './learning/curriculum';
+import { DigitPreview } from './learning/digit-preview/digit-preview';
+import { readProgress, saveProgress } from './learning/progress';
+import { TrainingService } from './learning/training.service';
 
 @Component({
   selector: 'app-root',
-  imports: [MatIconButton, MatIcon, Container],
-  templateUrl: './app.html',
-  styleUrl: './app.scss',
+  imports: [DecimalPipe, PercentPipe, NetworkEditor, DigitPreview],
+  templateUrl: './app.html', styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
-  private readonly platformId = inject(PLATFORM_ID);
-  protected readonly title = signal('Deep Learning Blocks');
-  protected readonly isDarkMode = signal(false);
-
+  readonly trainer = inject(TrainingService);
+  private readonly saved = readProgress();
+  readonly era = signal(this.saved.era);
+  readonly viewedEra = signal(this.saved.era);
+  readonly blocks = signal<DenseBlock[]>(this.saved.blocks);
+  readonly experiments = signal<Experiment[]>(this.saved.experiments);
+  readonly eras = ERAS;
+  readonly chapter = computed(() => ERAS[this.viewedEra()]);
+  readonly tips = signal(false);
+  readonly error = signal('');
+  readonly notice = signal('');
+  readonly storageWarning = signal(false);
+  readonly sample = signal(0);
+  readonly probabilities = signal<number[]>([]);
+  readonly pixels = computed(() => this.trainer.test()?.pixels.slice(this.sample() * 784, (this.sample() + 1) * 784));
+  readonly prediction = computed(() => this.probabilities().length ? this.probabilities().indexOf(Math.max(...this.probabilities())) : null);
+  readonly latest = computed(() => this.experiments().at(-1));
+  readonly lossPoints = computed(() => {
+    const rows = this.trainer.epochs(), max = Math.max(1, ...rows.map(row => row.loss));
+    return rows.map((row, i) => `${10 + i * 65},${80 - row.loss / max * 65}`).join(' ');
+  });
   constructor() {
-    // Initialize dark mode from localStorage or system preference
-    if (isPlatformBrowser(this.platformId)) {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'dark') {
-        this.isDarkMode.set(true);
-      } else if (savedTheme === 'light') {
-        this.isDarkMode.set(false);
-      } else {
-        // Check system preference
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        this.isDarkMode.set(prefersDark);
-      }
-    }
-
-    // Apply theme changes
-    effect(() => {
-      if (isPlatformBrowser(this.platformId)) {
-        const darkMode = this.isDarkMode();
-        document.body.classList.toggle('dark-theme', darkMode);
-        localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-      }
-    });
+    effect(() => this.storageWarning.set(!saveProgress({ era: this.era(), blocks: this.blocks(), experiments: this.experiments() })));
+    void this.loadPreview();
   }
-
-  protected toggleTheme(): void {
-    this.isDarkMode.update((current) => !current);
+  async loadPreview(): Promise<void> {
+    this.error.set('');
+    try { await this.trainer.loadPreview(); }
+    catch { this.error.set('The example digits could not load. Check your connection, then retry.'); }
+  }
+  change(blocks: DenseBlock[]): void {
+    if (this.trainer.busy()) return;
+    this.blocks.set(blocks); this.trainer.invalidate(); this.probabilities.set([]);
+    this.notice.set(this.experiments().length ? 'Network changed. Train again to test these blocks.' : '');
+  }
+  nextSample(): void {
+    const count = this.trainer.test()?.count ?? 1;
+    this.sample.update(value => (value + 1) % count); this.probabilities.set(this.trainer.predict(this.sample()));
+  }
+  async train(): Promise<void> {
+    this.error.set(''); this.notice.set(''); this.probabilities.set([]);
+    const blocks = this.blocks().map(block => ({ ...block })), era = this.era();
+    try {
+      const result = await this.trainer.train(blocks);
+      if (!result) return;
+      this.experiments.update(rows => [...rows, { ...result, era, layers: blocks.map(b => `${b.units} ${b.activation}`).join(' → ') || 'Direct to output' }].slice(-8));
+      const unlocked = nextEra(era, blocks);
+      if (unlocked > era) {
+        this.era.set(unlocked); this.viewedEra.set(unlocked);
+        this.notice.set(`Unlocked ${ERAS[unlocked].year}: ${ERAS[unlocked].title}. ${unlocked === 1 ? 'Try sigmoid or tanh in your dense block.' : 'ReLU is now in your block library.'}`);
+      } else this.notice.set(era === 2 ? 'Nice experiment. Change one thing and compare your next result.' : 'Try the chapter challenge to unlock the next milestone.');
+      this.probabilities.set(this.trainer.predict(this.sample()));
+    } catch (error) { this.error.set(error instanceof Error ? error.message : 'Something went wrong. Try training again.'); }
   }
 }
