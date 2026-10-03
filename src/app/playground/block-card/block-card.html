@@ -1,0 +1,111 @@
+<article
+  [class]="'block ' + node().kind"
+  [class.selected]="selected()"
+  [style.height.px]="definition().height"
+  (click)="choose.emit()"
+  (mousedown)="stopControls($event)"
+  (touchstart)="stopControls($event)"
+>
+  <header>
+    <span class="block-icon">{{ definition().icon }}</span
+    ><span class="eyebrow">{{ definition().subtitle }}</span
+    ><button
+      class="delete"
+      [disabled]="busy()"
+      (click)="$event.stopPropagation(); remove.emit()"
+      [attr.aria-label]="'Delete ' + definition().title"
+    >
+      ×
+    </button>
+  </header>
+  <h2>{{ node().kind === 'activation' ? activationName() : definition().title }}</h2>
+  @switch (node().kind) {
+    @case ('image') {
+      <div class="image-content">
+        <app-digit-preview [pixels]="pixels()" [label]="'MNIST digit ' + (actual() ?? 'loading')" />
+        <div>
+          <b>28 × 28</b><span>little pixels</span
+          ><button
+            (click)="$event.stopPropagation(); nextDigit.emit()"
+            [disabled]="actual() === undefined || busy()"
+          >
+            Next digit ↻
+          </button>
+        </div>
+      </div>
+    }
+    @case ('flatten') {
+      <div class="flatten-picture"><span>▦</span><b>→</b><span>▪▪▪▪▪▪▪</span></div>
+      <p class="detail">Same pixels. One long list.</p>
+    }
+    @case ('dense') {
+      <div class="settings">
+        <label
+          >Neurons<select
+            [attr.aria-label]="'Neurons for ' + node().id"
+            [ngModel]="node().units"
+            (ngModelChange)="changeUnits($event)"
+            [disabled]="busy()"
+          >
+            @for (units of [16, 32, 64, 128]; track units) {
+              <option [value]="units">{{ units }}</option>
+            }
+          </select></label
+        >
+        <div class="neurons" aria-hidden="true">● ● ●<br />╲│╱<br />● ● ●</div>
+      </div>
+      <p class="detail">
+        {{ inputSize() === undefined ? 'Needs input' : inputSize() + ' inputs' }} →
+        {{ node().units }} neurons
+      </p>
+    }
+    @case ('activation') {
+      <div class="activation-controls">
+        <select
+          aria-label="Activation function"
+          [ngModel]="node().activation"
+          (ngModelChange)="changeActivation($event)"
+          [disabled]="busy()"
+        >
+          @for (a of activations(); track a.value) {
+            <option [value]="a.value">{{ a.label }}</option>
+          }</select
+        ><svg viewBox="0 0 120 64" role="img" [attr.aria-label]="activationName() + ' function'">
+          <path d="M0 32H120 M60 0V64" stroke="currentColor" opacity=".3" />
+          <polyline [attr.points]="sketch()" fill="none" stroke="currentColor" stroke-width="3" />
+        </svg>
+      </div>
+      <p class="detail">
+        {{ outputSize() === undefined ? 'Needs input' : 'Keeps ' + outputSize() + ' numbers' }}
+      </p>
+    }
+    @case ('classifier') {
+      <div class="prediction">
+        <strong>{{ prediction() ?? '?' }}</strong>
+        <div>
+          <b>{{ prediction() === null ? 'What digit is it?' : 'My guess!' }}</b
+          ><span>{{
+            prediction() === null ? 'Connect, then train.' : 'Actual digit: ' + actual()
+          }}</span>
+          @if (prediction() !== null) {
+            <span>{{ probabilities()[prediction()!] | percent: '1.0-0' }} confidence</span>
+          }
+        </div>
+      </div>
+      <div class="probabilities" aria-label="Digit probabilities">
+        @for (digit of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; track digit) {
+          <div
+            [class.best]="prediction() === digit"
+            [attr.title]="
+              'Digit ' + digit + ': ' + ((probabilities().at(digit) ?? 0) * 100).toFixed(1) + '%'
+            "
+          >
+            <i [style.height.%]="(probabilities().at(digit) ?? 0) * 100"></i
+            ><span>{{ digit }}</span>
+          </div>
+        }
+      </div>
+      <p class="detail">10 possibilities. One best guess.</p>
+    }
+  }
+</article>

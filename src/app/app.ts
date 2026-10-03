@@ -1,140 +1,68 @@
-import {
-  Component,
-  signal,
-  ChangeDetectionStrategy,
-  computed,
-  effect,
-  inject,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from '@angular/core';
 import { DecimalPipe, PercentPipe } from '@angular/common';
-import { NetworkEditor } from './learning/network-editor/network-editor';
-import { DenseBlock, ERAS, Experiment, nextEra } from './learning/curriculum';
-import { DigitPreview } from './learning/digit-preview/digit-preview';
-import { readProgress, saveProgress } from './learning/progress';
-import { TrainingService } from './learning/training.service';
-
+import { inject } from '@angular/core';
+import { GameService } from './playground/game.service';
+import { PaperCanvas } from './playground/paper-canvas/paper-canvas';
+import { BLOCKS } from './playground/graph';
+import { ERAS, ACTIVATIONS } from './learning/curriculum';
+import { Mode } from './playground/storage';
 @Component({
   selector: 'app-root',
-  imports: [DecimalPipe, PercentPipe, NetworkEditor, DigitPreview],
+  imports: [PaperCanvas, DecimalPipe, PercentPipe],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
-  readonly trainer = inject(TrainingService);
-  private readonly saved = readProgress();
-  readonly era = signal(this.saved.era);
-  readonly viewedEra = signal(this.saved.era);
-  readonly blocks = signal<DenseBlock[]>(this.saved.blocks);
-  readonly experiments = signal<Experiment[]>(this.saved.experiments);
-  readonly eras = ERAS;
-  readonly chapter = computed(() => ERAS[this.viewedEra()]);
+  readonly game = inject(GameService);
+  readonly canvas = viewChild(PaperCanvas);
+  readonly sidebar = signal(window.innerWidth >= 900);
+  readonly notebook = signal(false);
   readonly tips = signal(false);
-  readonly error = signal('');
-  readonly notice = signal('');
-  readonly storageWarning = signal(false);
   readonly resetRequested = signal(false);
-  readonly sample = signal(0);
-  readonly probabilities = signal<number[]>([]);
-  readonly pixels = computed(() =>
-    this.trainer.test()?.pixels.slice(this.sample() * 784, (this.sample() + 1) * 784),
-  );
-  readonly prediction = computed(() =>
-    this.probabilities().length
-      ? this.probabilities().indexOf(Math.max(...this.probabilities()))
-      : null,
-  );
-  readonly latest = computed(() => this.experiments().at(-1));
-  readonly lossPoints = computed(() => {
-    const rows = this.trainer.epochs(),
-      max = Math.max(1, ...rows.map((row) => row.loss));
-    return rows.map((row, i) => `${10 + i * 65},${80 - (row.loss / max) * 65}`).join(' ');
+  readonly eras = ERAS;
+  readonly viewedEra = signal<number | null>(null);
+  readonly chapter = computed(() => ERAS[this.viewedEra() ?? this.game.era()]);
+  readonly definitions = BLOCKS;
+  readonly selectedHint = computed(() => {
+    const node = this.game.selectedNode();
+    if (!node) return '';
+    return node.kind === 'activation'
+      ? (ACTIVATIONS.find((a) => a.value === node.activation)?.explanation ?? '')
+      : BLOCKS[node.kind].help;
   });
-  constructor() {
-    effect(() =>
-      this.storageWarning.set(
-        !saveProgress({ era: this.era(), blocks: this.blocks(), experiments: this.experiments() }),
-      ),
-    );
-    void this.loadPreview();
-  }
-  async loadPreview(): Promise<void> {
-    this.error.set('');
-    try {
-      await this.trainer.loadPreview();
-    } catch {
-      this.error.set('The example digits could not load. Check your connection, then retry.');
-    }
-  }
-  change(blocks: DenseBlock[]): void {
-    if (this.trainer.busy()) return;
-    this.blocks.set(blocks);
-    this.trainer.invalidate();
-    this.trainer.epochs.set([]);
-    this.trainer.status.set('Ready to train this network');
-    this.probabilities.set([]);
-    this.notice.set(
-      this.experiments().length ? 'Network changed. Train again to test these blocks.' : '',
-    );
-  }
-  resetLab(): void {
-    if (this.trainer.busy()) return;
-    this.trainer.invalidate();
-    this.trainer.epochs.set([]);
-    this.trainer.status.set('Ready when you are');
-    this.blocks.set([]);
-    this.experiments.set([]);
-    this.era.set(0);
-    this.viewedEra.set(0);
-    this.sample.set(0);
-    this.probabilities.set([]);
-    this.notice.set('A fresh start. Add your first dense block.');
-    this.error.set('');
+  readonly challenge = computed(() =>
+    (this.viewedEra() ?? this.game.era()) === 0
+      ? 'Add Flatten and Dense. Connect the image all the way to the digit guess, then train.'
+      : (this.viewedEra() ?? this.game.era()) === 1
+        ? 'Unplug one wire. Add Sigmoid or Tanh after a Dense block. Reconnect and train to discover ReLU.'
+        : 'Try ReLU and another Dense block. Does a bigger network make a better guess?',
+  );
+  readonly lossPoints = computed(() => {
+    const rows = this.game.trainer.epochs(),
+      max = Math.max(1, ...rows.map((r) => r.loss));
+    return rows.map((r, i) => `${10 + i * 52},${70 - (r.loss / max) * 55}`).join(' ');
+  });
+  readonly latest = computed(() => this.game.workspace().experiments.at(-1));
+  switchMode(mode: Mode): void {
+    this.game.switchMode(mode);
+    this.viewedEra.set(null);
+    this.canvas()?.clearSelection();
     this.resetRequested.set(false);
+    requestAnimationFrame(() => {
+      const v = this.game.board().viewport;
+      if (v.x === 0 && v.y === 0) this.canvas()?.fit();
+    });
   }
-  nextSample(): void {
-    const count = this.trainer.test()?.count ?? 1;
-    this.sample.update((value) => (value + 1) % count);
-    this.probabilities.set(this.trainer.predict(this.sample()));
+  train(): void {
+    this.viewedEra.set(null);
+    this.notebook.set(true);
+    void this.game.train();
   }
-  async train(): Promise<void> {
-    this.error.set('');
-    this.notice.set('');
-    this.probabilities.set([]);
-    const blocks = this.blocks().map((block) => ({ ...block })),
-      era = this.era();
-    try {
-      const result = await this.trainer.train(blocks);
-      if (!result) return;
-      this.experiments.update((rows) =>
-        [
-          ...rows,
-          {
-            ...result,
-            era,
-            layers:
-              blocks.map((b) => `${b.units} ${b.activation}`).join(' → ') || 'Direct to output',
-          },
-        ].slice(-8),
-      );
-      const unlocked = nextEra(era, blocks);
-      if (unlocked > era) {
-        this.era.set(unlocked);
-        this.viewedEra.set(unlocked);
-        this.notice.set(
-          `Unlocked ${ERAS[unlocked].year}: ${ERAS[unlocked].title}. ${unlocked === 1 ? 'Try sigmoid or tanh in your dense block.' : 'ReLU is now in your block library.'}`,
-        );
-      } else
-        this.notice.set(
-          era === 2
-            ? 'Nice experiment. Change one thing and compare your next result.'
-            : 'Try the chapter challenge to unlock the next milestone.',
-        );
-      this.probabilities.set(this.trainer.predict(this.sample()));
-    } catch (error) {
-      this.error.set(
-        error instanceof Error ? error.message : 'Something went wrong. Try training again.',
-      );
-    }
+  reset(): void {
+    this.game.reset();
+    this.resetRequested.set(false);
+    this.canvas()?.clearSelection();
+    requestAnimationFrame(() => this.canvas()?.fit());
   }
 }

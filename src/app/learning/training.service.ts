@@ -1,7 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import type * as TF from './tensorflow';
-import { DenseBlock } from './curriculum';
-import { NetworkSpec, Step } from '../playground/graph';
+import { NetworkSpec } from '../playground/graph';
 import { buildModel } from '../playground/model-builder';
 import { DigitSet, loadDigits } from './mnist';
 
@@ -38,29 +37,8 @@ export class TrainingService {
     if (this.model) this.model.stopTraining = true;
     this.status.set('Stopping…');
   }
-  async train(
-    input: readonly DenseBlock[] | NetworkSpec,
-  ): Promise<{ accuracy: number; loss: number } | null> {
+  async train(network: NetworkSpec): Promise<{ accuracy: number; loss: number } | null> {
     if (this.busy()) return null;
-    const steps: Step[] = Array.isArray(input)
-      ? [
-          { kind: 'flatten' },
-          ...input.flatMap(
-            (b) =>
-              [
-                { kind: 'dense', units: b.units },
-                { kind: 'activation', activation: b.activation },
-              ] as Step[],
-          ),
-          { kind: 'classifier' },
-        ]
-      : (input as NetworkSpec).steps;
-    const network: NetworkSpec = {
-      steps,
-      signature: JSON.stringify(steps),
-      parameters: 0,
-      nodeIds: [],
-    };
     this.busy.set(true);
     this.cancelled = false;
     this.epochs.set([]);

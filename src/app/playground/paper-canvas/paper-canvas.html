@@ -1,0 +1,226 @@
+<div
+  #paper
+  class="paper"
+  aria-label="Network playground"
+  [class.panning]="panning()"
+  (pointerdown)="panStart($event)"
+  (pointermove)="paperMove($event)"
+  (pointerup)="panEnd()"
+  (pointercancel)="panEnd()"
+  (wheel)="wheel($event)"
+  [style.background-position]="game.board().viewport.x + 'px ' + game.board().viewport.y + 'px'"
+  [style.background-size]="
+    24 * game.board().viewport.zoom + 'px ' + 24 * game.board().viewport.zoom + 'px'
+  "
+>
+  <div class="paper-caption" aria-hidden="true">
+    <span>YOUR IDEAS GO HERE.</span><span>↓ make something that learns</span>
+  </div>
+  <div
+    class="world"
+    [style.transform]="
+      'translate(' +
+      game.board().viewport.x +
+      'px,' +
+      game.board().viewport.y +
+      'px) scale(' +
+      game.board().viewport.zoom +
+      ')'
+    "
+  >
+    <svg class="wires" aria-label="Network connections">
+      @for (wire of wires(); track wire.from) {
+        <path class="wire-outline" [attr.d]="wire.path" />
+        <path
+          class="wire"
+          [class.image-wire]="wire.type === 'image'"
+          [class.selected]="selectedEdge()?.from === wire.from"
+          [attr.d]="wire.path"
+        />
+        <path
+          class="wire-hit"
+          [attr.d]="wire.path"
+          role="button"
+          tabindex="0"
+          [attr.aria-label]="'Connection: ' + wire.label"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="chooseEdge(wire)"
+          (keydown.enter)="chooseEdge(wire)"
+          (keydown.space)="$event.preventDefault(); chooseEdge(wire)"
+        />
+      }
+      @if (ghostPath()) {
+        <path class="ghost-wire" [attr.d]="ghostPath()" />
+      }
+    </svg>
+    @for (node of game.board().nodes; track node.id; let i = $index) {
+      <div
+        class="node"
+        [attr.data-node]="node.id"
+        [attr.data-kind]="node.kind"
+        [style.z-index]="compatible(node.id) ? 3 : 1"
+        tabindex="0"
+        role="group"
+        [attr.aria-label]="definitions[node.kind].title + ' block ' + (i + 1)"
+        (focus)="selectNode(node.id)"
+        cdkDrag
+        [cdkDragFreeDragPosition]="{
+          x: node.x * game.board().viewport.zoom,
+          y: node.y * game.board().viewport.zoom,
+        }"
+        [cdkDragScale]="game.board().viewport.zoom"
+        [cdkDragStartDelay]="{ touch: 120, mouse: 0 }"
+        (cdkDragStarted)="startDrag($event, node)"
+        (cdkDragMoved)="moveDrag($event, node)"
+        (cdkDragEnded)="endDrag($event, node)"
+        [class.snap-ready]="snap()?.from === node.id || snap()?.to === node.id"
+      >
+        @if (definitions[node.kind].input) {
+          <button
+            class="port input"
+            (mousedown)="$event.stopPropagation()"
+            (touchstart)="$event.stopPropagation()"
+            [class.image-port]="definitions[node.kind].input === 'image'"
+            [class.compatible]="compatible(node.id)"
+            [class.waiting]="pending() && !compatible(node.id)"
+            [attr.data-input]="node.id"
+            [disabled]="game.trainer.busy()"
+            [attr.aria-label]="'Input of ' + definitions[node.kind].title + ' ' + (i + 1)"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="$event.stopPropagation(); finishConnection(node.id)"
+          >
+            <span class="port-shape"></span
+            ><span class="port-label">{{
+              definitions[node.kind].input === 'image'
+                ? '28 × 28 × 1'
+                : shapes().get(node.id)?.input == null
+                  ? 'Needs input'
+                  : shapes().get(node.id)?.input + ' numbers'
+            }}</span>
+          </button>
+        }
+        <app-block-card
+          [node]="node"
+          [inputSize]="shapes().get(node.id)?.input ?? undefined"
+          [outputSize]="shapes().get(node.id)?.output ?? undefined"
+          [selected]="game.selected() === node.id"
+          [busy]="game.trainer.busy()"
+          [activations]="game.activations()"
+          [pixels]="game.pixels()"
+          [actual]="game.trainer.test()?.labels?.[game.sample()]"
+          [probabilities]="game.probabilities()"
+          (choose)="selectNode(node.id)"
+          (remove)="deleteNode(node.id)"
+          (configure)="game.configure($event)"
+          (nextDigit)="game.nextSample()"
+        />
+        @if (definitions[node.kind].output) {
+          <button
+            class="port output"
+            (mousedown)="$event.stopPropagation()"
+            (touchstart)="$event.stopPropagation()"
+            [class.image-port]="definitions[node.kind].output === 'image'"
+            [class.active]="pending() === node.id"
+            [disabled]="game.trainer.busy()"
+            [attr.aria-label]="'Output of ' + definitions[node.kind].title + ' ' + (i + 1)"
+            (pointerdown)="outputStart($event, node)"
+            (pointermove)="outputMove($event)"
+            (pointerup)="outputEnd($event)"
+            (pointercancel)="cancelWire()"
+            (click)="outputClick($event, node.id)"
+          >
+            <span class="port-shape"></span
+            ><span class="port-label">{{
+              node.kind === 'image'
+                ? '28 × 28 × 1'
+                : shapes().get(node.id)?.output == null
+                  ? 'Needs input'
+                  : shapes().get(node.id)?.output + ' numbers'
+            }}</span>
+          </button>
+        }
+      </div>
+    }
+  </div>
+  @if (game.board().edges.length === 0 && game.board().nodes.length === 2) {
+    <div class="first-prompt">
+      <span>1.</span> Open the toy box.<br /><span>2.</span> Add Flatten + Dense.<br /><span
+        >3.</span
+      >
+      Connect the studs!
+    </div>
+  }
+  @if (pending()) {
+    <div class="connection-prompt" role="status">
+      Pick a glowing socket <button (click)="cancelWire()" aria-label="Cancel connection">×</button>
+    </div>
+  }
+  @if (selectedEdge()) {
+    <div class="wire-actions">
+      <b>One little connection</b
+      ><button (click)="disconnect()" [disabled]="game.trainer.busy()">Disconnect ×</button>
+    </div>
+  }
+  <div class="canvas-tools">
+    <button aria-label="Zoom out" (click)="zoom(1 / 1.2)">−</button
+    ><span>{{ (game.board().viewport.zoom * 100).toFixed(0) }}%</span
+    ><button aria-label="Zoom in" (click)="zoom(1.2)">+</button
+    ><button class="fit" (click)="fit()">Fit all ⤢</button>
+  </div>
+  <span class="canvas-hint">Drag paper to pan · Scroll to zoom</span>
+  <button
+    class="fab"
+    [class.open]="tray()"
+    (click)="tray.set(!tray())"
+    [attr.aria-expanded]="tray()"
+    [disabled]="game.trainer.busy()"
+  >
+    <span>{{ tray() ? '×' : '+' }}</span> {{ tray() ? 'Close toy box' : 'Blocks' }}
+  </button>
+  @if (tray()) {
+    <section class="tray" aria-label="Block toy box">
+      <div class="tray-heading">
+        <div>
+          <span class="eyebrow">A LITTLE BOX OF POSSIBILITIES</span>
+          <h2>Pick a block. Make it click.</h2>
+        </div>
+        <button (click)="tray.set(false)" aria-label="Close block tray">×</button>
+      </div>
+      <p>Drag onto the paper, or tap to add.</p>
+      <div class="tiles">
+        @for (tile of tiles; track tile.name) {
+          <button
+            [class]="'tile ' + tile.kind"
+            [class.locked]="locked(tile)"
+            [disabled]="locked(tile) || exists(tile) || game.trainer.busy()"
+            (pointerdown)="tileStart($event, tile)"
+            (pointermove)="tileMove($event)"
+            (pointerup)="tileEnd($event)"
+            (pointercancel)="tileCancel()"
+            (click)="tileClick($event, tile)"
+            [attr.aria-label]="'Add ' + tile.name + (locked(tile) ? ' (locked)' : '')"
+          >
+            <span>{{ tile.icon }}</span
+            ><b>{{ tile.name }}</b
+            ><small>{{
+              locked(tile)
+                ? 'Unlock in ' + (tile.era === 1 ? '1986' : '2010')
+                : exists(tile)
+                  ? 'Already on your paper'
+                  : tile.description
+            }}</small>
+          </button>
+        }
+      </div>
+    </section>
+  }
+  @if (trayGhost(); as ghost) {
+    <div
+      [class]="'tile-ghost ' + ghost.tile.kind"
+      [style.left.px]="ghost.point.x - 70"
+      [style.top.px]="ghost.point.y - 30"
+    >
+      {{ ghost.tile.icon }} {{ ghost.tile.name }}
+    </div>
+  }
+</div>

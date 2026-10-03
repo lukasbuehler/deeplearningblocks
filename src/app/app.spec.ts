@@ -18,8 +18,9 @@ describe('App', () => {
 
   it('should render title', () => {
     const fixture = TestBed.createComponent(App);
+    fixture.componentInstance.sidebar.set(true);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('A little network.');
+    expect(compiled.querySelector('h1')?.textContent).toContain('Big ideas.');
   });
 });
