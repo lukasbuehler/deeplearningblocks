@@ -1,0 +1,67 @@
+:host {
+  display: block;
+}
+.brand {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  transform: rotate(-3deg);
+}
+.brand-caption {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-left: 3px;
+}
+.letters {
+  font-size: 32px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -2px;
+  white-space: nowrap;
+}
+.letters i {
+  font-style: normal;
+  display: inline-block;
+  -webkit-text-stroke: 1px #171717;
+  text-shadow: 2px 2px 0 #171717;
+}
+.letters i:nth-child(3n + 1) {
+  color: #ff7770;
+  transform: rotate(-5deg);
+}
+.letters i:nth-child(3n + 2) {
+  color: #74a6ff;
+  transform: rotate(3deg);
+}
+.letters i:nth-child(3n) {
+  color: #ffe14a;
+  transform: rotate(-4deg);
+}
+.brand-star {
+  display: inline-block;
+  color: #75b674;
+  margin-left: 8px;
+  font-size: 30px;
+  text-shadow: 1px 1px 0 #171717;
+}
+@media (max-width: 899px) {
+  .letters {
+    font-size: 27px;
+  }
+  .brand-star {
+    font-size: 24px;
+  }
+}
+@media (max-width: 600px) {
+  .brand-caption {
+    font-size: 8px;
+  }
+  .letters {
+    font-size: clamp(20px, 5.7vw, 27px);
+  }
+  .brand-star {
+    font-size: 18px;
+    margin-left: 4px;
+  }
+}

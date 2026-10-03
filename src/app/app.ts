@@ -6,10 +6,12 @@ import { BLOCKS } from './playground/graph';
 import { ERAS, ACTIVATIONS } from './learning/curriculum';
 import { ExperimentNotebook } from './playground/experiment-notebook/experiment-notebook';
 import { DigitPad } from './playground/digit-pad/digit-pad';
+import { Brand } from './playground/brand/brand';
+import { CodeExport } from './playground/code-export/code-export';
 import { Mode } from './playground/storage';
 @Component({
   selector: 'app-root',
-  imports: [PaperCanvas, ExperimentNotebook, DigitPad],
+  imports: [PaperCanvas, ExperimentNotebook, DigitPad, CodeExport, Brand],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,6 +21,7 @@ export class App {
   readonly canvas = viewChild(PaperCanvas);
   readonly sidebar = signal(window.innerWidth >= 900);
   readonly notebook = signal(false);
+  readonly codeOpen = signal(false);
   readonly tips = signal(false);
   readonly resetRequested = signal(false);
   readonly eras = ERAS;

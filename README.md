@@ -111,3 +111,13 @@ Show one hint after the player pauses, never while dragging or drawing. Start wi
 Useful initial rules: a missing image-to-vector conversion; an incomplete path when trying to train; unused blocks excluded from the experiment; adjacent Dense layers without an intervening nonlinear activation; repeated ReLU operations with no learned layer between them. Suppress nonlinear-activation advice in the first Journey chapter, which intentionally explores a linear baseline. Do not insist on activation after every Dense block. The classifier already includes softmax. Do not diagnose overfitting from network size alone.
 
 A later **Memorizing or learning?** lesson could compare training and validation curves as a small network and a larger network train for longer on limited examples. Let players discover that training improvement can stop transferring to unseen examples. Keep a separate final test set untouched by lesson tuning. This lesson is deferred.
+
+## From blocks to PyTorch
+
+Open **PyTorch** in the toolbar (**Code** on smaller screens). **My model** shows the active connected chain as `nn.Sequential`; **Full recipe** includes MNIST loading, five Adam training passes and held-out evaluation. Copy either view, download a runnable `.py` script, or download a `.ipynb` notebook and open it in [Google Colab](https://colab.research.google.com/) with **File → Upload notebook**. The app does not upload files to Google.
+
+Both downloads use fresh PyTorch weights and the exact seeded 3,000/500 MNIST subset used in the browser. They export architecture and the training recipe, not trained TensorFlow weights, drawings, progress or experiment history. Scores can differ between runtimes. The first Python run downloads MNIST through torchvision; install `torch` and `torchvision` as described at the top of the script.
+
+The pure generator in `pytorch-export.ts` consumes the graph compiler's `NetworkSpec`, so execution order follows connections and unused blocks are excluded. Dense maps to `nn.Linear`; Linear activation maps to `nn.Identity`. The ten-way classifier emits logits for [PyTorch CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html); the prediction step applies softmax. Script and notebook share the same code sections. Exporting does not edit the board or change training state.
+
+The product name remains **Deep Learning Blocks**. Its reusable brand component keeps the colorful, tactile lettering of the playground.

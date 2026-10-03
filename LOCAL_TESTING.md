@@ -52,3 +52,14 @@ Computer use exercised mouse and keyboard input at phone and desktop viewport si
 - Added normalization, obstacle routing and custom inference state tests. Current totals: 18 Node tests and 9 Angular browser tests.
 - Screenshots: `docs/screenshots/draw-digit.jpg` and `docs/screenshots/routed-wires-drawing.jpg`.
 - Helper names and deterministic hint behavior are recorded as proposals in README. No assistant has been added yet, and the overfitting lesson remains deferred.
+
+## Follow-up: Deep Learning Blocks branding and PyTorch export
+
+- Restored the product name in the visible header and accessible home label. The colorful letters remain. The toolbar exposes PyTorch on desktop and Code on compact screens.
+- Computer use inspected the generated model for the existing Dense 128 → ReLU → Dense 32 network. Its 104,938 parameters matched the playground. Switching to Full recipe displayed the training and evaluation code. Copy and download controls reported their requested actions; Escape restored focus to the toolbar button.
+- The exact Python source read from the rendered code view ran locally with PyTorch 2.14.1 / torchvision 0.29.1. All five training passes completed, held-out accuracy was 90.4%, and the first held-out digit (8) was correctly predicted. This is one observed run, not a promised result. No browser-trained weights were exported.
+- Validated the generated notebook with nbformat and parsed its Python cells. All four activation variants passed actual PyTorch forward/backward checks and produced normalized prediction probabilities. Reconstructed training and test subsets matched the bundled gzip records byte for byte.
+- Added three Node export tests covering connection order, loose-block exclusion, dimensions, logits, every activation and shared script/notebook recipes. Added two Angular tests for incomplete-path guidance and the actual Python/notebook Blob contents and filenames. Current totals: 21 Node tests and 11 Angular/ChromeHeadless tests.
+- The in-app browser did not expose a download event or saved path to computer use. File contents and filenames were verified through browser component tests; native save completion and upload/execution inside a signed-in Colab session remain unverified. The Python execution above used the rendered code, not a claimed browser download. No automatic Colab upload is implemented.
+- Final computer-use checks covered 320, 390 and 1280 CSS-pixel widths. The header and export dialog had no horizontal document overflow. Temporary viewport overrides were reset. Screenshots: `docs/screenshots/pytorch-export.jpg` and `docs/screenshots/pytorch-mobile.jpg`.
+- Production build completed without style-budget warnings, and the Workers dry run passed. No deployment or DNS changes were made.

@@ -1,0 +1,71 @@
+<div class="backdrop" (click)="close.emit()"></div>
+<section
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="code-title"
+  cdkTrapFocus
+  [cdkTrapFocusAutoCapture]="true"
+  (keydown.escape)="close.emit()"
+>
+  <header>
+    <div>
+      <span class="eyebrow">SAME BLOCKS. A NEW SUPERPOWER.</span>
+      <h2 id="code-title">Hello, <span>PyTorch!</span></h2>
+    </div>
+    <button class="close" aria-label="Close PyTorch view" (click)="close.emit()">×</button>
+  </header>
+  @if (network(); as network) {
+    <p>
+      Your connected network, translated into Python.
+      <b>{{ network.parameters.toLocaleString() }} learnable parameters.</b>
+    </p>
+    <div class="code-toolbar">
+      <div class="views" aria-label="Code view">
+        <button [attr.aria-pressed]="!fullRecipe()" (click)="fullRecipe.set(false); status.set('')">
+          My model
+        </button>
+        <button [attr.aria-pressed]="fullRecipe()" (click)="fullRecipe.set(true); status.set('')">
+          Full recipe
+        </button>
+      </div>
+      <button class="copy" (click)="copy()">Copy code</button>
+    </div>
+    <pre tabindex="0" aria-label="Generated PyTorch code"><code>{{ code() }}</code></pre>
+    <p class="translation">
+      <b>Read your blocks:</b> Dense becomes <code>Linear</code>. The digit guess is a final
+      <code>Linear(..., 10)</code>. Training uses raw scores; prediction adds softmax to make
+      probabilities.
+    </p>
+    <div class="downloads">
+      <button class="python" (click)="download('py')">↓ Python <small>.py</small></button>
+      <button class="notebook" (click)="download('ipynb')">
+        ↓ Colab notebook <small>.ipynb</small>
+      </button>
+    </div>
+    <div class="colab-help">
+      <span
+        ><b>Take it to Colab</b><br />Download the notebook, then choose
+        <b>File → Upload notebook</b> in Colab. Run the cells from top to bottom.</span
+      ><a href="https://colab.research.google.com/" target="_blank" rel="noopener noreferrer"
+        >Open Colab ↗</a
+      >
+    </div>
+    <p class="fine-print">
+      Both downloads include MNIST loading, five training passes and a test on unseen digits. They
+      start with fresh weights, so results will differ. Your browser’s trained weights and drawings
+      stay here.
+    </p>
+  } @else {
+    <div class="empty">
+      <span aria-hidden="true">&#123; &#125;</span>
+      <h3>A few clicks from code.</h3>
+      <p>
+        Connect the image to the digit guess first. Your working network will appear here as real
+        Python.
+      </p>
+      <p class="issue">{{ game.compilation().issues[0]?.message }}</p>
+      <button (click)="close.emit()">Back to my blocks →</button>
+    </div>
+  }
+  <p class="status" role="status">{{ status() }}</p>
+</section>

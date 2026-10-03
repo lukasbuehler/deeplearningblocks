@@ -7,10 +7,7 @@
   >
     ☰
   </button>
-  <a class="brand" href="/" aria-label="Baby’s First DNN home"
-    ><span class="baby">baby’s first</span
-    ><span class="letters"><i>D</i><i>N</i><i>N</i><span class="brand-star">✳</span></span></a
-  >
+  <app-brand />
   <div class="mode-switch" aria-label="Play mode">
     <button
       [class.active]="game.mode() === 'journey'"
@@ -33,6 +30,15 @@
       ? 'CHAPTER ' + (game.era() + 1) + ' / ' + eras[game.era()].year
       : 'ALL BLOCKS. ALL YOURS.'
   }}</span>
+  <button
+    class="code-button"
+    aria-label="View PyTorch code"
+    title="View PyTorch code and download"
+    (click)="codeOpen.set(true)"
+  >
+    <span class="code-symbol" aria-hidden="true">&#123; &#125;</span
+    ><span class="code-label">PyTorch</span><span class="code-short" aria-hidden="true">Code</span>
+  </button>
   <div class="history-controls">
     <button
       aria-label="Undo"
@@ -223,4 +229,8 @@
 
 @if (game.drawingOpen()) {
   <app-digit-pad (close)="game.drawingOpen.set(false)" />
+}
+
+@if (codeOpen()) {
+  <app-code-export (close)="codeOpen.set(false)" />
 }

@@ -1,0 +1,201 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: #17171765;
+}
+section {
+  position: relative;
+  background: #fffdf1;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 8px 8px 0 var(--ink);
+  padding: 24px;
+  width: min(800px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+.eyebrow {
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 1px;
+}
+h2 {
+  font-size: 34px;
+  letter-spacing: -1px;
+  margin: 8px 0 12px;
+}
+h2 span {
+  color: #ed514a;
+  text-shadow: 2px 2px 0 #ffe14a;
+}
+p {
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 10px 0;
+}
+button,
+a {
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  padding: 10px 14px;
+  background: white;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+.close {
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  padding: 0;
+  min-width: 40px;
+  min-height: 40px;
+}
+.code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 18px;
+}
+.views {
+  display: flex;
+  gap: 6px;
+}
+.views [aria-pressed='true'] {
+  background: var(--yellow);
+}
+.copy {
+  background: #ece6ff;
+}
+pre {
+  background: #20212b;
+  color: #f7f4df;
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 18px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  max-height: 310px;
+  overflow: auto;
+  tab-size: 4;
+}
+.translation {
+  border-left: 4px solid var(--green);
+  padding-left: 12px;
+}
+.downloads {
+  display: flex;
+  gap: 12px;
+  margin: 18px 0;
+}
+.downloads button {
+  flex: 1;
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 12px;
+}
+.python {
+  background: var(--blue);
+}
+.notebook {
+  background: var(--yellow);
+}
+small {
+  font-weight: 500;
+}
+.colab-help {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 14px;
+  background: #e6f2df;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+}
+.colab-help span {
+  flex: 1;
+}
+a {
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--ink);
+}
+.fine-print {
+  font-size: 11px;
+  color: #585449;
+}
+.status {
+  min-height: 1.5em;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+.empty {
+  text-align: center;
+  padding: 30px 10px;
+  max-width: 450px;
+  margin: auto;
+}
+.empty > span {
+  font-size: 60px;
+  color: var(--blue);
+  font-weight: 900;
+}
+.empty h3 {
+  font-size: 25px;
+  margin: 15px 0;
+}
+.empty button {
+  background: var(--yellow);
+  margin-top: 15px;
+}
+.issue {
+  color: #9c302b;
+}
+@media (max-width: 600px) {
+  :host {
+    padding: 10px;
+  }
+  section {
+    padding: 16px;
+    max-height: calc(100dvh - 20px);
+    box-shadow: 4px 4px 0;
+  }
+  h2 {
+    font-size: 27px;
+  }
+  .eyebrow {
+    font-size: 8px;
+  }
+  .code-toolbar button {
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+  .downloads,
+  .colab-help {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .colab-help a {
+    text-align: center;
+  }
+  pre {
+    max-height: 240px;
+  }
+}
