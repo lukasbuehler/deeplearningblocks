@@ -48,7 +48,11 @@
         <rect x="66" y="14" width="16" height="13" rx="3" fill="#ffe14a" />
         <rect x="33" y="27" width="57" height="51" rx="9" fill="#171717" />
         <rect x="29" y="23" width="57" height="51" rx="9" fill="#ffe14a" />
-        <path d="M47 58Q58 67 69 58" fill="none" stroke-linecap="round" />
+        <path
+          [attr.d]="prefs().muted ? 'M53 56L63 66M63 56L53 66' : 'M47 58Q58 67 69 58'"
+          fill="none"
+          stroke-linecap="round"
+        />
       </g>
       <ellipse cx="45" cy="43" rx="4" ry="6" fill="#171717" />
       <ellipse cx="69" cy="43" rx="4" ry="6" fill="#171717" />
