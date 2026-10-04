@@ -32,6 +32,9 @@ describe('App', () => {
     fixture.componentInstance.game.save.set(freshGame());
     fixture.detectChanges();
     const canvas = fixture.componentInstance.canvas()!;
+    canvas.paperSize.set({ width: 800, height: 600 });
+    canvas.game.setViewport({ x: 0, y: 0, zoom: 1 });
+    canvas.game.configure({ id: 'image', x: 100, y: 200 });
     const helper = fixture.debugElement.query(By.directive(Blocky)).componentInstance as Blocky;
     helper.ask();
     fixture.detectChanges();
@@ -56,6 +59,9 @@ describe('App', () => {
     fixture.componentInstance.game.save.set(freshGame());
     fixture.detectChanges();
     const canvas = fixture.componentInstance.canvas()!;
+    canvas.paperSize.set({ width: 800, height: 600 });
+    canvas.game.setViewport({ x: 0, y: 0, zoom: 1 });
+    canvas.game.configure({ id: 'image', x: 100, y: 200 });
     const helper = fixture.debugElement.query(By.directive(Blocky)).componentInstance as Blocky;
     helper.ask();
     fixture.detectChanges();

@@ -26,7 +26,7 @@ import {
   portPosition,
   removeNode,
 } from '../graph';
-import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget } from '../geometry';
+import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget, closestPointOnRect } from '../geometry';
 import { GameService } from '../game.service';
 import { BlockCard } from '../block-card/block-card';
 import { routeWire, roundedWire } from '../wire-router';
@@ -119,7 +119,7 @@ export class PaperCanvas {
     if (t.kind === 'tray' || t.kind === 'check') return null;
     if (t.kind === 'node') {
       const n = nodes.find((n) => n.id === t.id);
-      return n ? { x: n.x - 12, y: n.y + BLOCKS[n.kind].height / 2 } : null;
+      return n ? { x: n.x + BLOCK_WIDTH / 2, y: n.y + BLOCKS[n.kind].height / 2 } : null;
     }
     const from = nodes.find((n) => n.id === t.from),
       to = nodes.find((n) => n.id === t.to);
@@ -148,14 +148,26 @@ export class PaperCanvas {
       };
     }
     if (!p) return null;
-    const end = { x: p.x * v.zoom + v.x, y: p.y * v.zoom + v.y };
-    const start = {
-      x: end.x < size.width - 78 ? size.width - 109 : size.width - 55,
-      y: 61,
-    };
+    const center = { x: size.width - 78, y: 61 };
+    const target = this.helperHint().target;
+    const node = target.kind === 'node' ? this.visualNodes().find((n) => n.id === target.id) : null;
+    // Match the highlighted outline and calculate in screen space for every zoom level.
+    const bounds = node
+      ? {
+          x: (node.x - 12) * v.zoom + v.x,
+          y: (node.y - 12) * v.zoom + v.y,
+          width: (BLOCK_WIDTH + 24) * v.zoom,
+          height: (BLOCKS[node.kind].height + 24) * v.zoom,
+        }
+      : null;
+    const aim = bounds
+      ? closestPointOnRect(center, bounds)
+      : { x: p.x * v.zoom + v.x, y: p.y * v.zoom + v.y };
+    const start = { x: aim.x < center.x ? size.width - 109 : size.width - 55, y: center.y };
+    const end = bounds ? closestPointOnRect(start, bounds) : aim;
     return {
       path: `M${start.x},${start.y} L${end.x},${end.y}`,
-      angle: (Math.atan2(end.y - start.y, end.x - start.x) * 180) / Math.PI,
+      angle: (Math.atan2(end.y - center.y, end.x - center.x) * 180) / Math.PI,
       visible: end.x > 0 && end.y > 0 && end.x < size.width && end.y < size.height - 50,
       end,
     };

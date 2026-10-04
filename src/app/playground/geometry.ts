@@ -4,6 +4,27 @@ export const MIN_ZOOM = 0.1,
 export function toWorld(point: Point, viewport: Viewport): Point {
   return { x: (point.x - viewport.x) / viewport.zoom, y: (point.y - viewport.y) / viewport.zoom };
 }
+/** Nearest boundary point, including corners and a deterministic edge when inside. */
+export function closestPointOnRect(
+  point: Point,
+  rect: Point & { width: number; height: number },
+): Point {
+  const right = rect.x + rect.width,
+    bottom = rect.y + rect.height;
+  const x = Math.max(rect.x, Math.min(right, point.x));
+  const y = Math.max(rect.y, Math.min(bottom, point.y));
+  if (x !== point.x || y !== point.y) return { x, y };
+  return [
+    { x: rect.x, y },
+    { x: right, y },
+    { x, y: rect.y },
+    { x, y: bottom },
+  ].reduce((best, candidate) =>
+    Math.hypot(candidate.x - x, candidate.y - y) < Math.hypot(best.x - x, best.y - y)
+      ? candidate
+      : best,
+  );
+}
 export function zoomAt(view: Viewport, point: Point, zoom: number): Viewport {
   const world = toWorld(point, view),
     next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
