@@ -100,14 +100,7 @@ export class PaperCanvas {
     ),
   );
   readonly helperSuppressed = computed(
-    () =>
-      !!(
-        this.draft() ||
-        this.tray() ||
-        this.pending() ||
-        this.game.drawingOpen() ||
-        this.game.trainer.busy()
-      ),
+    () => !!(this.tray() || this.pending() || this.game.drawingOpen() || this.game.trainer.busy()),
   );
   readonly helperTarget = computed(() =>
     this.helperVisible() && !this.helperSuppressed() ? this.helperHint().target : null,
@@ -144,7 +137,7 @@ export class PaperCanvas {
       if (!button) return null;
       const paper = this.paper().nativeElement.getBoundingClientRect();
       const end = { x: button.left + button.width / 2, y: button.bottom + 8 };
-      const center = { x: paper.right - 78, y: paper.bottom - 145 };
+      const center = { x: paper.right - 78, y: paper.top + 61 };
       const angle = (Math.atan2(end.y - center.y, end.x - center.x) * 180) / Math.PI;
       const start = { x: paper.right - (end.x < center.x ? 109 : 55), y: center.y };
       return {
@@ -158,7 +151,7 @@ export class PaperCanvas {
     const end = { x: p.x * v.zoom + v.x, y: p.y * v.zoom + v.y };
     const start = {
       x: end.x < size.width - 78 ? size.width - 109 : size.width - 55,
-      y: size.height - 145,
+      y: 61,
     };
     return {
       path: `M${start.x},${start.y} L${end.x},${end.y}`,

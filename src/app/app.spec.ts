@@ -51,6 +51,33 @@ describe('App', () => {
     canvas.panEnd();
     fixture.destroy();
   });
+  it('keeps Blocky and an expanded clue visible during block dragging and tracks the moving target', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.componentInstance.game.save.set(freshGame());
+    fixture.detectChanges();
+    const canvas = fixture.componentInstance.canvas()!;
+    const helper = fixture.debugElement.query(By.directive(Blocky)).componentInstance as Blocky;
+    helper.ask();
+    fixture.detectChanges();
+    helper.details.set(true);
+    fixture.detectChanges();
+    const character = fixture.nativeElement.querySelector('app-blocky .character');
+    const before = canvas.pointerGeometry()!.end;
+    const node = canvas.game.board().nodes.find((n) => n.kind === 'image')!;
+    const zoom = canvas.game.board().viewport.zoom;
+    canvas.draft.set({ ...node, x: node.x + 100, y: node.y + 60 });
+    fixture.detectChanges();
+    expect(canvas.helperSuppressed()).toBeFalse();
+    expect(fixture.nativeElement.querySelector('app-blocky .character')).toBe(character);
+    expect(fixture.nativeElement.querySelector('app-blocky .why')).toBeTruthy();
+    expect(canvas.pointerGeometry()!.end.x).toBeCloseTo(before.x + 100 * zoom, 6);
+    expect(canvas.pointerGeometry()!.end.y).toBeCloseTo(before.y + 60 * zoom, 6);
+    const paper = fixture.nativeElement.querySelector('.paper').getBoundingClientRect();
+    const mascot = character.getBoundingClientRect();
+    expect(mascot.top - paper.top).toBeCloseTo(18, 0);
+    canvas.draft.set(null);
+    fixture.destroy();
+  });
   it('offers the yellow toolbar check, directs Blocky to it, then keeps the completed canvas', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;

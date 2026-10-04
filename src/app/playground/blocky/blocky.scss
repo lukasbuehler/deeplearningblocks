@@ -1,7 +1,7 @@
 :host {
   position: absolute;
   right: 18px;
-  bottom: 82px;
+  top: 18px;
   z-index: 7;
   width: 120px;
   pointer-events: none;
@@ -36,7 +36,7 @@ button {
 }
 .bubble {
   position: absolute;
-  bottom: 112px;
+  top: 112px;
   right: 0;
   width: min(280px, calc(100vw - 36px));
   background: #fffdf1;
@@ -44,7 +44,7 @@ button {
   border: 3px solid #171717;
   border-radius: 14px;
   box-shadow: 5px 5px 0 #171717;
-  max-height: max(80px, calc(var(--paper-height, 100dvh) - 230px));
+  max-height: max(80px, calc(var(--paper-height, 100dvh) - 148px));
   overflow: auto;
 }
 header {
@@ -75,8 +75,7 @@ p {
   display: flex;
   gap: 7px;
 }
-.actions button,
-.check {
+.actions button {
   background: #fff;
   border: 2px solid #171717;
   border-radius: 5px;
@@ -85,15 +84,6 @@ p {
 }
 .actions button:first-child {
   background: #74a6ff;
-}
-.check {
-  background: #ffe14a;
-  width: 100%;
-  margin-top: 10px;
-}
-.check:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 .later {
   display: block;
@@ -105,9 +95,9 @@ p {
 }
 @media (max-height: 550px) {
   .bubble {
-    bottom: 0;
+    top: 0;
     right: 126px;
-    max-height: calc(100dvh - 220px);
+    max-height: calc(var(--paper-height, 100dvh) - 36px);
     width: min(280px, calc(100vw - 170px));
   }
 }

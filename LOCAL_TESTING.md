@@ -106,3 +106,9 @@ The chapter navigation previously changed only the displayed history text while 
 - Screenshots: `docs/screenshots/level-check-mobile.png` and `docs/screenshots/level-progress-desktop.png`.
 
 Fresh paper now clears only the selected board and its notebook, preserving earned discoveries and all other levels. Training no longer advances completion automatically; the explicit build check records learning progress separately. Weights remain memory-only, so switching levels requires retraining for predictions.
+
+## Blocky placement and dragging, 4 October 2026
+
+Block dragging set `draft`, which was explicitly included in the helper's hidden-state condition. Removing that condition keeps the character and an expanded clue mounted while a block moves. The pointer follows draft geometry during the gesture. Blocky now sits 18 pixels from the canvas top and right, with its clue below; pointer origins follow the new arm position. Short windows place the clue alongside it. Removed the decorative paper captions and both Georgia font declarations, including the notebook's empty chart.
+
+Production build and all 19 Angular tests pass, including a new regression that keeps the same character element and expanded explanation through a drag and checks moving-target coordinates. Computer use exercised dragging a connected prediction block with the clue open, undoing the move, and inspecting desktop and 390 × 844 layouts. Screenshot: `docs/screenshots/blocky-top-right.png`. The local preview remains on port 8788.
