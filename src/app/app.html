@@ -8,27 +8,10 @@
     ☰
   </button>
   <app-brand />
-  <div class="mode-switch" aria-label="Play mode">
-    <button
-      [class.active]="game.mode() === 'journey'"
-      [attr.aria-pressed]="game.mode() === 'journey'"
-      [disabled]="game.trainer.busy()"
-      (click)="switchMode('journey')"
-    >
-      Journey <span>↗</span></button
-    ><button
-      [class.active]="game.mode() === 'sandbox'"
-      [attr.aria-pressed]="game.mode() === 'sandbox'"
-      [disabled]="game.trainer.busy()"
-      (click)="switchMode('sandbox')"
-    >
-      Sandbox <span>✳</span>
-    </button>
-  </div>
   <span class="chapter-pill">{{
     game.mode() === 'journey'
       ? 'LEVEL ' + (game.level().era + 1) + ' / ' + chapter().year
-      : 'ALL BLOCKS. ALL YOURS.'
+      : 'SANDBOX / ALL BLOCKS'
   }}</span>
   <button
     class="code-button"
@@ -92,27 +75,38 @@
       </div>
       <h1>Big ideas.<br />Little <span>blocks.</span></h1>
       <p class="guide-intro">Build a neural network.<br />One little click at a time.</p>
+      <nav class="chapters" aria-label="Levels and sandbox">
+        <button
+          class="sandbox-level"
+          [class.current]="game.mode() === 'sandbox'"
+          [attr.aria-current]="game.mode() === 'sandbox' ? 'page' : null"
+          [disabled]="game.trainer.busy()"
+          (click)="switchMode('sandbox')"
+        >
+          <span aria-hidden="true">✳</span><strong>Sandbox</strong><small>Always open</small>
+        </button>
+        @for (level of levels; track level.id; let i = $index) {
+          <button
+            [class.current]="game.mode() === 'journey' && game.level().id === level.id"
+            [disabled]="i > game.save().era || game.trainer.busy()"
+            (click)="switchLevel(level.id)"
+            [attr.aria-current]="
+              game.mode() === 'journey' && game.level().id === level.id ? 'step' : null
+            "
+          >
+            <span>{{
+              game.save().journey.levels[level.id].completed
+                ? '✓'
+                : i > game.save().era
+                  ? '○'
+                  : i + 1
+            }}</span
+            ><strong>{{ level.year }}</strong
+            ><small>{{ level.short }}</small>
+          </button>
+        }
+      </nav>
       @if (game.mode() === 'journey') {
-        <nav class="chapters" aria-label="History chapters">
-          @for (level of levels; track level.id; let i = $index) {
-            <button
-              [class.current]="game.level().id === level.id"
-              [disabled]="i > game.save().era || game.trainer.busy()"
-              (click)="switchLevel(level.id)"
-              [attr.aria-current]="game.level().id === level.id ? 'step' : null"
-            >
-              <span>{{
-                game.save().journey.levels[level.id].completed
-                  ? '✓'
-                  : i > game.save().era
-                    ? '○'
-                    : i + 1
-              }}</span
-              ><strong>{{ level.year }}</strong
-              ><small>{{ level.short }}</small>
-            </button>
-          }
-        </nav>
         <div class="challenge">
           <span class="sticker">YOUR MISSION</span>
           <h2>{{ chapter().title }}</h2>

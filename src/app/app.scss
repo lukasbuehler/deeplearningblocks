@@ -33,27 +33,6 @@ p {
 app-brand {
   min-width: 180px;
 }
-.mode-switch {
-  display: flex;
-  border: 2px solid var(--ink);
-  border-radius: 7px;
-  overflow: hidden;
-}
-.mode-switch button {
-  background: transparent;
-  padding: 10px 15px;
-  font-size: 12px;
-  font-weight: 800;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.mode-switch button + button {
-  border-left: 2px solid var(--ink);
-}
-.mode-switch .active {
-  background: var(--yellow);
-}
 .chapter-pill {
   font-size: 9px;
   letter-spacing: 1.2px;
@@ -207,6 +186,16 @@ app-brand {
 }
 .chapters button > small {
   font-size: 9px;
+}
+.chapters .sandbox-level {
+  margin-bottom: 9px;
+}
+.chapters .sandbox-level > span {
+  background: var(--green);
+  border-radius: 5px;
+}
+.chapters .sandbox-level.current {
+  background: #d7f9df;
 }
 .challenge {
   position: relative;
@@ -539,13 +528,6 @@ button:disabled {
   app-brand {
     min-width: 105px;
   }
-  .mode-switch button {
-    padding: 8px 10px;
-    font-size: 11px;
-  }
-  .mode-switch button > span {
-    display: none;
-  }
   .train-button {
     gap: 13px;
     padding: 9px 12px;
@@ -602,17 +584,14 @@ button:disabled {
     grid-row: 1;
     justify-self: end;
   }
-  .mode-switch {
-    width: 100%;
-    height: 32px;
+  .chapter-pill {
+    display: block;
     grid-column: 1 / 3;
     grid-row: 2;
-  }
-  .mode-switch button {
-    flex: 1;
-    justify-content: center;
-    padding: 4px 10px;
-    font-size: 10px;
+    justify-self: start;
+    margin-left: 0;
+    font-size: 8px;
+    letter-spacing: 0.6px;
   }
   .code-button {
     grid-column: 3;

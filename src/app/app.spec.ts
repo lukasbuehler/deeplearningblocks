@@ -27,6 +27,39 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('h1')?.textContent).toContain('Big ideas.');
   });
+  it('offers Sandbox as an unlocked level and keeps Journey navigation available inside it', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    app.game.save.set(freshGame());
+    app.sidebar.set(true);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const sandbox = root.querySelector<HTMLButtonElement>('.sandbox-level')!;
+    expect(sandbox.disabled).toBeFalse();
+    expect(root.querySelector('header .mode-switch')).toBeNull();
+    const journeyBoard = app.game.board();
+    sandbox.click();
+    fixture.detectChanges();
+    expect(app.game.mode()).toBe('sandbox');
+    expect(sandbox.getAttribute('aria-current')).toBe('page');
+    expect(root.querySelectorAll('.chapters button').length).toBe(4);
+    const lessons = root.querySelectorAll<HTMLButtonElement>(
+      '.chapters button:not(.sandbox-level)',
+    );
+    expect(lessons[1].disabled).toBeTrue();
+    expect(lessons[0].getAttribute('aria-current')).toBeNull();
+    app.game.configure({ id: 'image', x: 987 });
+    lessons[0].click();
+    fixture.detectChanges();
+    expect(app.game.mode()).toBe('journey');
+    expect(app.game.board()).toEqual(journeyBoard);
+    expect(lessons[0].getAttribute('aria-current')).toBe('step');
+    expect(sandbox.getAttribute('aria-current')).toBeNull();
+    sandbox.click();
+    fixture.detectChanges();
+    expect(app.game.board().nodes.find((n) => n.id === 'image')?.x).toBe(987);
+    fixture.destroy();
+  });
   it('keeps Blocky and an expanded clue visible while panning, with the target following the board', () => {
     const fixture = TestBed.createComponent(App);
     fixture.componentInstance.game.save.set(freshGame());

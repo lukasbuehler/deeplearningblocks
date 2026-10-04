@@ -118,3 +118,9 @@ Production build and all 19 Angular tests pass, including a new regression that 
 The helper previously targeted the fixed left-edge midpoint of every node. Node pointers now clamp to the nearest boundary of the highlighted outline from the pointing arm in screen coordinates, selecting a side or corner while following live drag positions, pan and zoom. Overlapping targets project to their nearest edge. Wire and toolbar targets retain their own targeting behavior. Show me centers the block using its center independently of the pointer endpoint.
 
 All 36 core tests, 19 Angular tests and the production build pass. Added coverage for all four sides, all four corners, overlapping and touching rectangles, and scaled/panned geometry. Computer use confirmed the prediction block's top-right corner was targeted from diagonally above; dragging it alongside Blocky moved the endpoint to its right edge. The test move was undone. Screenshot: `docs/screenshots/blocky-nearest-corner.png`.
+
+## Sidebar Sandbox entry, 4 October 2026
+
+Sandbox is now an Always open entry above the Journey lessons in a shared sidebar list. The toolbar mode toggle is removed. Lesson links remain present in Sandbox and return directly to their saved Journey canvases, with exactly one current navigation item. The phone toolbar retains a compact current-level status in the freed space.
+
+Production build and all 20 Angular tests pass. The navigation regression checks Sandbox access before any unlocks, locked lesson availability, active item semantics and independent board restoration. Computer use verified entering Sandbox, returning to a completed Journey canvas with its notebook intact, and the level list in the 390 × 844 phone drawer. Screenshot: `docs/screenshots/sidebar-sandbox.png`.
