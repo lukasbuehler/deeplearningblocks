@@ -124,3 +124,15 @@ All 36 core tests, 19 Angular tests and the production build pass. Added coverag
 Sandbox is now an Always open entry above the Journey lessons in a shared sidebar list. The toolbar mode toggle is removed. Lesson links remain present in Sandbox and return directly to their saved Journey canvases, with exactly one current navigation item. The phone toolbar retains a compact current-level status in the freed space.
 
 Production build and all 20 Angular tests pass. The navigation regression checks Sandbox access before any unlocks, locked lesson availability, active item semantics and independent board restoration. Computer use verified entering Sandbox, returning to a completed Journey canvas with its notebook intact, and the level list in the 390 × 844 phone drawer. Screenshot: `docs/screenshots/sidebar-sandbox.png`.
+
+## Per-level datasets (4 October 2026)
+
+- `npm run test:core`: 39 passing tests. New coverage checks Fashion-MNIST asset hashes, all ten class labels, old MNIST notebook provenance, level dataset assignments and matching Python/notebook exports.
+- `npm test -- --watch=false --browsers=ChromeHeadless`: 24 passing tests. New cases cover dataset cache isolation, stale preview responses, immediate preview/model clearing, retry after failure, navigation, clothing export downloads and saved experiment dataset IDs.
+- Production build passed without warnings. `npx wrangler deploy --dry-run` passed with 17 static assets. No deployment.
+- In-app browser at `http://127.0.0.1:8788/`, separate from the user's localhost save: restored the existing completed level-2 network and trained Fashion-MNIST for five passes. Held-out accuracy was 80.0%, loss 0.592; example predictions showed Bag (94%) and Sandal (99%). This is one run, not a quality guarantee.
+- Code view used `datasets.FashionMNIST`, the correct ten class names, and the same seeded 3,000/500 subsets. Export generation/blob tests passed; no external Colab job was run.
+- Returned to level 1: MNIST image, drawing button and historical 90% MNIST notebook row restored; clothing predictions cleared. Stopped a digit training run after its first pass and confirmed no extra notebook entry.
+- Level 3 opened its own loose endpoints with clothing images and no results. Sandbox restored its separate MNIST board. Reloading level 2 retained its clothing board, completion and result while clearing trained weights as expected.
+- Used keyboard movement to arrange the test canvas. Verified sidebar dataset labels at phone width, drawer close and Fit all. Actual measured narrow DOM viewport was 433px with `scrollWidth === innerWidth`, so no horizontal document overflow. Restored the desktop viewport. No browser console errors observed.
+- Screenshot: `docs/screenshots/dataset-level.jpg`. The screenshot is after reload, so the purple block correctly waits for retraining.

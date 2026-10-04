@@ -30,7 +30,7 @@ import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget, closestPointOnRect } f
 import { GameService } from '../game.service';
 import { BlockCard } from '../block-card/block-card';
 import { routeWire, roundedWire } from '../wire-router';
-import { TILES, Tile, blockName } from '../block-catalog';
+import { tilesFor, Tile, blockName } from '../block-catalog';
 import { BlockIcon } from '../block-icon/block-icon';
 import { Blocky } from '../blocky/blocky';
 import { blockyHint, hintContext } from '../blocky-hints';
@@ -46,8 +46,8 @@ export class PaperCanvas {
   readonly game = inject(GameService);
   readonly paper = viewChild.required<ElementRef<HTMLDivElement>>('paper');
   readonly definitions = BLOCKS;
-  readonly tiles = TILES;
-  readonly blockName = blockName;
+  readonly tiles = computed(() => tilesFor(this.game.dataset()));
+  readonly blockName = (node: BlockNode) => blockName(node, this.game.dataset());
   readonly tray = signal(false);
   readonly pending = signal<string | null>(null);
   readonly selectedEdge = signal<Edge | null>(null);
@@ -66,7 +66,7 @@ export class PaperCanvas {
       return {
         ...edge,
         path: roundedWire(routeWire(from, to, this.visualNodes())),
-        label: `${blockName(from)} to ${blockName(to)}`,
+        label: `${this.blockName(from)} to ${this.blockName(to)}`,
         type: BLOCKS[from.kind].output,
       };
     }),
@@ -97,6 +97,7 @@ export class PaperCanvas {
         ? this.game.workspace().experiments.at(-1)?.accuracy
         : undefined,
       this.game.levelComplete(),
+      this.game.dataset(),
     ),
   );
   readonly helperSuppressed = computed(

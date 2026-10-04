@@ -17,7 +17,7 @@ export function experimentHint(
     .filter((n) => n.kind === 'activation' && n.activation !== 'linear');
   const prefix = `Your experiment scored ${(accuracy * 100).toFixed(1)}%. `;
   const caveat =
-    'Change one thing and compare notebook results. A higher score is not guaranteed; repeatedly tuning on these test digits can overfit the test set.';
+    'Change one thing and compare notebook results. A higher score is not guaranteed; repeatedly tuning on these test images can overfit the test set.';
   const edge = board.edges.find((e) => e.to === last.id)!;
   if (dense.length === 1)
     return {
@@ -28,7 +28,7 @@ export function experimentHint(
         (era >= 2 ? 'ReLU' : era >= 1 ? 'Sigmoid' : 'an unlocked activation') +
         ' before Dense · 10.',
       why:
-        'A linear classifier can already recognize many digits. A hidden layer with a nonlinear activation can learn different patterns. ' +
+        'A linear classifier can already recognize images. A hidden layer with a nonlinear activation can learn different patterns. ' +
         caveat,
       target: { kind: 'edge', ...edge },
     };
@@ -62,9 +62,10 @@ export function experimentHint(
     };
   return {
     id: 'experiment-inspect',
-    text: prefix + 'Look at a few wrong guesses, then change one thing. Which digits get mixed up?',
+    text:
+      prefix + 'Look at a few wrong guesses, then change one thing. Which classes get mixed up?',
     why:
-      'Accuracy alone hides the kinds of mistakes a network makes. Try Next digit or your own handwriting. ' +
+      'Accuracy alone hides the kinds of mistakes a network makes. Try Next image and compare the actual class with the guess. ' +
       caveat,
     target: { kind: 'node', id: path.at(-1)!.id },
   };

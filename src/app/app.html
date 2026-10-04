@@ -102,14 +102,17 @@
                   : i + 1
             }}</span
             ><strong>{{ level.year }}</strong
-            ><small>{{ level.short }}</small>
+            ><small
+              >{{ level.short }}<b class="level-dataset">{{ level.datasetLabel }}</b></small
+            >
           </button>
         }
       </nav>
       @if (game.mode() === 'journey') {
         <div class="challenge">
           <span class="sticker">YOUR MISSION</span>
-          <h2>{{ chapter().title }}</h2>
+          <h2>{{ chapter().task }}</h2>
+          <span class="dataset-tag">{{ game.dataset().name }}</span>
           <p>{{ challenge() }}</p>
           @if (game.levelComplete()) {
             <p class="level-saved">✓ Discovery saved. Keep experimenting or turn the page.</p>
@@ -169,7 +172,7 @@
           </p>
           <p>
             <b>Let it learn.</b> Weights are adjustable connections. One pass means seeing all 3,000
-            training digits. Lower loss means better-fitting guesses.
+            training images. Lower loss means better-fitting guesses.
           </p>
         </div>
       }
@@ -186,13 +189,15 @@
       <div class="guide-bottom">
         <span class="browser-note"><i></i> Learns right here in your browser</span>
         <details>
-          <summary>About these digits</summary>
+          <summary>About these images</summary>
           <p>
-            MNIST: 3,000 training images and 500 separate test images. Each is 28 × 28 grayscale
-            pixels. Five passes, real learning.
+            {{ game.dataset().name }}: 3,000 training images and 500 separate test images. Each is
+            28 × 28 grayscale pixels. Five passes, real learning.
           </p>
-          <a href="https://yann.lecun.org/exdb/mnist/index.html" target="_blank" rel="noopener"
-            >Meet MNIST ↗</a
+          <p><b>Ten classes:</b> {{ game.dataset().classes.join(', ') }}.</p>
+          <p>{{ game.dataset().credit }}</p>
+          <a [href]="game.dataset().source" target="_blank" rel="noopener"
+            >Meet {{ game.dataset().name }} ↗</a
           >
         </details>
         <p>
@@ -239,7 +244,7 @@
     }
     @if (game.error()) {
       <div class="toast error" role="alert">
-        {{ game.error() }}<button (click)="game.loadPreview()">Retry digits</button
+        {{ game.error() }}<button (click)="game.loadPreview()">Retry images</button
         ><button aria-label="Dismiss error" (click)="game.error.set('')">×</button>
       </div>
     } @else if (game.message()) {

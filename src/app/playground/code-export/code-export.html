@@ -34,7 +34,7 @@
     <p class="translation">
       <b>Read your blocks:</b> Dense becomes <code>Linear</code>. Your 10-neuron Dense becomes
       <code>Linear(..., 10)</code>. The Softmax block runs in prediction; CrossEntropyLoss takes raw
-      scores during training. Digit guess is only a display.
+      scores during training. {{ game.dataset().outputTitle }} is only a display.
     </p>
     <div class="downloads">
       <button class="python" (click)="download('py')">↓ Python <small>.py</small></button>
@@ -51,16 +51,16 @@
       >
     </div>
     <p class="fine-print">
-      Both downloads include MNIST loading, five training passes and a test on unseen digits. They
-      start with fresh weights, so results will differ. Your browser’s trained weights and drawings
-      stay here.
+      Both downloads include {{ game.dataset().name }} loading, five training passes and a test on
+      unseen images. They start with fresh weights, so results will differ. Your browser’s trained
+      weights and drawings stay here.
     </p>
   } @else {
     <div class="empty">
       <span aria-hidden="true">&#123; &#125;</span>
       <h3>A few clicks from code.</h3>
       <p>
-        Connect the image to the digit guess first. Your working network will appear here as real
+        Connect the image to the output display first. Your working network will appear here as real
         Python.
       </p>
       <p class="issue">{{ game.compilation().issues[0]?.message }}</p>

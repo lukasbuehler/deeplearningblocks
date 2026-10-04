@@ -1,3 +1,4 @@
+import { Dataset, DATASETS } from '../learning/datasets';
 import { Board, Edge, compileBoard, connectionError, hasHiddenActivation } from './graph';
 import { experimentHint } from './experiment-hints';
 import { blockName } from './block-catalog';
@@ -24,6 +25,7 @@ export function blockyHint(
   rejected?: Edge,
   accuracy?: number,
   completed = false,
+  dataset: Dataset = DATASETS.mnist,
 ): BlockyHint {
   const nodeTarget = (id: string): HintTarget => ({ kind: 'node', id });
   if (rejected && board.nodes.some((n) => n.id === rejected.to)) {
@@ -40,7 +42,7 @@ export function blockyHint(
   if (!image)
     return {
       id: 'image',
-      text: 'Every digit adventure starts with a picture. Add an Image block.',
+      text: 'Every image adventure starts with a picture. Add an Image block.',
       why: 'The image supplies the 28 × 28 pixel values for this network.',
       target: { kind: 'tray' },
     };
@@ -77,19 +79,19 @@ export function blockyHint(
       return {
         id: 'output-width',
         text: issue.message,
-        why: 'There are ten digits: 0 through 9. Dense · 10 learns one score per digit. Softmax turns those scores into probabilities; Digit guess only displays them.',
+        why: `This dataset has ten classes. Dense · 10 learns one score per class. Softmax turns those scores into probabilities; ${dataset.outputTitle} only displays them.`,
         target: nodeTarget(issue.nodeId!),
       };
     if (tail.kind === 'dense' && tail.units === 10 && !board.edges.some((e) => e.from === tail.id))
       return {
         id: 'add-softmax',
-        text: 'Ten scores are ready. Add Softmax, then connect it to Digit guess.',
+        text: `Ten scores are ready. Add Softmax, then connect it to ${dataset.outputTitle}.`,
         why: 'Scores can be negative and do not add to 100%. Softmax converts them into probabilities.',
         target: nodeTarget(tail.id),
       };
     return {
       id: 'gap',
-      text: `Follow the numbers from ${blockName(tail)}. Can you connect them all the way to Digit guess?`,
+      text: `Follow the numbers from ${blockName(tail, dataset)}. Can you connect them all the way to ${dataset.outputTitle}?`,
       why:
         compilation.issues[0]?.message ??
         'Tap a bottom stud, then a matching top socket. Blocks on the paper only join the network when you connect them.',
@@ -105,7 +107,7 @@ export function blockyHint(
     return {
       id: 'connect-dense',
       text: 'Put a Dense block in the connected path. Loose blocks do not run.',
-      why: 'Follow the wire from Flatten through Dense to Digit guess.',
+      why: `Follow the wire from Flatten through Dense to ${dataset.outputTitle}.`,
       target: { kind: 'tray' },
     };
   const edge = dense && board.edges.find((e) => e.from === dense.id);
@@ -161,7 +163,7 @@ export function blockyHint(
           ? 'Discovery saved! Try training, or choose Next level in your guide.'
           : 'Your build is ready! Press the yellow Check build button at the top right.'
         : 'A complete path! Follow a wire and see how its shape changes.',
-    why: 'Only the connected path runs. Loose blocks can stay on your paper. You can train when you want to try real digit predictions.',
+    why: 'Only the connected path runs. Loose blocks can stay on your paper. You can train when you want to try real image predictions.',
     target:
       mode === 'journey' && !completed
         ? { kind: 'check' }

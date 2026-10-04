@@ -1,3 +1,4 @@
+import { Dataset, DATASETS } from '../learning/datasets';
 import { BlockKind, BlockNode, BLOCKS } from './graph';
 import { Activation, ACTIVATIONS } from '../learning/curriculum';
 export interface Tile {
@@ -21,7 +22,7 @@ export const TILES: Tile[] = [
     kind: 'dense',
     units: 10,
     name: 'Dense · 10',
-    description: 'One learned score per digit',
+    description: 'One learned score per class',
     era: 0,
   },
   { kind: 'softmax', name: 'Softmax', description: '10 scores → 10 probabilities', era: 0 },
@@ -61,10 +62,22 @@ export const TILES: Tile[] = [
   },
 ];
 
-export function blockName(node: BlockNode): string {
+export function blockName(node: BlockNode, dataset: Dataset = DATASETS.mnist): string {
+  if (node.kind === 'image') return dataset.inputTitle;
+  if (node.kind === 'classifier') return dataset.outputTitle;
   return node.kind === 'activation'
     ? ACTIVATIONS.find((a) => a.value === node.activation)!.label
     : node.kind === 'dense' && node.units === 10
       ? 'Dense · 10'
       : BLOCKS[node.kind].title;
+}
+
+export function tilesFor(dataset: Dataset): Tile[] {
+  return TILES.map((tile) =>
+    tile.kind === 'image'
+      ? { ...tile, description: dataset.subject }
+      : tile.kind === 'classifier'
+        ? { ...tile, name: dataset.outputTitle, description: 'Display 10 class probabilities' }
+        : tile,
+  );
 }

@@ -1,3 +1,4 @@
+import { DATASETS } from '../../learning/datasets';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { GameService } from '../game.service';
@@ -18,7 +19,10 @@ describe('Code export', () => {
       imports: [CodeExport],
       providers: [
         provideZonelessChangeDetection(),
-        { provide: GameService, useValue: { compilation } },
+        {
+          provide: GameService,
+          useValue: { compilation, dataset: signal(DATASETS['fashion-mnist']) },
+        },
       ],
     });
   });
@@ -49,6 +53,7 @@ describe('Code export', () => {
     const notebook = JSON.parse(await blobs[1].text());
     expect(python).toContain('for epoch in range(5)');
     expect(python).toContain('nn.Linear(784, 10)');
+    expect(python).toContain('datasets.FashionMNIST');
     expect(notebook.nbformat).toBe(4);
     expect(
       notebook.cells.some((cell: { source: string[] }) =>

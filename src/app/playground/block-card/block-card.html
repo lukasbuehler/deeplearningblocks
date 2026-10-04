@@ -8,7 +8,7 @@
 >
   <header>
     <app-block-icon [kind]="node().kind" [activation]="node().activation" /><span class="eyebrow">{{
-      definition().subtitle
+      node().kind === 'classifier' ? 'TEN CLASSES. ONE GUESS.' : definition().subtitle
     }}</span
     ><button
       class="delete"
@@ -25,22 +25,31 @@
       <div class="image-content">
         <app-digit-preview
           [pixels]="pixels()"
-          [label]="custom() ? 'Your handwritten digit' : 'MNIST digit ' + (actual() ?? 'loading')"
+          [label]="
+            custom()
+              ? 'Your handwritten digit'
+              : dataset().name +
+                ': ' +
+                (actual() === undefined ? 'loading' : dataset().classes[actual()!])
+          "
         />
         <div>
-          <b>28 × 28</b><span>little pixels</span
+          <b>28 × 28</b><span>{{ dataset().name }}</span
           ><button
             (click)="$event.stopPropagation(); nextDigit.emit()"
             [disabled]="(!custom() && actual() === undefined) || busy()"
           >
-            {{ custom() ? 'MNIST digits ↻' : 'Next digit ↻' }}</button
-          ><br /><button
-            class="draw-button"
-            (click)="$event.stopPropagation(); draw.emit()"
-            [disabled]="busy()"
-          >
-            ✎ Draw your own
+            {{ custom() ? 'MNIST digits ↻' : 'Next image ↻' }}
           </button>
+          @if (dataset().drawable) {
+            <br /><button
+              class="draw-button"
+              (click)="$event.stopPropagation(); draw.emit()"
+              [disabled]="busy()"
+            >
+              ✎ Draw your own
+            </button>
+          }
         </div>
       </div>
     }
@@ -101,31 +110,36 @@
     }
     @case ('classifier') {
       <div class="prediction">
-        <strong>{{ prediction() ?? '?' }}</strong>
+        <strong [class.word-guess]="!dataset().drawable">{{
+          prediction() === null ? '?' : dataset().classes[prediction()!]
+        }}</strong>
         <div>
-          <b>{{ prediction() === null ? 'What digit is it?' : 'My guess!' }}</b
+          <b>{{ prediction() === null ? dataset().question : 'My guess!' }}</b
           ><span>{{
             prediction() === null
               ? 'Connect, then train.'
               : custom()
                 ? 'Your handwriting'
-                : 'Actual digit: ' + actual()
+                : 'Actual: ' + (actual() === undefined ? 'loading' : dataset().classes[actual()!])
           }}</span>
           @if (prediction() !== null) {
             <span>{{ probabilities()[prediction()!] | percent: '1.0-0' }} confidence</span>
           }
         </div>
       </div>
-      <div class="probabilities" aria-label="Digit probabilities">
+      <div class="probabilities" [attr.aria-label]="dataset().name + ' class probabilities'">
         @for (digit of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; track digit) {
           <div
             [class.best]="prediction() === digit"
             [attr.title]="
-              'Digit ' + digit + ': ' + ((probabilities().at(digit) ?? 0) * 100).toFixed(1) + '%'
+              dataset().classes[digit] +
+              ': ' +
+              ((probabilities().at(digit) ?? 0) * 100).toFixed(1) +
+              '%'
             "
           >
             <i [style.height.%]="(probabilities().at(digit) ?? 0) * 100"></i
-            ><span>{{ digit }}</span>
+            ><span>{{ dataset().symbols[digit] }}</span>
           </div>
         }
       </div>

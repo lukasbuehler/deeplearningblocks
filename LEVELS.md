@@ -6,7 +6,7 @@ Planning update: 3 October 2026. These are candidate levels, not implemented fea
 
 **Build it, understand one important thing, unlock the next idea.** Training is an optional experiment, not the admission ticket to the next level. MNIST is one level in a much wider collection.
 
-The current three MNIST chapters are implemented as independent saved levels with stable IDs, canvases, viewports, notebooks and completion badges. The yellow toolbar **Check build** action rewards construction without training. **Next level** opens a separate canvas; selecting an earlier level restores its work. Existing unlocks migrate intact. The broader exploration engine and candidate levels below remain future work.
+The current three historical chapters are implemented as independent saved levels with stable IDs, canvases, viewports, notebooks and completion badges. The yellow toolbar **Check build** action rewards construction without training. **Next level** opens a separate canvas; selecting an earlier level restores its work. Existing unlocks migrate intact. The first level uses MNIST digits; the next two use Fashion-MNIST clothing, first to introduce a hidden nonlinear layer, then to compare a deeper recipe on the same dataset. Sandbox retains MNIST. Each notebook result records its dataset; historical results remain labeled MNIST. The broader exploration engine and candidate levels below remain future work.
 
 A good level introduces a distinct idea, has a satisfying construction task, and shows an understandable consequence. Changing only the dataset is not automatically a new level. Use familiar data where it makes the new idea easier to see.
 
@@ -50,7 +50,7 @@ These make the collection broader without forcing every learner through every ar
 
 | Level | Construction and play | Why it earns a separate level | Execution policy |
 | --- | --- | --- | --- |
-| **Wardrobe Robot** | Classify shoes, shirts and bags using Fashion-MNIST; inspect confusing pairs. | Useful as a transfer challenge or a confusion-matrix lesson. Avoid shipping it merely as an MNIST reskin. | Supplied results/model; optional small browser training after measurement. |
+| **Wardrobe Robot** (first slice implemented) | Classify shoes, shirts and bags using Fashion-MNIST; inspect confusing pairs. | Useful as a transfer challenge or a confusion-matrix lesson. Avoid shipping it merely as an MNIST reskin. | Current levels offer optional browser training on a bundled 3,000/500 subset. A dedicated confusion-matrix exploration remains future work. |
 | **Borrow a Brain** | Connect a frozen image feature extractor to a new small classification head. | Introduces transfer learning and the difference between frozen and trainable parameters. | Supplied feature extractor; optional training of the small head only. |
 | **Pick My Next Song** | Connect synthetic listener/item embeddings to a score and rank a few tracks. | Introduces similarity, ranking and recommendations beyond class labels. | Tiny transparent example data and fixed or supplied weights. No personal listening data needed. |
 | **Find the Toy** | Connect image features to both a category head and a bounding-box head. | Explains classification versus localization and multiple outputs. | Synthetic scenes and a supplied example detector. Full detection training is out of scope. |

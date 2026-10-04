@@ -18,7 +18,7 @@ Keep these distinctions visible:
 
 ### What exists today
 
-Angular playground, positioned blocks and routed wires, a single connected trainable chain with explicit Dense · 10 and Softmax output operations and a display-only Digit guess, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST browser training, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Grouping, general branching, transformers, hardware preflight and the general level engine remain future work.
+Angular playground, positioned blocks and routed wires, a single connected trainable chain with explicit Dense · 10 and Softmax output operations and a display-only Digit guess, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST and Fashion-MNIST browser training with per-level datasets, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Grouping, general branching, transformers, hardware preflight and the general level engine remain future work.
 
 ## Blocky: a helper with somewhere to point
 
@@ -257,7 +257,7 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 | M10. Shakespeare workshop | Expandable decoder module, repeat instances, normalization, GELU, training/checkpoints and matching code export | M4/M5/M7/M8/M9; M6 only for optional local training | Players assemble a tiny transformer and inspect its components without a training requirement. Supported experiments and supplied checkpoints have honest labels and recovery behavior. |
 | Optional image/history branch | Convolution and pooling games, tiny CNN; optional RNN/LSTM history path | Richer tensors and relevant runtime checks | The branch adds intuition without blocking the main transformer journey. |
 
-**Progress:** M1 is implemented. M2 has its first deterministic clue and pointing slice; richer rule coverage remains incremental. Construction checks, stable level IDs and independent saved canvases/notebooks are implemented for the three existing chapters. **Recommended next implementation:** one exploration task and the first loss game. Keep new datasets, backends and grouping in separate changes.
+**Progress:** M1 is implemented. M2 has its first deterministic clue and pointing slice; richer rule coverage remains incremental. Construction checks, stable level IDs and independent saved canvases/notebooks are implemented for the three existing chapters. Dataset metadata, clothing levels and dataset-aware exports/notebooks are now implemented for the existing 28 × 28 / ten-class runtime. CIFAR-10 remains a future color-image/CNN level. **Recommended next implementation:** one exploration task and the first loss game. Keep new datasets, backends and grouping in separate changes.
 
 ## Architecture guardrails
 

@@ -1,3 +1,4 @@
+import { experimentDataset } from '../../learning/datasets';
 import { ChangeDetectionStrategy, Component, computed, inject, model } from '@angular/core';
 import { DecimalPipe, PercentPipe } from '@angular/common';
 import { GameService } from '../game.service';
@@ -11,7 +12,13 @@ import { GameService } from '../game.service';
 export class ExperimentNotebook {
   readonly game = inject(GameService);
   readonly expanded = model(false);
-  readonly latest = computed(() => this.game.workspace().experiments.at(-1));
+  readonly datasetFor = experimentDataset;
+  readonly latest = computed(() =>
+    this.game
+      .workspace()
+      .experiments.filter((run) => experimentDataset(run).id === this.game.dataset().id)
+      .at(-1),
+  );
   readonly lossPoints = computed(() => {
     const rows = this.game.trainer.epochs(),
       max = Math.max(1, ...rows.map((r) => r.loss));

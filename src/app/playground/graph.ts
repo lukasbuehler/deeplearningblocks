@@ -94,7 +94,7 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     input: 'vector',
     output: 'probabilities',
     height: 160,
-    help: 'Turn 10 digit scores into probabilities that add to 100%. Softmax learns no weights. Connect a Dense layer with 10 neurons before it.',
+    help: 'Turn 10 class scores into probabilities that add to 100%. Softmax learns no weights. Connect a Dense layer with 10 neurons before it.',
   },
   classifier: {
     inferWidth: () => 10,
@@ -104,7 +104,7 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     icon: '?',
     input: 'probabilities',
     height: 236,
-    help: 'A display for 10 probabilities, one per digit. It learns nothing and adds no layers. Connect Softmax to see the network’s guess. A confident guess can still be wrong.',
+    help: 'A display for 10 probabilities, one per class. It learns nothing and adds no layers. Connect Softmax to see the network’s guess. A confident guess can still be wrong.',
   },
 };
 export type Step =
@@ -151,8 +151,8 @@ export function connectionError(board: Board, from: string, to: string): string 
   if (!output || !input) return 'Connect a bottom stud to a top socket.';
   if (output !== input && (input === 'probabilities' || output === 'probabilities'))
     return input === 'probabilities'
-      ? 'Digit guess needs 10 probabilities. Add Dense with 10 neurons, then Softmax.'
-      : 'Softmax probabilities belong in Digit guess. Put learning layers before Softmax.';
+      ? 'The output display needs 10 probabilities. Add Dense with 10 neurons, then Softmax.'
+      : 'Softmax probabilities belong in the output display. Put learning layers before Softmax.';
   if (output !== input)
     return output === 'image'
       ? 'This is a picture. Add Flatten before a layer that needs numbers.'
@@ -225,7 +225,7 @@ export function compileBoard(board: Board): Compilation {
           {
             nodeId: node.id,
             port: 'output',
-            message: `Connect ${BLOCKS[node.kind].title.toLowerCase()} to the next block. Follow the studs to your digit guess.`,
+            message: `Connect ${node.kind === 'image' ? 'image' : BLOCKS[node.kind].title.toLowerCase()} to the next block. Follow the studs to your output display.`,
           },
         ],
       };
@@ -258,7 +258,7 @@ export function compileBoard(board: Board): Compilation {
           {
             nodeId: block.id,
             port: 'input',
-            message: `Softmax needs 10 digit scores, but gets ${width}. Set the last Dense layer to 10 neurons.`,
+            message: `Softmax needs 10 class scores, but gets ${width}. Set the last Dense layer to 10 neurons.`,
           },
         ],
       };

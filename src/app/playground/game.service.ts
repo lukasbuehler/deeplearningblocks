@@ -1,3 +1,4 @@
+import { DATASETS } from '../learning/datasets';
 import { LEVELS, LevelId, meetsLevel } from './levels';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { TrainingService } from '../learning/training.service';
@@ -12,6 +13,9 @@ export class GameService {
   readonly save = signal<GameSave>(loadGame());
   readonly mode = computed(() => this.save().mode);
   readonly level = computed(() => LEVELS.find((l) => l.id === this.save().journey.activeLevel)!);
+  readonly dataset = computed(
+    () => DATASETS[this.mode() === 'sandbox' ? 'mnist' : this.level().dataset],
+  );
   readonly workspaceKey = computed(() => (this.mode() === 'sandbox' ? 'sandbox' : this.level().id));
   readonly workspace = computed(() =>
     this.mode() === 'sandbox' ? this.save().sandbox : this.save().journey.levels[this.level().id],
@@ -93,11 +97,13 @@ export class GameService {
     void this.loadPreview();
   }
   async loadPreview(): Promise<void> {
+    const dataset = this.dataset();
     this.error.set('');
     try {
-      await this.trainer.loadPreview();
+      await this.trainer.loadPreview(dataset.id);
     } catch {
-      this.error.set('The digits could not load. Check your connection and retry.');
+      if (this.dataset().id === dataset.id)
+        this.error.set(`${dataset.name} could not load. Check your connection and retry.`);
     }
   }
   private apply(board: Board): void {
@@ -155,6 +161,7 @@ export class GameService {
     this.trainer.epochs.set([]);
     this.probabilities.set([]);
     this.drawing.set(null);
+    this.sample.set(0);
     this.drawingOpen.set(false);
     this.selected.set(null);
     this.message.set('');
@@ -165,6 +172,7 @@ export class GameService {
     if (this.trainer.busy() || mode === this.mode()) return;
     this.clearRuntime();
     this.save.update((save) => ({ ...save, mode }));
+    void this.loadPreview();
   }
   switchLevel(id: LevelId): void {
     const level = LEVELS.find((l) => l.id === id);
@@ -181,6 +189,7 @@ export class GameService {
       mode: 'journey',
       journey: { ...save.journey, activeLevel: id },
     }));
+    void this.loadPreview();
   }
   reset(): void {
     if (this.trainer.busy()) return;
@@ -192,6 +201,7 @@ export class GameService {
     this.message.set('Fresh paper. Your other levels and discoveries are safe.');
   }
   useDrawing(pixels: Float32Array): void {
+    if (!this.dataset().drawable || this.trainer.busy()) return;
     this.drawing.set(pixels);
     this.refreshPrediction();
     this.message.set(
@@ -261,13 +271,13 @@ export class GameService {
     this.celebration.set('');
     this.probabilities.set([]);
     try {
-      const result = await this.trainer.train(network);
+      const result = await this.trainer.train(network, this.dataset().id);
       if (!result) return;
       this.updateWorkspace((workspace) => ({
         ...workspace,
         experiments: [
           ...workspace.experiments,
-          { ...result, era, layers: describeNetwork(network) },
+          { ...result, era, dataset: this.dataset().id, layers: describeNetwork(network) },
         ].slice(-8),
       }));
       this.message.set('An experiment in the books! Change one thing and try again.');

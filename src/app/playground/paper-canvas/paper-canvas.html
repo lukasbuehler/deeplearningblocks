@@ -98,6 +98,7 @@
           </button>
         }
         <app-block-card
+          [dataset]="game.dataset()"
           [node]="node"
           [inputSize]="shapes().get(node.id)?.input ?? undefined"
           [outputSize]="shapes().get(node.id)?.output ?? undefined"
@@ -202,7 +203,7 @@
       </div>
       <p>Drag onto the paper, or tap to add.</p>
       <div class="tiles">
-        @for (tile of tiles; track tile.name) {
+        @for (tile of tiles(); track tile.name) {
           <button
             [class]="'tile ' + tile.kind"
             [class.locked]="locked(tile)"

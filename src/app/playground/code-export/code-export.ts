@@ -25,7 +25,11 @@ export class CodeExport {
   readonly network = computed(() => this.game.compilation().network);
   readonly code = computed(() => {
     const network = this.network();
-    return network ? (this.fullRecipe() ? pytorchScript(network) : pytorchModel(network)) : '';
+    return network
+      ? this.fullRecipe()
+        ? pytorchScript(network, this.game.dataset())
+        : pytorchModel(network)
+      : '';
   });
   async copy(): Promise<void> {
     try {
@@ -38,7 +42,10 @@ export class CodeExport {
   download(format: 'py' | 'ipynb'): void {
     const network = this.network();
     if (!network) return;
-    const content = format === 'py' ? pytorchScript(network) : pytorchNotebook(network);
+    const content =
+      format === 'py'
+        ? pytorchScript(network, this.game.dataset())
+        : pytorchNotebook(network, this.game.dataset());
     const blob = new Blob([content], {
       type: format === 'py' ? 'text/x-python;charset=utf-8' : 'application/x-ipynb+json',
     });

@@ -9,7 +9,7 @@ import {
 import { inject } from '@angular/core';
 import { GameService } from './playground/game.service';
 import { PaperCanvas } from './playground/paper-canvas/paper-canvas';
-import { BLOCKS } from './playground/graph';
+import { BLOCKS, BlockNode } from './playground/graph';
 import { ACTIVATIONS } from './learning/curriculum';
 import { ExperimentNotebook } from './playground/experiment-notebook/experiment-notebook';
 import { DigitPad } from './playground/digit-pad/digit-pad';
@@ -37,7 +37,7 @@ export class App {
   readonly checkButton = viewChild<ElementRef<HTMLButtonElement>>('checkButton');
   readonly chapter = this.game.level;
   readonly definitions = BLOCKS;
-  readonly blockName = blockName;
+  readonly blockName = (node: BlockNode) => blockName(node, this.game.dataset());
   readonly selectedHint = computed(() => {
     const node = this.game.selectedNode();
     if (!node) return '';

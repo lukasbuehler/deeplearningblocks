@@ -648,3 +648,18 @@ button:disabled {
 .level-saved {
   font-size: 12px;
 }
+
+.level-dataset {
+  display: block;
+  font-size: 8px;
+  margin-top: 4px;
+}
+.dataset-tag {
+  display: inline-block;
+  border: 2px solid #171717;
+  border-radius: 4px;
+  padding: 3px 7px;
+  background: #ffe14a;
+  font-size: 10px;
+  font-weight: 800;
+}

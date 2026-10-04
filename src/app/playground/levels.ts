@@ -1,3 +1,4 @@
+import { DATASETS, DatasetId } from '../learning/datasets';
 import { ERAS } from '../learning/curriculum';
 import { NetworkSpec, hasHiddenActivation } from './graph';
 
@@ -8,10 +9,13 @@ export const LEVELS = ERAS.map((era, index) => ({
   ...era,
   id: LEVEL_IDS[index],
   era: index,
+  dataset: (index === 0 ? 'mnist' : 'fashion-mnist') as DatasetId,
+  datasetLabel: index === 0 ? DATASETS.mnist.subject : DATASETS['fashion-mnist'].subject,
+  task: ['Read a digit', 'Sort the wardrobe', 'Same clothes, more layers'][index],
   challenge: [
     'Connect Image → Flatten → Dense · 10 → Softmax → Digit guess. Check your build above. Training is optional.',
-    'Build a hidden Dense followed by Sigmoid or Tanh before Dense · 10 and Softmax. Give your network a bend!',
-    'Connect two hidden Dense layers with ReLU between them, then Dense · 10, Softmax and Digit guess.',
+    'Meet ten kinds of clothing. Build a hidden Dense followed by Sigmoid or Tanh before Dense · 10 and Softmax. Give your network a bend!',
+    'Keep the same clothing dataset and explore a deeper recipe. Connect two hidden Dense layers with ReLU between them, then Dense · 10, Softmax and Clothing guess.',
   ][index],
 }));
 

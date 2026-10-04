@@ -1,3 +1,4 @@
+import { Dataset, DATASETS } from '../../learning/datasets';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PercentPipe } from '@angular/common';
@@ -13,6 +14,7 @@ import { BLOCKS, BlockNode } from '../graph';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BlockCard {
+  readonly dataset = input<Dataset>(DATASETS.mnist);
   readonly node = input.required<BlockNode>();
   readonly inputSize = input<number>();
   readonly outputSize = input<number>();
@@ -33,7 +35,7 @@ export class BlockCard {
       ? this.probabilities().indexOf(Math.max(...this.probabilities()))
       : null,
   );
-  readonly name = computed(() => blockName(this.node()));
+  readonly name = computed(() => blockName(this.node(), this.dataset()));
   readonly activationDetail = computed(
     () =>
       ({

@@ -1,3 +1,4 @@
+import { DATASETS } from '../learning/datasets';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { BlockNode, Board, compileBoard } from './graph';
@@ -74,4 +75,27 @@ test('Colab notebook and Python script share the complete executable recipe', ()
   assert.match(script, /model.eval\(\)/);
   assert.match(script, /with torch.no_grad\(\)/);
   assert.doesNotMatch(script, /%pip/);
+});
+
+test('clothing exports load Fashion-MNIST and use class names in both formats', () => {
+  const network = compiled([]),
+    dataset = DATASETS['fashion-mnist'];
+  const script = pytorchScript(network, dataset);
+  assert.match(script, /datasets.FashionMNIST/);
+  assert.doesNotMatch(script, /datasets.MNIST/);
+  assert.match(script, /Ankle boot/);
+  assert.match(script, /class_names\[label\]/);
+  const notebook = JSON.parse(pytorchNotebook(network, dataset));
+  assert.ok(
+    notebook.cells.some((cell: { source: string[] }) =>
+      cell.source
+        .join('')
+        .includes(
+          script
+            .slice(script.indexOf('import random'), script.indexOf('from torch import nn'))
+            .trim(),
+        ),
+    ),
+  );
+  assert.ok(notebook.cells[0].source.join('').includes('Fashion-MNIST'));
 });

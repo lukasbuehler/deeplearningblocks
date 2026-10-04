@@ -1,6 +1,6 @@
 # Deep Learning Blocks
 
-A small browser-based learning lab. Build a dense neural network, train it on real MNIST digits, and unlock ideas from neural-network history by experimenting.
+A small browser-based learning lab. Build a dense neural network, optionally train it on real digits or clothing, and unlock ideas from neural-network history by experimenting.
 
 ## Run locally
 
@@ -23,8 +23,8 @@ Open the localhost URL printed by Wrangler (normally http://localhost:8787).
 
 1. Open **+ Blocks**, add Flatten, Dense · 10 and Softmax, then connect Image → Flatten → Dense · 10 → Softmax → Digit guess. You can also tap a tile to add it and tap an output followed by an input to connect.
 2. The top-right button becomes yellow **Check build** when the level objective is met. Blocky points to it. Check to save your discovery and unlock Sigmoid and Tanh. Training is optional.
-3. Choose **Next level** to start a separate canvas for the 1986 challenge. Build a hidden Dense with Sigmoid or Tanh before Dense · 10. Check that build to unlock ReLU and the 2010 level. Earlier canvases remain accessible in the guide.
-4. Try two hidden Dense layers with ReLU before Dense · 10 and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
+3. Choose **Next level** to start a separate canvas for the 1986 clothing challenge (Fashion-MNIST). Build a hidden Dense with Sigmoid or Tanh before Dense · 10. Check that build to unlock ReLU and the 2010 level. Earlier canvases remain accessible in the guide.
+4. Keep Fashion-MNIST for a comparison: try two hidden Dense layers with ReLU before Dense · 10 and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
 
 Drag the paper to pan, scroll to zoom, or use the zoom and Fit all controls. Compatible nearby studs snap together within 24 screen pixels. Blocks stay connected when moved apart. Select a block to read its explanation in the optional guide. Delete removes its incident wires; Undo and Redo recover complete edits, including an entire drag.
 
@@ -32,13 +32,13 @@ Keyboard: Tab to a block or port. Enter selects ports; arrows move a focused blo
 
 **Sandbox** has every implemented block unlocked and its own board and notebook. Experiments there never advance Journey. A fresh board always has two disconnected endpoints.
 
-The dates refer to influential papers, not exclusive invention claims. The lab consistently uses modern Adam optimization and softmax classification; it is not a historical implementation of the perceptron. Source links are embedded in each chapter. Later architectures and datasets remain future work.
+The dates refer to influential papers, not exclusive invention claims. The lab consistently uses modern Adam optimization and softmax classification; it is not a historical implementation of the perceptron. Source links are embedded in each chapter. MNIST supplies the first level and Sandbox; Fashion-MNIST supplies levels 2 and 3. CIFAR-10 is reserved for a later CNN level.
 
 ## What actually runs
 
-TensorFlow.js loads only when training starts. It compiles the connected image-to-classifier path into a fresh model and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from MNIST’s official test split. No model or digit data is uploaded. WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
+TensorFlow.js loads only when training starts. It compiles the connected image-to-classifier path into a fresh model and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from the selected dataset’s official test split. No model or image data is uploaded. WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
 
-Input pixels are normalized to [0, 1], Dense layers offer 10, 16, 32, 64 or 128 neurons. The final score vector must contain 10 values for the separate Softmax block. Digit guess displays probabilities and adds no trainable parameters. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
+Input pixels are normalized to [0, 1], Dense layers offer 10, 16, 32, 64 or 128 neurons. The final score vector must contain 10 values for the separate Softmax block. The purple output block displays class probabilities and adds no trainable parameters. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
 
 Each Journey level has a stable ID and its own positioned blocks, wires, viewport, completion badge and last eight experiments. Sandbox has a separate workspace. Saves use `dlb-playground-v4` localStorage. V3 migration preserves the existing shared canvas in the previously active era, distributes notebook entries by their recorded era, and preserves earned unlocks. Earlier canvases cannot be reconstructed from the old single-board save, so those start with loose endpoints and retain their badges. The old `dlb-playground-v3` key remains untouched for recovery. V2 and `dlb-lab-v1` migration are also supported. Undo histories are separate per level for the current session. Fresh paper clears only the selected canvas and notebook; earned discoveries remain. Trained weights stay in memory, so switching workspaces or reloading requires retraining. Moving, zooming, and editing unused blocks preserves predictions. Level and mode switching are disabled during training. Storage failures do not block play.
 
@@ -121,3 +121,11 @@ The pure generator in `pytorch-export.ts` consumes the graph compiler's `Network
 The product name remains **Deep Learning Blocks**. Its reusable brand component keeps the colorful, tactile lettering of the playground.
 
 Sandbox lives at the top of the sidebar level list as an **Always open** entry. The level list remains visible inside Sandbox, so selecting any unlocked lesson returns to its saved Journey canvas. Switching workspaces remains disabled while training. The toolbar shows the current level or Sandbox as a status label.
+
+## Dataset-aware levels
+
+Dataset metadata lives in `src/app/learning/datasets.ts`, with level assignments in `levels.ts`. The input, class labels, block tray, helper language, notebook and Python/Colab recipes follow the active dataset. Drawing is available for MNIST only. Cached downloads are keyed by dataset and split; changing levels clears predictions and ignores stale preview responses. Failed downloads can be retried.
+
+Existing boards, completions and notebooks remain intact. Notebook rows without a dataset field are historical MNIST results, even on a level that now uses Fashion-MNIST. They keep that label and are excluded from the clothing level's latest score. New rows save their dataset ID. The v4 storage shape stays compatible.
+
+See [dataset attribution and reproduction](public/data/README.md). Both current datasets use 28 × 28 grayscale input and ten classes. Color, sequence and other input shapes require separate graph/runtime work; the registry does not imply those are already supported.

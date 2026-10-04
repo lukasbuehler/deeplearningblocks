@@ -214,6 +214,35 @@ describe('Playground state', () => {
     expect(game.save().era).toBe(0);
     expect(game.workspace().experiments.length).toBe(0);
   });
+  it('switches datasets without reusing predictions, records provenance and keeps old runs', async () => {
+    game.checkBuild();
+    game.switchLevel('hidden-layers');
+    expect(game.dataset().id).toBe('fashion-mnist');
+    expect(trainer.loadPreview).toHaveBeenCalledWith('fashion-mnist');
+    game.edit(connected());
+    game.useDrawing(new Float32Array(784));
+    expect(game.drawing()).toBeNull();
+    await game.train();
+    expect(trainer.train).toHaveBeenCalledWith(game.compilation().network, 'fashion-mnist');
+    expect(game.workspace().experiments[0].dataset).toBe('fashion-mnist');
+    saveGame(game.save());
+    expect(loadGame().journey.levels['hidden-layers'].experiments[0].dataset).toBe('fashion-mnist');
+    game.switchMode('sandbox');
+    expect(game.dataset().id).toBe('mnist');
+    expect(game.probabilities()).toEqual([]);
+    expect(trainer.loadPreview).toHaveBeenCalledWith('mnist');
+  });
+  it('ignores a late preview error from a level that is no longer selected', async () => {
+    let reject!: (error: Error) => void;
+    trainer.loadPreview.and.returnValue(new Promise<void>((_, fail) => (reject = fail)));
+    const pending = game.loadPreview();
+    game.checkBuild();
+    trainer.loadPreview.and.resolveTo();
+    game.switchLevel('hidden-layers');
+    reject(new Error('old digit download failed'));
+    await pending;
+    expect(game.error()).toBe('');
+  });
   it('exposes a retry after dataset failure', async () => {
     trainer.loadPreview.and.rejectWith(new Error('offline'));
     await game.loadPreview();

@@ -1,3 +1,4 @@
+import { Dataset, DATASETS } from '../learning/datasets';
 import type { NetworkSpec } from './graph';
 
 const activations = { linear: 'Identity', sigmoid: 'Sigmoid', tanh: 'Tanh', relu: 'ReLU' };
@@ -26,27 +27,28 @@ model = nn.Sequential(
 ${layers.join('\n')}
 )
 
-# Digit guess is only a display, so it adds no layer.
+# The output block is only a display, so it adds no layer.
 # CrossEntropyLoss includes the softmax calculation during training.
-# For a digit guess, turn scores into probabilities with logits.softmax(dim=1).
+# For a prediction, turn scores into probabilities with logits.softmax(dim=1).
 assert sum(p.numel() for p in model.parameters()) == ${network.parameters}
 print(model)
 `;
 }
 
-const dataCode = `import random
+const dataCode = (dataset: Dataset) => `import random
 import torch
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 
+class_names = ${JSON.stringify(dataset.classes)}
 torch.manual_seed(1958)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Training on:", device)
 
 # ToTensor keeps grayscale pixels in [0, 1]. PyTorch uses [batch, 1, 28, 28].
 # Resetting the Python seed for each split reproduces the playground's subset.
-train_data = datasets.MNIST("data", train=True, download=True, transform=transforms.ToTensor())
-test_data = datasets.MNIST("data", train=False, download=True, transform=transforms.ToTensor())
+train_data = datasets.${dataset.torchvision}("data", train=True, download=True, transform=transforms.ToTensor())
+test_data = datasets.${dataset.torchvision}("data", train=False, download=True, transform=transforms.ToTensor())
 train_subset = Subset(train_data, random.Random(1958).sample(range(len(train_data)), 3000))
 test_subset = Subset(test_data, random.Random(1958).sample(range(len(test_data)), 500))
 train_loader = DataLoader(train_subset, batch_size=64, shuffle=True,
@@ -58,7 +60,7 @@ const trainingCode = `model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.003, eps=1e-7)
 loss_function = nn.CrossEntropyLoss()
 
-# Five passes through the training digits, just like the playground.
+# Five passes through the training images, just like the playground.
 for epoch in range(5):
     model.train()
     total_loss = 0.0
@@ -73,7 +75,7 @@ for epoch in range(5):
     print(f"Pass {epoch + 1}/5 | training loss: {total_loss / len(train_subset):.4f}")
 `;
 
-const evaluationCode = `# These 500 digits were never used to update the weights.
+const evaluationCode = `# These 500 images were never used to update the weights.
 model.eval()
 correct = 0
 with torch.no_grad():
@@ -82,17 +84,17 @@ with torch.no_grad():
         correct += (guesses == labels.to(device)).sum().item()
 print(f"Held-out accuracy: {100 * correct / len(test_subset):.1f}%")
 
-# Change sample_index to try a different held-out digit (0 to 499).
+# Change sample_index to try a different held-out image (0 to 499).
 sample_index = 0
 image, label = test_subset[sample_index]
 with torch.no_grad():
     probabilities = model(image.unsqueeze(0).to(device)).softmax(dim=1)[0].cpu()
-print(f"Actual digit: {label} | guessed digit: {probabilities.argmax().item()}")
-for digit, probability in enumerate(probabilities):
-    print(f"  {digit}: {probability.item():.1%}")
+print(f"Actual: {class_names[label]} | guessed: {class_names[probabilities.argmax().item()]}")
+for index, probability in enumerate(probabilities):
+    print(f"  {class_names[index]}: {probability.item():.1%}")
 `;
 
-const intro = `# Deep Learning Blocks: from blocks to Python
+const intro = (dataset: Dataset) => `# Deep Learning Blocks: from blocks to Python
 
 This notebook contains your connected network and the playground's training recipe.
 Loose blocks are excluded. It starts with **fresh weights**: browser-trained weights,
@@ -100,19 +102,19 @@ drawings, progress and notebook results are not included. Scores will differ bec
 PyTorch and TensorFlow initialize and train their weights differently.
 
 Run each cell from top to bottom, or choose **Runtime > Run all** in Google Colab.
-The first run downloads MNIST. Try changing one layer and running the notebook again.
+The first run downloads ${dataset.name}. Try changing one layer and running the notebook again.
 `;
 
-export function pytorchScript(network: NetworkSpec): string {
+export function pytorchScript(network: NetworkSpec, dataset: Dataset = DATASETS.mnist): string {
   return `# Deep Learning Blocks | Your connected network
 # Install once: python -m pip install torch torchvision
 # Run: python deep-learning-blocks.py
-# Fresh weights, same 3000 training / 500 held-out digits. Results will differ.
+# Fresh weights, same 3000 training / 500 held-out images. Results will differ.
 
-${dataCode}\n${pytorchModel(network)}\n${trainingCode}\n${evaluationCode}`;
+${dataCode(dataset)}\n${pytorchModel(network)}\n${trainingCode}\n${evaluationCode}`;
 }
 
-export function pytorchNotebook(network: NetworkSpec): string {
+export function pytorchNotebook(network: NetworkSpec, dataset: Dataset = DATASETS.mnist): string {
   const cell = (cell_type: 'markdown' | 'code', source: string) => ({
     cell_type,
     metadata: {},
@@ -130,13 +132,13 @@ export function pytorchNotebook(network: NetworkSpec): string {
           colab: { name: 'deep-learning-blocks.ipynb', provenance: [] },
         },
         cells: [
-          cell('markdown', intro),
+          cell('markdown', intro(dataset)),
           cell('code', '%pip install -q torch torchvision\n'),
           cell(
             'markdown',
-            '## 1. Meet the digits\nMNIST contains handwritten digits. We use the same small, seeded subset as the playground.\n',
+            `## 1. Meet ${dataset.name}\n${dataset.subject}. We use the same small, seeded subset as the playground.\n\n${dataset.credit} [Dataset source](${dataset.source}).\n`,
           ),
-          cell('code', dataCode),
+          cell('code', dataCode(dataset)),
           cell(
             'markdown',
             `## 2. Your blocks, in order\n${network.parameters.toLocaleString('en-US')} learnable parameters. Flatten makes a vector; Linear is your Dense block. The last Linear makes 10 scores.\n\n[CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html) takes raw scores, so softmax belongs in the prediction cell.\n`,
@@ -149,7 +151,7 @@ export function pytorchNotebook(network: NetworkSpec): string {
           cell('code', trainingCode),
           cell(
             'markdown',
-            '## 4. Try unseen digits\nNow test on digits that did not teach the model. A confident guess can still be wrong!\n',
+            '## 4. Try unseen images\nNow test on images that did not teach the model. A confident guess can still be wrong!\n',
           ),
           cell('code', evaluationCode),
         ],
