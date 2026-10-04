@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import type * as TF from './tensorflow';
 import { NetworkSpec } from '../playground/graph';
 import { buildModel } from '../playground/model-builder';
+import { DATASETS, DatasetId } from './datasets';
 import { DigitSet, loadDigits } from './mnist';
 
 export interface EpochResult {
@@ -19,14 +20,37 @@ export class TrainingService {
   private tf?: typeof TF;
   private model?: TF.Sequential;
   private optimizer?: TF.Optimizer;
-  private trainingData?: DigitSet;
+  private readonly data = new Map<string, Promise<DigitSet>>();
+  private previewDataset?: DatasetId;
+  private modelDataset?: DatasetId;
   private cancelled = false;
 
-  async loadPreview(): Promise<void> {
-    if (!this.test()) this.test.set(await loadDigits('test'));
+  private load(split: 'train' | 'test', dataset: DatasetId): Promise<DigitSet> {
+    const key = `${dataset}/${split}`;
+    if (!this.data.has(key)) {
+      this.data.set(
+        key,
+        loadDigits(split, dataset).catch((error) => {
+          this.data.delete(key); // Failed downloads must remain retryable.
+          throw error;
+        }),
+      );
+    }
+    return this.data.get(key)!;
+  }
+  async loadPreview(dataset: DatasetId = 'mnist'): Promise<void> {
+    if (dataset !== this.previewDataset) {
+      this.previewDataset = dataset;
+      this.test.set(null);
+      this.invalidate();
+    }
+    const data = await this.load('test', dataset);
+    // A previous level's slower download must not replace the active preview.
+    if (this.previewDataset === dataset) this.test.set(data);
   }
   invalidate(): void {
     this.trained.set(false);
+    this.modelDataset = undefined;
     this.model?.dispose();
     this.model = undefined;
     this.optimizer?.dispose();
@@ -37,7 +61,10 @@ export class TrainingService {
     if (this.model) this.model.stopTraining = true;
     this.status.set('Stopping…');
   }
-  async train(network: NetworkSpec): Promise<{ accuracy: number; loss: number } | null> {
+  async train(
+    network: NetworkSpec,
+    dataset: DatasetId = 'mnist',
+  ): Promise<{ accuracy: number; loss: number } | null> {
     if (this.busy()) return null;
     this.busy.set(true);
     this.cancelled = false;
@@ -48,16 +75,10 @@ export class TrainingService {
       this.status.set('Preparing your learning lab…');
       const tf = (this.tf ??= await import('./tensorflow'));
       await tf.ready();
-      this.status.set('Loading 3,000 training digits…');
-      await Promise.all([
-        this.loadPreview(),
-        this.trainingData
-          ? Promise.resolve()
-          : loadDigits('train').then((data) => (this.trainingData = data)),
-      ]);
+      this.status.set(`Loading 3,000 ${DATASETS[dataset].name} examples…`);
+      const [train] = await Promise.all([this.load('train', dataset), this.loadPreview(dataset)]);
       if (this.cancelled) return null;
-      const train = this.trainingData!,
-        test = this.test()!;
+      const test = this.test()!;
       const makeTensors = (data: DigitSet) => {
         const x = tf.tensor4d(data.pixels, [data.count, 28, 28, 1]);
         const y = tf.tidy(() => tf.oneHot(tf.tensor1d(data.labels, 'int32'), 10));
@@ -94,7 +115,7 @@ export class TrainingService {
         },
       });
       if (this.cancelled) return null;
-      this.status.set('Checking 500 unseen digits…');
+      this.status.set('Checking 500 unseen images…');
       const evaluation = model.evaluate(testX, testY) as TF.Tensor[];
       tensors.push(...evaluation);
       const [loss, accuracy] = await Promise.all(
@@ -103,6 +124,7 @@ export class TrainingService {
       if (this.cancelled) return null;
       if (!Number.isFinite(loss) || !Number.isFinite(accuracy))
         throw new Error('This network did not converge. Try fewer layers and train again.');
+      this.modelDataset = dataset;
       this.trained.set(true);
       this.status.set('Experiment complete');
       return { loss, accuracy };
@@ -123,7 +145,14 @@ export class TrainingService {
   predictPixels(pixels: Float32Array): number[] {
     const tf = this.tf,
       model = this.model;
-    if (!tf || !model || !this.trained() || pixels.length !== 784) return [];
+    if (
+      !tf ||
+      !model ||
+      !this.trained() ||
+      this.modelDataset !== this.previewDataset ||
+      pixels.length !== 784
+    )
+      return [];
     return tf.tidy(() =>
       Array.from((model.predict(tf.tensor4d(pixels, [1, 28, 28, 1])) as TF.Tensor).dataSync()),
     );

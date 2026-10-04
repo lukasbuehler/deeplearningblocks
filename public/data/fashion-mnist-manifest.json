@@ -1,0 +1,18 @@
+{
+  "source": "https://raw.githubusercontent.com/zalandoresearch/fashion-mnist/master/data/fashion/",
+  "seed": 1958,
+  "pixels": 784,
+  "classes": 10,
+  "splits": {
+    "train": {
+      "count": 3000,
+      "bytes": 2355000,
+      "sha256": "ddd73e9d33669930e58c2cc3f76d5e0aea9292ff636570bc4548b829c7c3185c"
+    },
+    "test": {
+      "count": 500,
+      "bytes": 392500,
+      "sha256": "3e5c92d204a611128a431bc46266a1bbfb4065a3381d49175cff19f0759d714f"
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import type { DatasetId } from './datasets';
 export type Activation = 'linear' | 'sigmoid' | 'tanh' | 'relu';
 export interface DenseBlock {
   id: number;
@@ -5,6 +6,7 @@ export interface DenseBlock {
   activation: Activation;
 }
 export interface Experiment {
+  dataset?: DatasetId;
   accuracy: number;
   loss: number;
   layers: string;
