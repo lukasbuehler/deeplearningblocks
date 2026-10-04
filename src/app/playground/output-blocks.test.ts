@@ -57,7 +57,7 @@ test('v2 migration preserves both notebooks, unlocks, unique IDs and the recover
     sandbox: { board: legacy, experiments: [] },
   };
   const recovery = JSON.stringify(old),
-    memory = new Map([[PREVIOUS_SAVE_KEY, recovery]]);
+    memory = new Map([['dlb-playground-v2', recovery]]);
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
     value: {
@@ -66,24 +66,30 @@ test('v2 migration preserves both notebooks, unlocks, unique IDs and the recover
     },
   });
   const migrated = loadGame();
-  assert.equal(migrated.version, 3);
+  assert.equal(migrated.version, 4);
   assert.equal(migrated.era, 2);
-  assert.deepEqual(migrated.checkedChapters, [0, 1]);
-  assert.deepEqual(migrated.journey.experiments, old.journey.experiments);
-  for (const mode of ['journey', 'sandbox'] as const) {
-    assert.equal(compileBoard(migrated[mode].board).network?.parameters, 7850);
+  assert.equal(migrated.journey.levels['first-network'].completed, true);
+  assert.equal(migrated.journey.levels['hidden-layers'].completed, true);
+  assert.deepEqual(migrated.journey.levels['first-network'].experiments, old.journey.experiments);
+  for (const workspace of [migrated.journey.levels['deeper-network'], migrated.sandbox]) {
+    assert.equal(compileBoard(workspace.board).network?.parameters, 7850);
     assert.equal(
-      new Set(migrated[mode].board.nodes.map((n) => n.id)).size,
-      migrated[mode].board.nodes.length,
+      new Set(workspace.board.nodes.map((n) => n.id)).size,
+      workspace.board.nodes.length,
     );
   }
   saveGame(migrated);
-  assert.equal(memory.get(PREVIOUS_SAVE_KEY), recovery);
+  assert.equal(memory.get('dlb-playground-v2'), recovery);
   assert.deepEqual(loadGame(), migrated);
   // An invalid-width experiment remains editable across reload rather than losing the board.
-  migrated.journey.board.nodes.find((n) => n.id === 'c-scores-1')!.units = 32;
+  migrated.journey.levels['deeper-network'].board.nodes.find((n) => n.id === 'c-scores-1')!.units =
+    32;
   saveGame(migrated);
-  assert.equal(loadGame().journey.board.nodes.find((n) => n.id === 'c-scores-1')!.units, 32);
+  assert.equal(
+    loadGame().journey.levels['deeper-network'].board.nodes.find((n) => n.id === 'c-scores-1')!
+      .units,
+    32,
+  );
   assert.ok(memory.has(SAVE_KEY));
 });
 test('migration also exposes a disconnected output without connecting the image for the player', () => {

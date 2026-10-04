@@ -55,7 +55,7 @@ Implement a pure rule engine that consumes graph analysis, lesson state, experim
 
 ## Levels and how a lesson plays
 
-The level catalog in [LEVELS.md](LEVELS.md) is the product structure. The concept inventory below supplies small games within those levels; it is not a requirement to make MNIST teach every subject. The current three chapters now accept construction checks without training and preserve earned unlocks. A future level engine must add stable lesson IDs and exploration evidence.
+The level catalog in [LEVELS.md](LEVELS.md) is the product structure. The concept inventory below supplies small games within those levels; it is not a requirement to make MNIST teach every subject. The current three chapters now accept construction checks without training and preserve earned unlocks. Stable level IDs and independent saved canvases are implemented for the three chapters. Exploration evidence and additional level types remain future work.
 
 Target a few minutes of interaction per small game, with longer training optional. This is a design target, not a measured completion-time promise.
 
@@ -257,7 +257,7 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 | M10. Shakespeare workshop | Expandable decoder module, repeat instances, normalization, GELU, training/checkpoints and matching code export | M4/M5/M7/M8/M9; M6 only for optional local training | Players assemble a tiny transformer and inspect its components without a training requirement. Supported experiments and supplied checkpoints have honest labels and recovery behavior. |
 | Optional image/history branch | Convolution and pooling games, tiny CNN; optional RNN/LSTM history path | Richer tensors and relevant runtime checks | The branch adds intuition without blocking the main transformer journey. |
 
-**Progress:** M1 is implemented. M2 has its first deterministic clue and pointing slice; richer rule coverage remains incremental. Construction checks are implemented for the three existing chapters. **Recommended next implementation:** a small M3 level-engine slice with one exploration task, followed by the first loss game. Keep new datasets, backends and grouping in separate changes.
+**Progress:** M1 is implemented. M2 has its first deterministic clue and pointing slice; richer rule coverage remains incremental. Construction checks, stable level IDs and independent saved canvases/notebooks are implemented for the three existing chapters. **Recommended next implementation:** one exploration task and the first loss game. Keep new datasets, backends and grouping in separate changes.
 
 ## Architecture guardrails
 

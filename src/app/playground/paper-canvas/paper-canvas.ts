@@ -5,6 +5,7 @@ import {
   afterNextRender,
   computed,
   inject,
+  input,
   signal,
   viewChild,
   HostListener,
@@ -41,6 +42,7 @@ import { blockyHint, hintContext } from '../blocky-hints';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PaperCanvas {
+  readonly checkButton = input<HTMLButtonElement>();
   readonly game = inject(GameService);
   readonly paper = viewChild.required<ElementRef<HTMLDivElement>>('paper');
   readonly definitions = BLOCKS;
@@ -91,7 +93,10 @@ export class PaperCanvas {
       this.game.era(),
       this.game.mode(),
       this.rejected()?.context === this.helperContext() ? this.rejected()!.edge : undefined,
-      this.game.trainer.trained() ? this.game.workspace().experiments.at(-1)?.accuracy : undefined,
+      this.game.trainer.trained() && !this.game.canCheck()
+        ? this.game.workspace().experiments.at(-1)?.accuracy
+        : undefined,
+      this.game.levelComplete(),
     ),
   );
   readonly helperSuppressed = computed(
@@ -118,7 +123,7 @@ export class PaperCanvas {
   readonly targetPoint = computed(() => {
     const t = this.helperHint().target,
       nodes = this.visualNodes();
-    if (t.kind === 'tray') return null;
+    if (t.kind === 'tray' || t.kind === 'check') return null;
     if (t.kind === 'node') {
       const n = nodes.find((n) => n.id === t.id);
       return n ? { x: n.x - 12, y: n.y + BLOCKS[n.kind].height / 2 } : null;
@@ -134,6 +139,21 @@ export class PaperCanvas {
     const p = this.targetPoint(),
       v = this.game.board().viewport,
       size = this.paperSize();
+    if (this.helperHint().target.kind === 'check') {
+      const button = this.checkButton()?.getBoundingClientRect();
+      if (!button) return null;
+      const paper = this.paper().nativeElement.getBoundingClientRect();
+      const end = { x: button.left + button.width / 2, y: button.bottom + 8 };
+      const center = { x: paper.right - 78, y: paper.bottom - 145 };
+      const angle = (Math.atan2(end.y - center.y, end.x - center.x) * 180) / Math.PI;
+      const start = { x: paper.right - (end.x < center.x ? 109 : 55), y: center.y };
+      return {
+        path: `M${start.x},${start.y} L${end.x},${end.y}`,
+        angle,
+        visible: true,
+        end,
+      };
+    }
     if (!p) return null;
     const end = { x: p.x * v.zoom + v.x, y: p.y * v.zoom + v.y };
     const start = {
@@ -150,6 +170,10 @@ export class PaperCanvas {
   showClueTarget(): void {
     this.game.message.set('');
     const target = this.helperHint().target;
+    if (target.kind === 'check') {
+      this.checkButton()?.focus({ preventScroll: true });
+      return;
+    }
     if (target.kind === 'tray') {
       this.tray.set(true);
       return;
@@ -400,7 +424,7 @@ export class PaperCanvas {
     this.game.message.set('Block removed. Undo can bring it back.');
   }
   locked(tile: Tile): boolean {
-    return tile.era > this.game.era();
+    return tile.era > this.game.unlockedEra();
   }
   exists(tile: Tile): boolean {
     return (

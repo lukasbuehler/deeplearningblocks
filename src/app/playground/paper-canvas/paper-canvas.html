@@ -140,7 +140,11 @@
     }
   </div>
   @if (helperTarget() && pointerGeometry()?.visible) {
-    <svg class="blocky-pointer" aria-hidden="true">
+    <svg
+      class="blocky-pointer"
+      [class.toolbar-pointer]="helperTarget()?.kind === 'check'"
+      aria-hidden="true"
+    >
       <path [attr.d]="pointerGeometry()!.path" />
       <circle [attr.cx]="pointerGeometry()!.end.x" [attr.cy]="pointerGeometry()!.end.y" r="6" />
     </svg>
@@ -151,17 +155,15 @@
     [context]="helperContext()"
     [suppressed]="helperSuppressed()"
     [angle]="pointerGeometry()?.angle ?? 90"
-    [journey]="game.mode() === 'journey'"
-    [canCheck]="!!game.compilation().network && !game.trainer.busy()"
     (highlight)="helperVisible.set($event)"
     (show)="showClueTarget()"
-    (check)="game.checkBuild()"
   />
   @if (game.board().edges.length === 0 && game.board().nodes.length === 2) {
     <div class="first-prompt">
-      <span>1.</span> Open the toy box.<br /><span>2.</span> Add Flatten, Dense · 10 + Softmax.<br /><span
-        >3.</span
-      >
+      <span>1.</span> Open the toy box.<br /><span>2.</span>
+      {{
+        game.era() === 0 ? 'Add Flatten, Dense · 10 + Softmax.' : 'Build the path in your mission.'
+      }}<br /><span>3.</span>
       Connect the studs!
     </div>
   }

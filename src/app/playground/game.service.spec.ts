@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { GameService } from './game.service';
 import { TrainingService } from '../learning/training.service';
 import { Board, compileBoard } from './graph';
-import { freshGame } from './storage';
+import { freshGame, saveGame, loadGame } from './storage';
 
 const connected = (): Board =>
   splitLegacyOutput({
@@ -94,65 +94,110 @@ describe('Playground state', () => {
     await game.train();
     expect(game.save().era).toBe(0);
     expect(game.save().sandbox.experiments.length).toBe(1);
-    expect(game.save().journey.experiments.length).toBe(0);
+    expect(game.save().journey.levels['first-network'].experiments.length).toBe(0);
     game.switchMode('journey');
     await game.train();
-    expect(game.save().era).toBe(1);
-    expect(game.save().journey.experiments.length).toBe(1);
+    expect(game.save().era).toBe(0);
+    expect(game.save().journey.levels['first-network'].experiments.length).toBe(1);
   });
-  it('rewards construction without training, invalidating predictions, or fabricating experiments', () => {
+  it('checks construction, stays on the level, and unlocks without training', () => {
     game.probabilities.set([0.9]);
+    expect(game.canCheck()).toBeTrue();
     game.checkBuild();
     expect(game.save().era).toBe(1);
-    expect(game.save().checkedChapters).toEqual([0]);
+    expect(game.level().id).toBe('first-network');
+    expect(game.levelComplete()).toBeTrue();
+    expect(game.canCheck()).toBeFalse();
     expect(game.workspace().experiments).toEqual([]);
     expect(trainer.train).not.toHaveBeenCalled();
     expect(trainer.invalidate).not.toHaveBeenCalled();
     expect(game.probabilities()).toEqual([0.9]);
     game.checkBuild();
     expect(game.save().era).toBe(1);
-    const board = game.board();
-    game.edit({
-      ...board,
-      nodes: [...board.nodes, { id: 'a', kind: 'activation', activation: 'tanh', x: 0, y: 0 }],
-    });
+  });
+  it('isolates canvases, viewports, undo, notebooks and reset across levels and reload', async () => {
+    game.setViewport({ x: 123, y: 45, zoom: 0.6 });
     game.checkBuild();
+    await game.train();
+    const first = game.save().journey.levels['first-network'];
+    game.switchLevel('hidden-layers');
+    expect(game.board().nodes.length).toBe(2);
+    expect(game.canUndo()).toBeFalse();
+    expect(game.workspace().experiments.length).toBe(0);
+    game.edit(connected());
+    game.configure({ id: 'd', units: 64 });
+    const second = game.board();
+    game.switchLevel('first-network');
+    expect(game.workspace()).toEqual(first);
+    expect(game.canUndo()).toBeTrue();
+    game.switchLevel('hidden-layers');
+    expect(game.board()).toEqual(second);
+    game.undo();
+    expect(game.board().nodes.find((n) => n.id === 'd')?.units).toBe(32);
+    saveGame(game.save());
+    game.save.set(loadGame());
+    expect(game.level().id).toBe('hidden-layers');
+    expect(game.save().journey.levels['first-network']).toEqual(first);
+    game.reset();
+    expect(game.board().nodes.length).toBe(2);
     expect(game.save().era).toBe(1);
-    game.edit({
-      ...game.board(),
-      edges: [
-        ...board.edges.filter((e) => e.from !== 'd'),
-        { from: 'd', to: 'a' },
-        { from: 'a', to: 'c-scores' },
-      ],
-    });
+    expect(game.save().journey.levels['first-network']).toEqual(first);
+  });
+  it('requires connected lesson concepts and prevents locked or busy navigation', () => {
+    game.switchLevel('deeper-network');
+    expect(game.level().id).toBe('first-network');
     game.checkBuild();
-    expect(game.save().era).toBe(2);
-    expect(game.save().checkedChapters).toEqual([0, 1]);
-    game.checkBuild();
-    expect(game.save().checkedChapters).toEqual([0, 1]);
+    game.switchLevel('hidden-layers');
+    game.edit(connected());
+    expect(game.canCheck()).toBeFalse();
     game.edit({
       ...game.board(),
       nodes: [
         ...game.board().nodes,
-        { id: 'r', kind: 'activation', activation: 'relu', x: 100, y: 0 },
-        { id: 'd2', kind: 'dense', units: 16, x: 100, y: 200 },
+        { id: 'a', kind: 'activation', activation: 'tanh', x: 0, y: 0 },
       ],
+    });
+    expect(game.canCheck()).toBeFalse();
+    game.edit({
+      ...game.board(),
+      edges: [
+        ...game.board().edges.filter((e) => e.from !== 'd'),
+        { from: 'd', to: 'a' },
+        { from: 'a', to: 'c-scores' },
+      ],
+    });
+    expect(game.canCheck()).toBeTrue();
+    game.checkBuild();
+    expect(game.save().era).toBe(2);
+    expect(game.level().id).toBe('hidden-layers');
+    const nonlinear = game.board();
+    game.switchLevel('deeper-network');
+    game.edit(nonlinear);
+    game.configure({ id: 'a', activation: 'relu' });
+    expect(game.canCheck()).toBeFalse();
+    game.edit({
+      ...game.board(),
+      nodes: [...game.board().nodes, { id: 'd2', kind: 'dense', units: 16, x: 100, y: 0 }],
       edges: [
         ...game.board().edges.filter((e) => e.from !== 'a'),
-        { from: 'a', to: 'r' },
-        { from: 'r', to: 'd2' },
+        { from: 'a', to: 'd2' },
         { from: 'd2', to: 'c-scores' },
       ],
     });
+    expect(game.canCheck()).toBeTrue();
+    trainer.busy.set(true);
+    game.switchLevel('first-network');
     game.checkBuild();
-    expect(game.save().checkedChapters).toEqual([0, 1, 2]);
+    expect(game.level().id).toBe('deeper-network');
+    expect(game.levelComplete()).toBeFalse();
+    trainer.busy.set(false);
     game.checkBuild();
-    expect(game.save().checkedChapters).toEqual([0, 1, 2]);
+    expect(game.levelComplete()).toBeTrue();
     game.switchMode('sandbox');
     game.edit(connected());
     game.checkBuild();
-    expect(game.save().checkedChapters).toEqual([0, 1, 2]);
+    expect(game.canCheck()).toBeFalse();
+    expect(game.save().era).toBe(2);
   });
   it('rejects incomplete builds and leaves progress alone while training', () => {
     game.edit({ ...game.board(), edges: [] });

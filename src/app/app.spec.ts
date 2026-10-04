@@ -1,3 +1,4 @@
+import { Board } from './playground/graph';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -48,6 +49,46 @@ describe('App', () => {
     expect(canvas.pointerGeometry()!.end.x).toBeCloseTo(before.x + 80, 6);
     expect(canvas.pointerGeometry()!.end.y).toBeCloseTo(before.y + 40, 6);
     canvas.panEnd();
+    fixture.destroy();
+  });
+  it('offers the yellow toolbar check, directs Blocky to it, then keeps the completed canvas', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    app.game.save.set(freshGame());
+    const nodes: Board['nodes'] = [
+      { id: 'i', kind: 'image', x: 0, y: 0 },
+      { id: 'f', kind: 'flatten', x: 0, y: 250 },
+      { id: 'd', kind: 'dense', units: 10, x: 0, y: 450 },
+      { id: 's', kind: 'softmax', x: 0, y: 650 },
+      { id: 'c', kind: 'classifier', x: 0, y: 850 },
+    ];
+    app.game.edit({
+      nodes,
+      edges: nodes.slice(1).map((n, i) => ({ from: nodes[i].id, to: n.id })),
+      viewport: { x: 0, y: 0, zoom: 1 },
+    });
+    fixture.detectChanges();
+    const helper = fixture.debugElement.query(By.directive(Blocky)).componentInstance as Blocky;
+    helper.ask();
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('.train-button') as HTMLButtonElement;
+    expect(button.textContent).toContain('Check build');
+    expect(button.classList.contains('check-ready')).toBeTrue();
+    expect(app.canvas()!.helperTarget()?.kind).toBe('check');
+    expect(fixture.nativeElement.querySelector('.toolbar-pointer')).toBeTruthy();
+    app.canvas()!.showClueTarget();
+    expect(document.activeElement).toBe(button);
+    button.click();
+    fixture.detectChanges();
+    expect(app.game.levelComplete()).toBeTrue();
+    expect(app.game.level().id).toBe('first-network');
+    expect(button.textContent).toContain('Train');
+    app.switchLevel('hidden-layers');
+    fixture.detectChanges();
+    expect(app.game.board().nodes.length).toBe(2);
+    app.switchLevel('first-network');
+    fixture.detectChanges();
+    expect(app.game.board().nodes.length).toBe(5);
     fixture.destroy();
   });
   it('respects reduced motion when the browser requests it', () => {

@@ -22,8 +22,8 @@ Open the localhost URL printed by Wrangler (normally http://localhost:8787).
 ## First lesson
 
 1. Open **+ Blocks**, add Flatten, Dense · 10 and Softmax, then connect Image → Flatten → Dense · 10 → Softmax → Digit guess. You can also tap a tile to add it and tap an output followed by an input to connect.
-2. Choose **Check my build** in the guide or Blocky’s bubble to unlock the 1986 chapter, Sigmoid and Tanh. Training is optional.
-3. Select a wire or occupied port, choose Disconnect, and insert a hidden Dense with Sigmoid or Tanh before Dense · 10. Check the connected Sigmoid or Tanh build to unlock ReLU and the 2010 chapter.
+2. The top-right button becomes yellow **Check build** when the level objective is met. Blocky points to it. Check to save your discovery and unlock Sigmoid and Tanh. Training is optional.
+3. Choose **Next level** to start a separate canvas for the 1986 challenge. Build a hidden Dense with Sigmoid or Tanh before Dense · 10. Check that build to unlock ReLU and the 2010 level. Earlier canvases remain accessible in the guide.
 4. Try two hidden Dense layers with ReLU before Dense · 10 and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
 
 Drag the paper to pan, scroll to zoom, or use the zoom and Fit all controls. Compatible nearby studs snap together within 24 screen pixels. Blocks stay connected when moved apart. Select a block to read its explanation in the optional guide. Delete removes its incident wires; Undo and Redo recover complete edits, including an entire drag.
@@ -40,7 +40,7 @@ TensorFlow.js loads only when training starts. It compiles the connected image-t
 
 Input pixels are normalized to [0, 1], Dense layers offer 10, 16, 32, 64 or 128 neurons. The final score vector must contain 10 values for the separate Softmax block. Digit guess displays probabilities and adds no trainable parameters. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
 
-Positioned blocks, explicit wires, viewport, unlocks, and the last eight experiments per mode are saved in `dlb-playground-v3` localStorage. V2 boards migrate by exposing the old prediction card’s hidden Dense(10) and Softmax as connected blocks, preserving notebooks and unlocks. `dlb-playground-v2` remains untouched as a recovery copy; `dlb-lab-v1` migration is also supported. Trained weights stay in memory. Changing the active computation invalidates predictions; moving, zooming, and editing unused blocks preserves them. Reloading requires retraining. During training, layout and viewing remain available while computational edits are disabled. Storage failures do not block the lesson.
+Each Journey level has a stable ID and its own positioned blocks, wires, viewport, completion badge and last eight experiments. Sandbox has a separate workspace. Saves use `dlb-playground-v4` localStorage. V3 migration preserves the existing shared canvas in the previously active era, distributes notebook entries by their recorded era, and preserves earned unlocks. Earlier canvases cannot be reconstructed from the old single-board save, so those start with loose endpoints and retain their badges. The old `dlb-playground-v3` key remains untouched for recovery. V2 and `dlb-lab-v1` migration are also supported. Undo histories are separate per level for the current session. Fresh paper clears only the selected canvas and notebook; earned discoveries remain. Trained weights stay in memory, so switching workspaces or reloading requires retraining. Moving, zooming, and editing unused blocks preserves predictions. Level and mode switching are disabled during training. Storage failures do not block play.
 
 ## Project structure
 
@@ -108,7 +108,7 @@ The long-term learning path, small-game concept inventory, Blocky’s pointing/h
 
 Linear, Sigmoid, Tanh and ReLU have distinct names and curve icons on the paper, without an activation dropdown. They retain the existing saved operation format. `block-catalog.ts` owns the tray identities, `blocky-hints.ts` owns pure advice rules, the canvas resolves target geometry, and the Blocky component owns presentation and preferences.
 
-The three existing chapters now support construction checks independently of experiments. Checked chapters are saved separately from the notebook, existing unlocks remain valid, and Sandbox cannot advance Journey. The broader level engine, loss games, grouping and transformer remain roadmap work.
+The three existing chapters are now separate saved levels. Construction checks record completion independently of experiments and keep the current canvas open. Next level explicitly opens new paper, and selecting an earlier chapter restores its work. Training records an experiment only; it does not complete a level. Sandbox cannot advance Journey. Stable level IDs and objectives live in `levels.ts`; exploration games, additional datasets, grouping and transformers remain roadmap work.
 
 ## From blocks to PyTorch
 

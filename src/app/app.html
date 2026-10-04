@@ -27,7 +27,7 @@
   </div>
   <span class="chapter-pill">{{
     game.mode() === 'journey'
-      ? 'CHAPTER ' + (game.era() + 1) + ' / ' + eras[game.era()].year
+      ? 'LEVEL ' + (game.level().era + 1) + ' / ' + chapter().year
       : 'ALL BLOCKS. ALL YOURS.'
   }}</span>
   <button
@@ -60,12 +60,19 @@
     <button class="train-button stop" (click)="game.trainer.stop()">Stop <span>■</span></button>
   } @else {
     <button
+      #checkButton
       class="train-button"
-      (click)="train()"
+      [class.check-ready]="game.canCheck()"
+      [class.blocky-focus]="canvas()?.helperTarget()?.kind === 'check'"
+      (click)="game.canCheck() ? game.checkBuild() : train()"
       [disabled]="!game.compilation().network"
-      [attr.title]="game.compilation().issues[0]?.message ?? 'Train your connected network'"
+      [attr.title]="
+        game.canCheck()
+          ? 'Check this level and unlock the next one'
+          : (game.compilation().issues[0]?.message ?? 'Train your connected network')
+      "
     >
-      Train <span>▶</span>
+      {{ game.canCheck() ? 'Check build' : 'Train' }} <span>{{ game.canCheck() ? '✓' : '▶' }}</span>
     </button>
   }
 </header>
@@ -87,22 +94,22 @@
       <p class="guide-intro">Build a neural network.<br />One little click at a time.</p>
       @if (game.mode() === 'journey') {
         <nav class="chapters" aria-label="History chapters">
-          @for (era of eras; track era.year; let i = $index) {
+          @for (level of levels; track level.id; let i = $index) {
             <button
-              [class.current]="(viewedEra() ?? game.era()) === i"
-              [disabled]="i > game.era()"
-              (click)="viewedEra.set(i)"
-              [attr.aria-current]="(viewedEra() ?? game.era()) === i ? 'step' : null"
+              [class.current]="game.level().id === level.id"
+              [disabled]="i > game.save().era || game.trainer.busy()"
+              (click)="switchLevel(level.id)"
+              [attr.aria-current]="game.level().id === level.id ? 'step' : null"
             >
               <span>{{
-                i < game.era() || game.save().checkedChapters?.includes(i)
+                game.save().journey.levels[level.id].completed
                   ? '✓'
-                  : i > game.era()
+                  : i > game.save().era
                     ? '○'
                     : i + 1
               }}</span
-              ><strong>{{ era.year }}</strong
-              ><small>{{ era.short }}</small>
+              ><strong>{{ level.year }}</strong
+              ><small>{{ level.short }}</small>
             </button>
           }
         </nav>
@@ -110,17 +117,24 @@
           <span class="sticker">YOUR MISSION</span>
           <h2>{{ chapter().title }}</h2>
           <p>{{ challenge() }}</p>
-          <button
-            class="hint-button"
-            [hidden]="(viewedEra() ?? game.era()) !== game.era()"
-            (click)="game.checkBuild()"
-            [disabled]="!game.compilation().network || game.trainer.busy()"
-          >
-            Check my build ✓
-          </button>
+          @if (game.levelComplete()) {
+            <p class="level-saved">✓ Discovery saved. Keep experimenting or turn the page.</p>
+            @if (game.nextLevel(); as next) {
+              <button
+                class="next-level"
+                (click)="switchLevel(next.id)"
+                [disabled]="game.trainer.busy()"
+              >
+                Next level →
+              </button>
+            }
+          } @else {
+            <p class="level-saved">Your canvas saves as you build. Check it at the top right.</p>
+          }
           <div class="mission-steps">
             <span [class.done]="game.board().nodes.length > 2">✳ Build</span
-            ><span [class.done]="!!game.compilation().network">↳ Connect</span><span>✓ Check</span>
+            ><span [class.done]="!!game.compilation().network">↳ Connect</span
+            ><span [class.done]="game.levelComplete()">✓ Check</span>
           </div>
         </div>
         <details class="story">
@@ -204,8 +218,8 @@
         @if (resetRequested()) {
           <div class="reset-confirm">
             <p>
-              Reset this {{ game.mode() }} board{{ game.mode() === 'journey' ? ', unlocks' : '' }}
-              and its notebook?
+              Clear this canvas and its notebook? Your other levels and earned discoveries stay
+              saved.
             </p>
             <button (click)="reset()">Start fresh</button
             ><button (click)="resetRequested.set(false)">Keep playing</button>
@@ -215,13 +229,16 @@
     </aside>
   }
   <main class="play-area">
-    <app-paper-canvas />
+    <app-paper-canvas [checkButton]="checkButton()?.nativeElement" />
     @if (game.celebration()) {
       <div class="celebration" role="status">
         <span>✷</span>
         <div>
           <b>A NEW LITTLE DISCOVERY!</b>
           <p>{{ game.celebration() }}</p>
+          @if (game.nextLevel(); as next) {
+            <button class="next-level" (click)="switchLevel(next.id)">Next level →</button>
+          }
         </div>
         <button aria-label="Dismiss celebration" (click)="game.celebration.set('')">×</button>
       </div>

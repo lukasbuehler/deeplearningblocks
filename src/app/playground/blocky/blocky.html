@@ -14,11 +14,6 @@
         ><button (click)="details.set(!details())" [attr.aria-expanded]="details()">Why?</button
         ><button (click)="mute()">Mute</button>
       </div>
-      @if (journey() && canCheck()) {
-        <button class="check" (click)="check.emit()" [disabled]="!canCheck()">
-          Check my build ✓
-        </button>
-      }
       <button class="later" (click)="dismiss()">Got it, let me build</button>
     </section>
   }

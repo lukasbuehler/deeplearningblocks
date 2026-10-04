@@ -1,3 +1,4 @@
+import { LEVEL_IDS, LevelId } from './levels';
 import { splitLegacyOutput } from './board-migration';
 import { MIN_ZOOM, MAX_ZOOM } from './geometry';
 import { Experiment } from '../learning/curriculum';
@@ -9,23 +10,37 @@ export interface Workspace {
   board: Board;
   experiments: Experiment[];
 }
+export interface LevelWorkspace extends Workspace {
+  completed: boolean;
+}
 export interface GameSave {
-  version: 3;
+  version: 4;
   mode: Mode;
+  /** Highest unlocked block era, independent of the selected level. */
   era: number;
-  checkedChapters?: number[];
-  journey: Workspace;
+  journey: { activeLevel: LevelId; levels: Record<LevelId, LevelWorkspace> };
   sandbox: Workspace;
 }
-export const PREVIOUS_SAVE_KEY = 'dlb-playground-v2';
-export const SAVE_KEY = 'dlb-playground-v3';
+export const PREVIOUS_SAVE_KEY = 'dlb-playground-v3';
+export const SAVE_KEY = 'dlb-playground-v4';
 export function freshGame(): GameSave {
   return {
-    version: 3,
+    version: 4,
     mode: 'journey',
     era: 0,
-    checkedChapters: [],
-    journey: { board: freshBoard(), experiments: [] },
+    journey: {
+      activeLevel: LEVEL_IDS[0],
+      levels: Object.fromEntries<LevelWorkspace>(
+        LEVEL_IDS.map((id) => [
+          id,
+          {
+            board: freshBoard(),
+            experiments: [],
+            completed: false,
+          },
+        ]),
+      ) as Record<LevelId, LevelWorkspace>,
+    },
     sandbox: { board: freshBoard(), experiments: [] },
   };
 }
@@ -98,7 +113,12 @@ export function migrateLegacy(): GameSave {
   const legacy = readProgress(),
     save = freshGame();
   save.era = legacy.era;
-  save.journey.experiments = legacy.experiments;
+  save.journey.activeLevel = LEVEL_IDS[legacy.era];
+  const workspace = save.journey.levels[save.journey.activeLevel];
+  for (const [i, id] of LEVEL_IDS.entries()) {
+    save.journey.levels[id].completed = i < legacy.era;
+    save.journey.levels[id].experiments = legacy.experiments.filter((e) => e.era === i);
+  }
   if (!legacy.blocks.length && !legacy.experiments.length) return save;
   const nodes: BlockNode[] = [
     { id: 'image', kind: 'image', x: 160, y: 40 },
@@ -118,53 +138,80 @@ export function migrateLegacy(): GameSave {
     y += 230;
   }
   nodes.push({ id: 'classifier', kind: 'classifier', x: 160, y });
-  save.journey.board = {
+  workspace.board = {
     nodes,
     edges: nodes.slice(1).map((n, i) => ({ from: nodes[i].id, to: n.id })),
     viewport: { x: 0, y: 0, zoom: 0.65 },
   };
-  save.journey.board = splitLegacyOutput(save.journey.board);
+  workspace.board = splitLegacyOutput(workspace.board);
   return save;
 }
+/** Read older formats without overwriting their recovery keys. */
 export function loadGame(): GameSave {
   try {
-    const current = localStorage.getItem(SAVE_KEY);
-    const raw = current ?? localStorage.getItem(PREVIOUS_SAVE_KEY);
+    const raw =
+      localStorage.getItem(SAVE_KEY) ??
+      localStorage.getItem(PREVIOUS_SAVE_KEY) ??
+      localStorage.getItem('dlb-playground-v2');
     if (!raw) return migrateLegacy();
-    const save = JSON.parse(raw);
-    if (!current && save.version === 2) {
-      save.journey.board = splitLegacyOutput(save.journey.board);
-      save.sandbox.board = splitLegacyOutput(save.sandbox.board);
-      save.version = 3;
-    }
+    let save = JSON.parse(raw);
     if (
-      save.version !== 3 ||
+      !save ||
       !['journey', 'sandbox'].includes(save.mode) ||
       !Number.isInteger(save.era) ||
       save.era < 0 ||
       save.era > 2
     )
       return freshGame();
-    if (!validBoard(save.journey?.board, save.era) || !validBoard(save.sandbox?.board, 2))
-      return freshGame();
-    return {
-      ...save,
-      checkedChapters: Array.isArray(save.checkedChapters)
-        ? [
-            ...new Set(
-              save.checkedChapters.filter((n: number) => Number.isInteger(n) && n >= 0 && n <= 2),
-            ),
-          ]
-        : [],
-      journey: {
-        board: save.journey.board,
-        experiments: validExperiments(save.journey.experiments),
-      },
-      sandbox: {
+    if (save.version === 2 || save.version === 3) {
+      if (save.version === 2) {
+        save.journey.board = splitLegacyOutput(save.journey.board);
+        save.sandbox.board = splitLegacyOutput(save.sandbox.board);
+      }
+      if (!validBoard(save.journey?.board, save.era) || !validBoard(save.sandbox?.board, 2))
+        return freshGame();
+      const migrated = freshGame();
+      migrated.mode = save.mode;
+      migrated.era = save.era;
+      migrated.journey.activeLevel = LEVEL_IDS[save.era];
+      migrated.journey.levels[migrated.journey.activeLevel].board = save.journey.board;
+      const experiments = validExperiments(save.journey.experiments);
+      LEVEL_IDS.forEach((id, i) => {
+        migrated.journey.levels[id].completed =
+          i < save.era || save.checkedChapters?.includes(i) === true;
+        migrated.journey.levels[id].experiments = experiments.filter((e) => e.era === i);
+      });
+      migrated.sandbox = {
         board: save.sandbox.board,
         experiments: validExperiments(save.sandbox.experiments),
-      },
+      };
+      save = migrated;
+    }
+    if (
+      save.version !== 4 ||
+      !LEVEL_IDS.includes(save.journey?.activeLevel) ||
+      LEVEL_IDS.indexOf(save.journey.activeLevel) > save.era ||
+      !validBoard(save.sandbox?.board, 2)
+    )
+      return freshGame();
+    const result = freshGame();
+    result.mode = save.mode;
+    result.era = save.era;
+    result.journey.activeLevel = save.journey.activeLevel;
+    for (const id of LEVEL_IDS) {
+      const level = save.journey.levels?.[id];
+      // One damaged level must not erase other boards or earned discoveries.
+      result.journey.levels[id] = {
+        board: validBoard(level?.board, save.era) ? level.board : freshBoard(),
+        experiments: validExperiments(level?.experiments),
+        completed: level?.completed === true,
+      };
+    }
+    result.sandbox = {
+      board: save.sandbox.board,
+      experiments: validExperiments(save.sandbox.experiments),
     };
+    return result;
   } catch {
     return freshGame();
   }

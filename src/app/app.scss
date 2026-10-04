@@ -649,3 +649,23 @@ button:disabled {
     font-size: 8px;
   }
 }
+
+.train-button.check-ready,
+.next-level {
+  background: var(--yellow);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.train-button.blocky-focus {
+  outline: 3px dashed #e1453e;
+  outline-offset: 5px;
+}
+.next-level {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: 850;
+}
+.level-saved {
+  font-size: 12px;
+}

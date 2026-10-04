@@ -33,10 +33,7 @@ export class Blocky {
   readonly context = input.required<string>();
   readonly suppressed = input(false);
   readonly angle = input(0);
-  readonly journey = input(false);
-  readonly canCheck = input(false);
   readonly show = output<void>();
-  readonly check = output<void>();
   readonly highlight = output<boolean>();
   readonly prefs = signal(preferences());
   private readonly revealed = signal('');

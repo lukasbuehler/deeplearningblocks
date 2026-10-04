@@ -6,7 +6,7 @@ Planning update: 3 October 2026. These are candidate levels, not implemented fea
 
 **Build it, understand one important thing, unlock the next idea.** Training is an optional experiment, not the admission ticket to the next level. MNIST is one level in a much wider collection.
 
-The current three MNIST chapters now accept **Check my build** without training. Existing unlocks are preserved and training results remain separate. The general level engine and the candidate levels below are future work.
+The current three MNIST chapters are implemented as independent saved levels with stable IDs, canvases, viewports, notebooks and completion badges. The yellow toolbar **Check build** action rewards construction without training. **Next level** opens a separate canvas; selecting an earlier level restores its work. Existing unlocks migrate intact. The broader exploration engine and candidate levels below remain future work.
 
 A good level introduces a distinct idea, has a satisfying construction task, and shows an understandable consequence. Changing only the dataset is not automatically a new level. Use familiar data where it makes the new idea easier to see.
 
@@ -100,3 +100,7 @@ Start with a small, varied collection rather than implementing the whole catalog
 Tiny Sorter and Impossible Fence can be compact introductory challenges before MNIST. Wardrobe Robot is inexpensive reuse but less conceptually different, so it is lower priority than a CNN or autoencoder level. Segmentation, audio, recurrence and recommendations are later branches. GANs and diffusion are distant candidates, not commitments for the first collection.
 
 Do not invent a separate execution framework per level. A level definition should declare its learning objectives, prerequisite IDs, allowed block catalog, construction validators, exploration tasks, example assets, compatible checkpoints and supported runtime/export modes. Completion records the build/exploration evidence independently of training results. Preserve existing Journey rewards during migration.
+
+## Next image blocks
+
+Introduce **Conv2D** and **Pooling** as separate blocks in a later image level. A LeNet-inspired MNIST challenge can teach spatial filters before moving to color-image classification. MNIST is the dataset, not a prescribed architecture: both dense networks and convolutional models can classify its digits. Show image dimensions, channel counts and feature maps at the ports. Construction and inspecting a filter should earn completion; browser training remains optional. [Original MNIST results](https://yann.lecun.org/exdb/mnist/) include both dense and convolutional networks.

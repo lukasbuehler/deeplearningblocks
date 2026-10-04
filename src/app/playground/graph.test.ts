@@ -89,7 +89,7 @@ test('legacy progress migrates to explicit operations without losing unlocks', (
   const save = loadGame();
   assert.equal(save.era, 1);
   assert.equal(save.sandbox.board.edges.length, 0);
-  const compiled = compileBoard(save.journey.board).network!;
+  const compiled = compileBoard(save.journey.levels[save.journey.activeLevel].board).network!;
   assert.equal(compiled.parameters, 25450);
   assert.equal(unlockAfter(1, compiled), 2);
   assert.deepEqual(compiled.steps[2], { kind: 'activation', activation: 'sigmoid' });
@@ -101,7 +101,7 @@ test('unavailable storage starts with loose endpoints', () => {
       throw new Error('blocked');
     },
   });
-  assert.deepEqual(loadGame().journey.board, freshBoard());
+  assert.deepEqual(loadGame().journey.levels['first-network'].board, freshBoard());
 });
 test('six hidden Dense layers plus output are allowed; a seventh hidden layer is rejected', () => {
   const board = network();
@@ -128,14 +128,14 @@ test('invalid versioned saves recover safely and valid independent workspaces ro
     },
   });
   storage.set(SAVE_KEY, '{bad json');
-  assert.deepEqual(loadGame().journey.board, freshBoard());
+  assert.deepEqual(loadGame().journey.levels['first-network'].board, freshBoard());
   const save = loadGame();
   save.era = 2;
-  save.journey.board = network();
-  save.journey.board.viewport.zoom = 0.2;
+  save.journey.levels[save.journey.activeLevel].board = network();
+  save.journey.levels[save.journey.activeLevel].board.viewport.zoom = 0.2;
   storage.set(SAVE_KEY, JSON.stringify(save));
   assert.deepEqual(loadGame(), save);
-  save.journey.board.edges.push({ from: 'd', to: 'c' });
+  save.journey.levels[save.journey.activeLevel].board.edges.push({ from: 'd', to: 'c' });
   storage.set(SAVE_KEY, JSON.stringify(save));
-  assert.equal(loadGame().journey.board.edges.length, 0);
+  assert.equal(loadGame().journey.levels['first-network'].board.edges.length, 0);
 });

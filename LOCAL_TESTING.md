@@ -92,3 +92,17 @@ Computer use exercised mouse and keyboard input at phone and desktop viewport si
 
 - Panning was included in the helper's suppression condition, which removed the character, bubble and highlight during each pan. Removed only that condition. Open explanations now stay open and target geometry continues following the viewport.
 - An Angular regression holds the canvas in its active-panning state and verifies the character, expanded explanation, highlight and updated pointer coordinates. All 15 browser tests pass; production build passes. Computer use also panned with Why expanded and confirmed the visible clue and pointer remained attached. Evidence: `docs/screenshots/blocky-pan.png`.
+
+## Independent levels and toolbar checking, 4 October 2026
+
+The chapter navigation previously changed only the displayed history text while the entire Journey shared one board. It now selects a stable level ID with its own canvas, viewport, notebook and completion badge. Existing unlocks migrate without requiring another training run. The old single canvas is retained at the previously active era; old notebook entries are distributed by their recorded era. Old storage keys remain untouched for recovery.
+
+- Computer use on the separate 127.0.0.1:8788 origin completed the first explicit network. The toolbar became yellow Check build, Blocky's arm and pointer aimed at it, and Show me focused the button without panning the canvas.
+- Checking stayed on level one, recorded its badge, changed the action back to Train and exposed Next level. Level two opened with two loose endpoints. Adding a Tanh block, returning to level one, switching back and reloading retained the independent boards and their zooms.
+- Optional five-pass training on level one completed at 90.0% held-out accuracy. Its single notebook entry survived level switching and reload; level two's notebook stayed empty. This is one observed run, not a guaranteed score.
+- Keyboard port connections completed the second level with a hidden Dense and Tanh. At a 390 × 844 viewport, the yellow check action and Blocky pointer remained visible. Checking awarded level two, and Next level opened level three on fresh paper. The responsive override was reset afterward.
+- 33 core tests and 18 Angular/ChromeHeadless tests pass. Coverage includes v1/v2/v3 migration, unchanged recovery copies, per-level reload, independent undo, completion without training, locked/busy navigation, Sandbox isolation and toolbar targeting.
+- Production build and Workers dry run pass. The local preview remains running on port 8788. No deployment was made.
+- Screenshots: `docs/screenshots/level-check-mobile.png` and `docs/screenshots/level-progress-desktop.png`.
+
+Fresh paper now clears only the selected board and its notebook, preserving earned discoveries and all other levels. Training no longer advances completion automatically; the explicit build check records learning progress separately. Weights remain memory-only, so switching levels requires retraining for predictions.

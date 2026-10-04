@@ -3,7 +3,10 @@ import { experimentHint } from './experiment-hints';
 import { blockName } from './block-catalog';
 
 export type HintTarget =
-  { kind: 'node'; id: string } | { kind: 'edge'; from: string; to: string } | { kind: 'tray' };
+  | { kind: 'node'; id: string }
+  | { kind: 'edge'; from: string; to: string }
+  | { kind: 'tray' }
+  | { kind: 'check' };
 export interface BlockyHint {
   id: string;
   text: string;
@@ -20,6 +23,7 @@ export function blockyHint(
   mode: string,
   rejected?: Edge,
   accuracy?: number,
+  completed = false,
 ): BlockyHint {
   const nodeTarget = (id: string): HintTarget => ({ kind: 'node', id });
   if (rejected && board.nodes.some((n) => n.id === rejected.to)) {
@@ -106,7 +110,12 @@ export function blockyHint(
     };
   const edge = dense && board.edges.find((e) => e.from === dense.id);
   const target: HintTarget = edge ? { kind: 'edge', ...edge } : nodeTarget(image.id);
-  if (mode === 'journey' && era === 1 && !hasHiddenActivation(network, ['sigmoid', 'tanh']))
+  if (
+    mode === 'journey' &&
+    !completed &&
+    era === 1 &&
+    !hasHiddenActivation(network, ['sigmoid', 'tanh'])
+  )
     return {
       id: 'nonlinear',
       text:
@@ -121,6 +130,7 @@ export function blockyHint(
     };
   if (
     mode === 'journey' &&
+    !completed &&
     era === 2 &&
     (!hasHiddenActivation(network, ['relu']) ||
       network.steps.filter((s) => s.kind === 'dense').length < 3)
@@ -144,12 +154,17 @@ export function blockyHint(
     };
   }
   return {
-    id: 'ready',
+    id: completed ? 'complete' : 'ready',
     text:
       mode === 'journey'
-        ? 'Your path is ready! Check your build to collect this discovery.'
+        ? completed
+          ? 'Discovery saved! Try training, or choose Next level in your guide.'
+          : 'Your build is ready! Press the yellow Check build button at the top right.'
         : 'A complete path! Follow a wire and see how its shape changes.',
     why: 'Only the connected path runs. Loose blocks can stay on your paper. You can train when you want to try real digit predictions.',
-    target: nodeTarget(board.nodes.find((n) => n.kind === 'classifier')!.id),
+    target:
+      mode === 'journey' && !completed
+        ? { kind: 'check' }
+        : nodeTarget(board.nodes.find((n) => n.kind === 'classifier')!.id),
   };
 }

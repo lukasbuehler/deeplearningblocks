@@ -1,28 +1,39 @@
+import { LEVELS, LevelId, meetsLevel } from './levels';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { TrainingService } from '../learning/training.service';
-import { ACTIVATIONS, ERAS } from '../learning/curriculum';
-import {
-  Board,
-  BlockNode,
-  compileBoard,
-  describeNetwork,
-  freshBoard,
-  unlockAfter,
-  hasHiddenActivation,
-} from './graph';
+import { ACTIVATIONS } from '../learning/curriculum';
+import { Board, BlockNode, compileBoard, describeNetwork, freshBoard } from './graph';
 import { BoardHistory } from './history';
-import { GameSave, Mode, loadGame, saveGame } from './storage';
+import { GameSave, Mode, Workspace, loadGame, saveGame } from './storage';
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
   readonly trainer = inject(TrainingService);
   readonly save = signal<GameSave>(loadGame());
   readonly mode = computed(() => this.save().mode);
-  readonly workspace = computed(() => this.save()[this.mode()]);
+  readonly level = computed(() => LEVELS.find((l) => l.id === this.save().journey.activeLevel)!);
+  readonly workspaceKey = computed(() => (this.mode() === 'sandbox' ? 'sandbox' : this.level().id));
+  readonly workspace = computed(() =>
+    this.mode() === 'sandbox' ? this.save().sandbox : this.save().journey.levels[this.level().id],
+  );
+  readonly levelComplete = computed(
+    () => this.mode() === 'journey' && this.save().journey.levels[this.level().id].completed,
+  );
+  readonly canCheck = computed(
+    () =>
+      this.mode() === 'journey' &&
+      !this.levelComplete() &&
+      !this.trainer.busy() &&
+      meetsLevel(this.level().era, this.compilation().network),
+  );
+  readonly nextLevel = computed(() =>
+    this.levelComplete() ? LEVELS[this.level().era + 1] : undefined,
+  );
   readonly board = computed(() => this.workspace().board);
-  readonly era = computed(() => (this.mode() === 'sandbox' ? 2 : this.save().era));
+  readonly era = computed(() => (this.mode() === 'sandbox' ? 2 : this.level().era));
   readonly compilation = computed(() => compileBoard(this.board()));
-  readonly activations = computed(() => ACTIVATIONS.filter((a) => a.era <= this.era()));
+  readonly unlockedEra = computed(() => (this.mode() === 'sandbox' ? 2 : this.save().era));
+  readonly activations = computed(() => ACTIVATIONS.filter((a) => a.era <= this.unlockedEra()));
   readonly selected = signal<string | null>(null);
   readonly selectedNode = computed(() => this.board().nodes.find((n) => n.id === this.selected()));
   readonly message = signal('');
@@ -39,14 +50,38 @@ export class GameService {
       this.trainer.test()?.pixels.slice(this.sample() * 784, (this.sample() + 1) * 784),
   );
   readonly historyVersion = signal(0);
-  private readonly histories = { journey: new BoardHistory(), sandbox: new BoardHistory() };
+  private readonly histories = new Map<string, BoardHistory>();
+  private get history(): BoardHistory {
+    const key = this.workspaceKey();
+    if (!this.histories.has(key)) this.histories.set(key, new BoardHistory());
+    return this.histories.get(key)!;
+  }
+  private updateWorkspace(update: (workspace: Workspace) => Workspace): void {
+    this.save.update((save) =>
+      save.mode === 'sandbox'
+        ? { ...save, sandbox: update(save.sandbox) }
+        : {
+            ...save,
+            journey: {
+              ...save.journey,
+              levels: {
+                ...save.journey.levels,
+                [save.journey.activeLevel]: {
+                  ...save.journey.levels[save.journey.activeLevel],
+                  ...update(save.journey.levels[save.journey.activeLevel]),
+                },
+              },
+            },
+          },
+    );
+  }
   readonly canUndo = computed(() => {
     this.historyVersion();
-    return this.histories[this.mode()].canUndo;
+    return this.history.canUndo;
   });
   readonly canRedo = computed(() => {
     this.historyVersion();
-    return this.histories[this.mode()].canRedo;
+    return this.history.canRedo;
   });
   constructor() {
     effect(() => this.storageWarning.set(!saveGame(this.save())));
@@ -67,7 +102,7 @@ export class GameService {
   }
   private apply(board: Board): void {
     const previous = this.compilation().network?.signature;
-    this.save.update((save) => ({ ...save, [save.mode]: { ...save[save.mode], board } }));
+    this.updateWorkspace((workspace) => ({ ...workspace, board }));
     if (previous !== this.compilation().network?.signature) {
       this.trainer.invalidate();
       this.trainer.epochs.set([]);
@@ -84,17 +119,18 @@ export class GameService {
       JSON.stringify({ nodes: b.nodes.map(({ x, y, ...n }) => n), edges: b.edges });
     if (this.trainer.busy() && structure(before) !== structure(board)) return;
     if (JSON.stringify(before) === JSON.stringify(board)) return;
-    this.histories[this.mode()].record(before);
+    this.history.record(before);
     this.historyVersion.update((v) => v + 1);
     this.apply(board);
     this.celebration.set('');
   }
   setViewport(viewport: Board['viewport']): void {
-    this.save.update((save) => ({
-      ...save,
-      [save.mode]: { ...save[save.mode], board: { ...save[save.mode].board, viewport } },
+    this.updateWorkspace((workspace) => ({
+      ...workspace,
+      board: { ...workspace.board, viewport },
     }));
   }
+
   configure(change: Partial<BlockNode> & { id: string }): void {
     if (this.trainer.busy()) return;
     this.edit({
@@ -104,43 +140,56 @@ export class GameService {
   }
   undo(): void {
     if (this.trainer.busy()) return;
-    const board = this.histories[this.mode()].undo(this.board());
+    const board = this.history.undo(this.board());
     if (board) this.apply(board);
     this.historyVersion.update((v) => v + 1);
   }
   redo(): void {
     if (this.trainer.busy()) return;
-    const board = this.histories[this.mode()].redo(this.board());
+    const board = this.history.redo(this.board());
     if (board) this.apply(board);
     this.historyVersion.update((v) => v + 1);
   }
-  switchMode(mode: Mode): void {
-    if (this.trainer.busy() || mode === this.mode()) return;
+  private clearRuntime(): void {
     this.trainer.invalidate();
     this.trainer.epochs.set([]);
     this.probabilities.set([]);
+    this.drawing.set(null);
+    this.drawingOpen.set(false);
     this.selected.set(null);
     this.message.set('');
     this.celebration.set('');
-    this.save.update((save) => ({ ...save, mode }));
     this.trainer.status.set('Ready when you are');
+  }
+  switchMode(mode: Mode): void {
+    if (this.trainer.busy() || mode === this.mode()) return;
+    this.clearRuntime();
+    this.save.update((save) => ({ ...save, mode }));
+  }
+  switchLevel(id: LevelId): void {
+    const level = LEVELS.find((l) => l.id === id);
+    if (
+      this.trainer.busy() ||
+      !level ||
+      level.era > this.save().era ||
+      (this.mode() === 'journey' && id === this.level().id)
+    )
+      return;
+    this.clearRuntime();
+    this.save.update((save) => ({
+      ...save,
+      mode: 'journey',
+      journey: { ...save.journey, activeLevel: id },
+    }));
   }
   reset(): void {
     if (this.trainer.busy()) return;
-    this.trainer.invalidate();
-    this.trainer.epochs.set([]);
-    this.probabilities.set([]);
-    this.save.update((save) => ({
-      ...save,
-      ...(save.mode === 'journey' ? { era: 0, checkedChapters: [] } : {}),
-      [save.mode]: { board: freshBoard(), experiments: [] },
-    }));
-    this.histories[this.mode()].clear();
+    this.clearRuntime();
+    // Fresh paper is local to this workspace. Earned discoveries remain earned.
+    this.updateWorkspace(() => ({ board: freshBoard(), experiments: [] }));
+    this.history.clear();
     this.historyVersion.update((v) => v + 1);
-    this.selected.set(null);
-    this.celebration.set('');
-    this.message.set('Fresh paper. A new little adventure.');
-    this.trainer.status.set('Ready when you are');
+    this.message.set('Fresh paper. Your other levels and discoveries are safe.');
   }
   useDrawing(pixels: Float32Array): void {
     this.drawing.set(pixels);
@@ -174,29 +223,22 @@ export class GameService {
       this.message.set('Your Sandbox path works! Journey discoveries stay in Journey.');
       return;
     }
-    const era = this.era(),
-      dense = network.steps.filter((s) => s.kind === 'dense').length;
-    const has = (name: string) => hasHiddenActivation(network, [name]);
-    const complete =
-      era === 0
-        ? dense > 0
-        : era === 1
-          ? dense > 0 && (has('sigmoid') || has('tanh'))
-          : dense >= 3 && has('relu');
-    if (!complete) {
-      this.message.set(
-        era === 0
-          ? 'Connect a Dense block in your path.'
-          : era === 1
-            ? 'Try Sigmoid or Tanh in your connected path.'
-            : 'Try two hidden Dense layers and ReLU before Dense · 10 and Softmax.',
-      );
+    const era = this.level().era;
+    if (this.levelComplete()) return;
+    if (!meetsLevel(era, network)) {
+      this.message.set(this.level().challenge);
       return;
     }
     this.save.update((save) => ({
       ...save,
-      era: Math.min(2, era + 1),
-      checkedChapters: [...new Set([...(save.checkedChapters ?? []), era])],
+      era: Math.max(save.era, Math.min(2, era + 1)),
+      journey: {
+        ...save.journey,
+        levels: {
+          ...save.journey.levels,
+          [this.level().id]: { ...save.journey.levels[this.level().id], completed: true },
+        },
+      },
     }));
     this.celebration.set(
       era === 0
@@ -213,8 +255,7 @@ export class GameService {
       this.message.set(this.compilation().issues[0]?.message ?? '');
       return;
     }
-    const mode = this.mode(),
-      era = this.era();
+    const era = this.era();
     this.error.set('');
     this.message.set('');
     this.celebration.set('');
@@ -222,23 +263,14 @@ export class GameService {
     try {
       const result = await this.trainer.train(network);
       if (!result) return;
-      const unlocked = mode === 'journey' ? unlockAfter(era, network) : this.save().era;
-      this.save.update((save) => ({
-        ...save,
-        era: unlocked,
-        [mode]: {
-          ...save[mode],
-          experiments: [
-            ...save[mode].experiments,
-            { ...result, era, layers: describeNetwork(network) },
-          ].slice(-8),
-        },
+      this.updateWorkspace((workspace) => ({
+        ...workspace,
+        experiments: [
+          ...workspace.experiments,
+          { ...result, era, layers: describeNetwork(network) },
+        ].slice(-8),
       }));
-      if (mode === 'journey' && unlocked > era)
-        this.celebration.set(
-          `${ERAS[unlocked].year} unlocked! ${unlocked === 1 ? 'Meet Sigmoid & Tanh.' : 'ReLU joins your toy box.'}`,
-        );
-      else this.message.set('An experiment in the books! Change one thing and try again.');
+      this.message.set('An experiment in the books! Change one thing and try again.');
       this.refreshPrediction();
     } catch (error) {
       this.error.set(
