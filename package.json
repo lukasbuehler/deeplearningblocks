@@ -11,7 +11,13 @@
     "preview:worker": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "test:core": "node --import tsx --test src/app/learning/*.test.ts src/app/playground/*.test.ts",
-    "format": "prettier --write \"src/**/*.{ts,html,scss}\" angular.json package.json wrangler.jsonc"
+    "format": "prettier --write \"src/**/*.{ts,html,scss}\" angular.json package.json wrangler.jsonc",
+    "prebuild": "node scripts/analytics-config.mjs",
+    "prestart": "node scripts/analytics-config.mjs",
+    "predev": "node scripts/analytics-config.mjs",
+    "prewatch": "node scripts/analytics-config.mjs",
+    "deploy:check": "npm run build && wrangler deploy --dry-run",
+    "test:config": "node --test scripts/*.test.mjs"
   },
   "prettier": {
     "printWidth": 100,
@@ -39,6 +45,7 @@
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
     "@tensorflow/tfjs-layers": "^4.22.0",
+    "posthog-js": "^1.447.12",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "^0.15.1"

@@ -5,3 +5,6 @@
 
 /data/*
   Cache-Control: public, max-age=86400
+
+/analytics-config.json
+  Cache-Control: no-store

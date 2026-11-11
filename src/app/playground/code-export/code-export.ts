@@ -1,3 +1,4 @@
+import { Analytics } from '../../analytics/analytics';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -18,6 +19,7 @@ import { pytorchModel, pytorchNotebook, pytorchScript } from '../pytorch-export'
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CodeExport {
+  private readonly analytics = inject(Analytics);
   readonly game = inject(GameService);
   readonly close = output<void>();
   readonly fullRecipe = signal(false);
@@ -56,6 +58,11 @@ export class CodeExport {
     document.body.append(link);
     link.click();
     link.remove();
+    this.analytics.track('model_exported', {
+      ...this.game.analyticsContext(),
+      format,
+      parameter_count: network.parameters,
+    });
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     this.status.set(
       format === 'py'

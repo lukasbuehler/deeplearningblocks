@@ -1,3 +1,4 @@
+import { Analytics } from '../analytics/analytics';
 import { splitLegacyOutput } from './board-migration';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -23,6 +24,7 @@ const connected = (): Board =>
   });
 describe('Playground state', () => {
   let game: GameService;
+  let track: jasmine.Spy;
   let trainer: {
     busy: ReturnType<typeof signal<boolean>>;
     status: ReturnType<typeof signal<string>>;
@@ -36,6 +38,7 @@ describe('Playground state', () => {
     trained: ReturnType<typeof signal<boolean>>;
   };
   beforeEach(() => {
+    track = jasmine.createSpy('track');
     trainer = {
       busy: signal(false),
       status: signal(''),
@@ -51,6 +54,7 @@ describe('Playground state', () => {
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
+        { provide: Analytics, useValue: { track } },
         { provide: TrainingService, useValue: trainer },
       ],
     });
@@ -94,6 +98,11 @@ describe('Playground state', () => {
     await game.train();
     expect(game.save().era).toBe(0);
     expect(game.save().sandbox.experiments.length).toBe(1);
+    expect(track).toHaveBeenCalledWith(
+      'training_completed',
+      jasmine.objectContaining({ mode: 'sandbox', level_id: 'sandbox', dataset_id: 'mnist' }),
+    );
+    expect(track.calls.allArgs().some(([event]) => event === 'level_completed')).toBeFalse();
     expect(game.save().journey.levels['first-network'].experiments.length).toBe(0);
     game.switchMode('journey');
     await game.train();
@@ -109,11 +118,13 @@ describe('Playground state', () => {
     expect(game.levelComplete()).toBeTrue();
     expect(game.canCheck()).toBeFalse();
     expect(game.workspace().experiments).toEqual([]);
+    expect(track.calls.allArgs().filter(([event]) => event === 'level_completed').length).toBe(1);
     expect(trainer.train).not.toHaveBeenCalled();
     expect(trainer.invalidate).not.toHaveBeenCalled();
     expect(game.probabilities()).toEqual([0.9]);
     game.checkBuild();
     expect(game.save().era).toBe(1);
+    expect(track.calls.allArgs().filter(([event]) => event === 'level_completed').length).toBe(1);
   });
   it('isolates canvases, viewports, undo, notebooks and reset across levels and reload', async () => {
     game.setViewport({ x: 123, y: 45, zoom: 0.6 });
@@ -211,6 +222,11 @@ describe('Playground state', () => {
   it('does not record cancelled training or unlock a chapter', async () => {
     trainer.train.and.resolveTo(null);
     await game.train();
+    expect(track).toHaveBeenCalledWith(
+      'training_cancelled',
+      jasmine.objectContaining({ dataset_id: 'mnist' }),
+    );
+    expect(track.calls.allArgs().some(([event]) => event === 'training_completed')).toBeFalse();
     expect(game.save().era).toBe(0);
     expect(game.workspace().experiments.length).toBe(0);
   });

@@ -21,7 +21,15 @@ describe('Code export', () => {
         provideZonelessChangeDetection(),
         {
           provide: GameService,
-          useValue: { compilation, dataset: signal(DATASETS['fashion-mnist']) },
+          useValue: {
+            compilation,
+            dataset: signal(DATASETS['fashion-mnist']),
+            analyticsContext: () => ({
+              mode: 'journey',
+              dataset_id: 'fashion-mnist',
+              level_id: 'hidden-layers',
+            }),
+          },
         },
       ],
     });

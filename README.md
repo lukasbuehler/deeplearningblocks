@@ -36,7 +36,7 @@ The dates refer to influential papers, not exclusive invention claims. The lab c
 
 ## What actually runs
 
-TensorFlow.js loads only when training starts. It compiles the connected image-to-classifier path into a fresh model and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from the selected dataset’s official test split. No model or image data is uploaded. WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
+TensorFlow.js loads only when training starts. It compiles the connected image-to-classifier path into a fresh model and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from the selected dataset’s official test split. No model or image data is uploaded. On configured HTTPS deployments, PostHog receives limited usage events such as level completion and training outcomes; see [the event contract](DEPLOYMENT.md#event-contract). WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
 
 Input pixels are normalized to [0, 1], Dense layers offer 10, 16, 32, 64 or 128 neurons. The final score vector must contain 10 values for the separate Softmax block. The purple output block displays class probabilities and adds no trainable parameters. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
 
@@ -78,6 +78,8 @@ npx wrangler deploy --dry-run
 `npm run format` formats source files. Local computer-use test results are recorded in `LOCAL_TESTING.md`.
 
 ## Cloudflare Workers
+
+The deployment-ready setup and PostHog EU configuration are documented in [DEPLOYMENT.md](DEPLOYMENT.md). Run `npm run deploy:check` to build and dry-run without publishing. GitHub Checks validates pull requests and main without deploying.
 
 The build produces a static Angular SPA. `wrangler.jsonc` serves `dist/deeplearningblocks/browser` through Workers Static Assets with SPA fallback. This follows [Cloudflare’s SPA hosting configuration](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/). No Worker script is needed until the app gains server-side behavior.
 

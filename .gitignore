@@ -45,3 +45,7 @@ Thumbs.db
 .playwright-mcp/
 # Cloudflare local state
 .wrangler/
+
+# Local analytics build configuration (public token, not account credentials)
+.env.local
+public/analytics-config.json

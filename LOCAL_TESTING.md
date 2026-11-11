@@ -136,3 +136,12 @@ Production build and all 20 Angular tests pass. The navigation regression checks
 - Level 3 opened its own loose endpoints with clothing images and no results. Sandbox restored its separate MNIST board. Reloading level 2 retained its clothing board, completion and result while clearing trained weights as expected.
 - Used keyboard movement to arrange the test canvas. Verified sidebar dataset labels at phone width, drawer close and Fit all. Actual measured narrow DOM viewport was 433px with `scrollWidth === innerWidth`, so no horizontal document overflow. Restored the desktop viewport. No browser console errors observed.
 - Screenshot: `docs/screenshots/dataset-level.jpg`. The screenshot is after reload, so the purple block correctly waits for retraining.
+
+## Worker deployment and PostHog (11 November 2026)
+
+- Used supported Node 22.19.0 for build and tests. The host's default Node 26 is outside this repository's declared engine range; `.nvmrc` and CI select the supported runtime.
+- 39 core tests, 32 Angular ChromeHeadless tests, and one build-configuration test passed (72 total). Analytics tests use a fake SDK and cover single initialization, early event order, local/DNT exclusions, empty/bad config, failed loading/capture, property filtering and pageview URL sanitization. Existing game tests now verify completion is emitted once, Sandbox context is separate, and cancellation is not counted as completion.
+- Production build passed; initial bundle 394.07 KB, with the 419.09 KB PostHog SDK in a separate lazy chunk. `npm run deploy:check` passed and packaged 19 assets without publishing.
+- Local Wrangler on port 8788 returned HTTP 200 for `/`, an SPA navigation request to `/learning/first-network`, the EU analytics config and the Fashion-MNIST test asset. The config response used `Cache-Control: no-store`; the downloaded compressed test data expanded to exactly 500 × 785 bytes.
+- In-app browser loaded the production Worker preview, switched to Sandbox and back to the saved clothing level, and showed no console errors. User-owned localhost progress was left alone; tests used 127.0.0.1. Screenshot: `docs/screenshots/worker-preview.jpg`.
+- No live deployment, DNS changes or PostHog dashboard verification were performed. The supplied public EU project token is configured. Local origins never load the SDK or submit events; HTTPS production ingestion remains a post-deployment check.

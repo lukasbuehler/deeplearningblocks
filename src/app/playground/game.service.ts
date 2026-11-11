@@ -1,3 +1,5 @@
+import { Analytics } from '../analytics/analytics';
+import type { LearningEventProperties } from '../analytics/analytics-policy';
 import { DATASETS } from '../learning/datasets';
 import { LEVELS, LevelId, meetsLevel } from './levels';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
@@ -9,6 +11,7 @@ import { GameSave, Mode, Workspace, loadGame, saveGame } from './storage';
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
+  private readonly analytics = inject(Analytics);
   readonly trainer = inject(TrainingService);
   readonly save = signal<GameSave>(loadGame());
   readonly mode = computed(() => this.save().mode);
@@ -94,7 +97,11 @@ export class GameService {
       const timer = setTimeout(() => this.celebration.set(''), 8000);
       onCleanup(() => clearTimeout(timer));
     });
+    this.analytics.track('workspace_opened', this.analyticsContext());
     void this.loadPreview();
+  }
+  analyticsContext(): LearningEventProperties {
+    return { mode: this.mode(), level_id: this.workspaceKey(), dataset_id: this.dataset().id };
   }
   async loadPreview(): Promise<void> {
     const dataset = this.dataset();
@@ -172,6 +179,7 @@ export class GameService {
     if (this.trainer.busy() || mode === this.mode()) return;
     this.clearRuntime();
     this.save.update((save) => ({ ...save, mode }));
+    this.analytics.track('workspace_opened', this.analyticsContext());
     void this.loadPreview();
   }
   switchLevel(id: LevelId): void {
@@ -189,6 +197,7 @@ export class GameService {
       mode: 'journey',
       journey: { ...save.journey, activeLevel: id },
     }));
+    this.analytics.track('workspace_opened', this.analyticsContext());
     void this.loadPreview();
   }
   reset(): void {
@@ -257,6 +266,7 @@ export class GameService {
           ? 'Nonlinearity discovered! ReLU joins your toy box.'
           : 'A deeper network discovered! Try training and compare your guesses.',
     );
+    this.analytics.track('level_completed', this.analyticsContext());
     this.message.set('Build checked. Training is an optional experiment.');
   }
   async train(): Promise<void> {
@@ -266,13 +276,31 @@ export class GameService {
       return;
     }
     const era = this.era();
+    const started = performance.now();
+    const context = {
+      ...this.analyticsContext(),
+      parameter_count: network.parameters,
+      dense_layers: network.steps.filter((step) => step.kind === 'dense').length,
+    };
+    this.analytics.track('training_started', context);
     this.error.set('');
     this.message.set('');
     this.celebration.set('');
     this.probabilities.set([]);
     try {
       const result = await this.trainer.train(network, this.dataset().id);
-      if (!result) return;
+      if (!result) {
+        this.analytics.track('training_cancelled', {
+          ...context,
+          duration_ms: Math.round(performance.now() - started),
+        });
+        return;
+      }
+      this.analytics.track('training_completed', {
+        ...context,
+        accuracy: result.accuracy,
+        duration_ms: Math.round(performance.now() - started),
+      });
       this.updateWorkspace((workspace) => ({
         ...workspace,
         experiments: [
@@ -283,6 +311,7 @@ export class GameService {
       this.message.set('An experiment in the books! Change one thing and try again.');
       this.refreshPrediction();
     } catch (error) {
+      this.analytics.track('training_failed', context);
       this.error.set(
         error instanceof Error ? error.message : 'That experiment could not finish. Try again.',
       );
