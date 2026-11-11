@@ -36,7 +36,9 @@ Connect the repository in Workers & Pages and use:
 
 Use the Wrangler deploy command here because the build step already runs separately. For a preview build intended to stay out of analytics, set the **build** variable `POSTHOG_PROJECT_TOKEN` to an empty string in that environment. The repository's GitHub Checks workflow runs tests and a dry run, never a live deployment.
 
-After the first deployment, attach the existing domain under the Worker's **Settings → Domains & Routes → Add → Custom Domain**. Choose the intended Cloudflare zone and review any conflicting DNS records. No domain or account is assumed by this repository.
+After the first deployment, attach the existing domain under the Worker's **Settings → Domains & Routes → Add → Custom Domain**. Choose the intended Cloudflare zone and review any conflicting DNS records. The canonical origin is `https://deeplearningblocks.com`, set in `config/site.json`. Override it with the `SITE_URL` Cloudflare **build** variable or in `.env.local` for a CLI build.
+
+With an explicitly empty `SITE_URL`, builds emit `noindex` and omit the sitemap. Cloudflare non-production branch builds use the same indexing protection. If the production branch differs from `main`, set `SITE_PRODUCTION_BRANCH` to match. For previews built outside Cloudflare's Git integration, set `SITE_PREVIEW=1`. Responses on standard `workers.dev` hosts also carry `X-Robots-Tag: noindex`.
 
 ## PostHog configuration
 

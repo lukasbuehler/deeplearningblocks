@@ -17,7 +17,8 @@
     "predev": "node scripts/analytics-config.mjs",
     "prewatch": "node scripts/analytics-config.mjs",
     "deploy:check": "npm run build && wrangler deploy --dry-run",
-    "test:config": "node --test scripts/*.test.mjs"
+    "test:config": "node --test scripts/*.test.mjs",
+    "postbuild": "node scripts/build-site.mjs"
   },
   "prettier": {
     "printWidth": 100,

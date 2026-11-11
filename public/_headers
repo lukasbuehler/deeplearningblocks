@@ -8,3 +8,6 @@
 
 /analytics-config.json
   Cache-Control: no-store
+
+https://:worker.:account.workers.dev/*
+ X-Robots-Tag: noindex
