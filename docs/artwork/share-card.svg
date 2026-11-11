@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="paper" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="1.6" fill="#d5ceb7"/>
+    </pattern>
+    <path id="wire" d="M844 221v30q0 14 14 14h139q14 0 14 14v27m0 88v33q0 14-14 14H879q-14 0-14 14v32"/>
+    <rect id="block" width="246" height="90" rx="14"/>
+  </defs>
+  <rect width="1200" height="630" fill="#fcfaee"/>
+  <rect width="1200" height="630" fill="url(#paper)"/>
+  <rect x="22" y="22" width="1156" height="586" rx="22" fill="none" stroke="#171717" stroke-width="4"/>
+  <g font-family="DejaVu Sans, sans-serif" fill="#171717">
+    <text x="66" y="132" font-size="31" font-weight="bold" letter-spacing="4">DEEP LEARNING</text>
+    <g font-size="108" font-weight="bold" stroke="#171717" stroke-width="4" stroke-linejoin="round">
+      <text x="71" y="249" fill="#171717">BLOCKS</text>
+      <text x="64" y="241"><tspan fill="#ff7770">B</tspan><tspan fill="#74a6ff">L</tspan><tspan fill="#ffe14a">O</tspan><tspan fill="#ff7770">C</tspan><tspan fill="#74a6ff">K</tspan><tspan fill="#ffe14a">S</tspan></text>
+    </g>
+    <path d="M67 419l557-10 1 13-557 10z" fill="#ffe14a"/>
+    <text x="65" y="355" font-size="51" font-weight="bold">Build your first</text>
+    <text x="65" y="416" font-size="51" font-weight="bold">neural network.</text>
+    <text x="67" y="486" font-size="24">Snap blocks together and see what learns.</text>
+    <g fill="none" stroke-linecap="round">
+      <use href="#wire" stroke="#171717" stroke-width="11"/>
+      <use href="#wire" stroke="#ff7770" stroke-width="5"/>
+      <path d="M1032 150q-36 4-62 27" stroke="#e74c48" stroke-width="3" stroke-dasharray="3 9"/>
+    </g>
+    <g stroke="#171717" stroke-width="4">
+      <use href="#block" x="729" y="140"/>
+      <use href="#block" x="721" y="132" fill="#ffe14a"/>
+      <use href="#block" x="897" y="312"/>
+      <use href="#block" x="889" y="304" fill="#74a6ff"/>
+      <use href="#block" x="750" y="492"/>
+      <use href="#block" x="742" y="484" fill="#bf9aff"/>
+      <rect x="833" y="212" width="22" height="21" rx="3" fill="#ffe14a"/>
+      <rect x="1000" y="294" width="22" height="21" rx="3" fill="#ffe14a"/>
+      <rect x="1000" y="384" width="22" height="21" rx="5" fill="#171717"/>
+      <rect x="854" y="474" width="22" height="21" rx="5" fill="#fcfaee"/>
+      <rect x="742" y="151" width="52" height="52" rx="8" fill="#171717"/>
+    </g>
+    <path d="M756 165q24-10 24 1 0 6-14 10 15-1 15 6 0 11-25 7" fill="none" stroke="#fcfaee" stroke-width="4" stroke-linecap="round"/>
+    <g font-size="28" font-weight="bold">
+      <text x="810" y="186">Image</text>
+      <text x="916" y="358">↳ Flatten</text>
+      <text x="767" y="539">◆ Dense</text>
+    </g>
+  </g>
+  <g transform="translate(1006 66) scale(1.26)">
+    <g stroke="#171717" stroke-width="3" stroke-linejoin="round">
+      <path d="M32 37H11V31H0V45H7V50H32Z" fill="#ff6962" transform="rotate(-20 29 43)"/>
+      <path d="M80 37H101V31H114V45H107V50H80Z" fill="#ff6962" transform="rotate(35 83 43)"/>
+      <rect x="35" y="14" width="16" height="13" rx="3" fill="#ffe14a"/>
+      <rect x="66" y="14" width="16" height="13" rx="3" fill="#ffe14a"/>
+      <rect x="33" y="27" width="57" height="51" rx="9" fill="#171717"/>
+      <rect x="29" y="23" width="57" height="51" rx="9" fill="#ffe14a"/>
+      <path d="M47 58Q58 67 69 58" fill="none" stroke-linecap="round"/>
+    </g>
+    <ellipse cx="45" cy="43" rx="4" ry="6" fill="#171717"/>
+    <ellipse cx="69" cy="43" rx="4" ry="6" fill="#171717"/>
+    <circle cx="37" cy="54" r="4" fill="#ff6962"/>
+    <circle cx="77" cy="54" r="4" fill="#ff6962"/>
+  </g>
+</svg>
