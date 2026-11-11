@@ -21,7 +21,7 @@ import {
   Edge,
   Point,
   connect,
-  connectionError,
+  newConnectionError,
   inferShapes,
   portPosition,
   removeNode,
@@ -34,6 +34,7 @@ import { tilesFor, Tile, blockName } from '../block-catalog';
 import { BlockIcon } from '../block-icon/block-icon';
 import { Blocky } from '../blocky/blocky';
 import { blockyHint, hintContext } from '../blocky-hints';
+import { layerDiagram } from '../layer-diagram';
 @Component({
   selector: 'app-paper-canvas',
   imports: [CdkDrag, BlockCard, BlockIcon, Blocky],
@@ -55,6 +56,12 @@ export class PaperCanvas {
   readonly draft = signal<BlockNode | null>(null);
   readonly trayGhost = signal<{ tile: Tile; point: Point } | null>(null);
   readonly panning = signal(false);
+  readonly layerDialog = viewChild.required<ElementRef<HTMLDialogElement>>('layerDialog');
+  readonly inspected = signal<string | null>(null);
+  readonly diagram = computed(() => {
+    const id = this.inspected();
+    return id ? layerDiagram(this.game.board(), id) : [];
+  });
   readonly shapes = computed(() => inferShapes(this.game.board()));
   readonly visualNodes = computed(() =>
     this.game.board().nodes.map((n) => (n.id === this.draft()?.id ? this.draft()! : n)),
@@ -71,8 +78,23 @@ export class PaperCanvas {
       };
     }),
   );
+  readonly wireSource = computed(() => this.visualNodes().find((n) => n.id === this.pending()));
+  readonly wireBadge = computed(() => {
+    const source = this.wireSource();
+    const point = this.pointer();
+    if (!source || !point) return null;
+    const view = this.game.board().viewport;
+    const x = point.x * view.zoom + view.x;
+    const y = point.y * view.zoom + view.y;
+    const { width } = this.paperSize();
+    return {
+      label: this.portLabel(source, 'output'),
+      x: Math.min(Math.max(x, 80), Math.max(width - 80, 80)),
+      y: y < 36 ? y + 22 : y - 32,
+    };
+  });
   readonly ghostPath = computed(() => {
-    const source = this.visualNodes().find((n) => n.id === this.pending());
+    const source = this.wireSource();
     if (!source) return '';
     const start = portPosition(source, 'output');
     return wirePath(start, this.pointer() ?? { x: start.x + 90, y: start.y + 100 });
@@ -380,7 +402,7 @@ export class PaperCanvas {
       if (occupied) this.chooseEdge(occupied);
       return;
     }
-    const error = connectionError(this.game.board(), from, id);
+    const error = this.wireError(id);
     if (error) {
       this.game.message.set(error);
       this.rejected.set({ edge: { from, to: id }, context: this.helperContext() });
@@ -395,14 +417,26 @@ export class PaperCanvas {
     const type = BLOCKS[node.kind][side];
     if (type === 'image') return '28 × 28 × 1';
     if (node.kind === 'classifier') return '10 probabilities';
-    if (node.kind === 'softmax' && side === 'input') return '10 scores needed';
+    if (node.kind === 'softmax' && side === 'input') {
+      const actual = this.shapes().get(node.id)?.input;
+      return actual !== undefined && actual !== 10 ? `Needs 10 · got ${actual}` : 'Vector · 10';
+    }
     const width =
       this.shapes().get(node.id)?.[side] ??
       (side === 'output' ? BLOCKS[node.kind].inferWidth(node) : undefined);
     return `${type === 'probabilities' ? 'Probabilities' : 'Vector'} · ${width ?? 'N'}`;
   }
+  wireError(id: string): string | null {
+    const from = this.pending();
+    return from ? newConnectionError(this.game.board(), from, id, this.shapes()) : null;
+  }
   compatible(id: string): boolean {
-    return !!this.pending() && !connectionError(this.game.board(), this.pending()!, id);
+    return !!this.pending() && !this.wireError(id);
+  }
+  inspectLayers(id: string): void {
+    this.cancelWire();
+    this.inspected.set(id);
+    this.layerDialog().nativeElement.showModal();
   }
   cancelWire(): void {
     this.pending.set(null);
@@ -487,7 +521,9 @@ export class PaperCanvas {
       kind: tile.kind,
       x: Math.round(center.x - BLOCK_WIDTH / 2),
       y: Math.round(center.y - BLOCKS[tile.kind].height / 2),
-      ...(tile.kind === 'dense' ? { units: tile.units ?? 32 } : {}),
+      ...(tile.kind === 'dense'
+        ? { units: this.game.mode() === 'journey' && this.game.era() === 0 ? 10 : 32 }
+        : {}),
       ...(tile.activation ? { activation: tile.activation } : {}),
     };
     // Offset overlapping placements so every new piece remains reachable.
@@ -512,7 +548,11 @@ export class PaperCanvas {
   }
   @HostListener('document:keydown', ['$event']) key(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;
-    if (target.closest('input,select,textarea,[contenteditable="true"],[role="dialog"],app-blocky'))
+    if (
+      target.closest(
+        'input,select,textarea,[contenteditable="true"],dialog,[role="dialog"],app-blocky',
+      )
+    )
       return;
     if (event.key === 'Escape') {
       this.clearSelection();

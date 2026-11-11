@@ -4,7 +4,7 @@ import { MIN_ZOOM, MAX_ZOOM } from './geometry';
 import { Experiment } from '../learning/curriculum';
 import { readProgress } from '../learning/progress';
 import { ACTIVATIONS } from '../learning/curriculum';
-import { BLOCKS, BlockNode, Board, connectionError, freshBoard } from './graph';
+import { BLOCKS, BlockNode, Board, connectionError, freshBoard, validDenseUnits } from './graph';
 export type Mode = 'journey' | 'sandbox';
 export interface Workspace {
   board: Board;
@@ -69,7 +69,7 @@ function validBoard(value: unknown, era: number): value is Board {
         n.id.length < 100 &&
         Object.hasOwn(BLOCKS, n.kind) &&
         [n.x, n.y].every((v) => Number.isFinite(v) && Math.abs(v) < 100000) &&
-        (n.kind !== 'dense' || BLOCKS.dense.widths!.includes(n.units!)) &&
+        (n.kind !== 'dense' || validDenseUnits(n.units)) &&
         (n.kind !== 'activation' ||
           ACTIVATIONS.some((a) => a.value === n.activation && a.era <= era)),
     )

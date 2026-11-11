@@ -33,10 +33,14 @@ export interface BlockDefinition {
   height: number;
   help: string;
   config?: 'units' | 'activation';
-  widths?: readonly number[];
   inferWidth: (node: BlockNode, input?: number) => number | undefined;
   operation: (node: BlockNode) => Step | null;
 }
+export const MAX_DENSE_UNITS = 128;
+export function validDenseUnits(units: number | undefined): units is number {
+  return units !== undefined && Number.isInteger(units) && units >= 1 && units <= MAX_DENSE_UNITS;
+}
+
 export const BLOCK_WIDTH = 236;
 export const BLOCKS: Record<BlockKind, BlockDefinition> = {
   image: {
@@ -62,7 +66,6 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
   },
   dense: {
     config: 'units',
-    widths: [10, 16, 32, 64, 128],
     inferWidth: (node) => node.units,
     operation: (node) => ({ kind: 'dense', units: node.units! }),
     title: 'Dense layer',
@@ -171,7 +174,7 @@ export function connectionError(board: Board, from: string, to: string): string 
   return null;
 }
 export function connect(board: Board, from: string, to: string): Board {
-  return connectionError(board, from, to)
+  return newConnectionError(board, from, to)
     ? board
     : { ...board, edges: [...board.edges, { from, to }] };
 }
@@ -184,18 +187,42 @@ export function removeNode(board: Board, id: string): Board {
 }
 export function inferShapes(board: Board): Map<string, { input?: number; output?: number }> {
   const shapes = new Map<string, { input?: number; output?: number }>();
-  let node = board.nodes.find((n) => n.kind === 'image'),
-    width: number | undefined;
-  const visited = new Set<string>();
-  while (node && !visited.has(node.id)) {
-    visited.add(node.id);
-    const input = width;
-    width = BLOCKS[node.kind].inferWidth(node, width);
-    shapes.set(node.id, { input, output: width });
-    const next = board.edges.find((e) => e.from === node!.id)?.to;
-    node = board.nodes.find((n) => n.id === next);
+  const nodes = new Map(board.nodes.map((node) => [node.id, node]));
+  const incoming = new Map(board.edges.map((edge) => [edge.to, edge.from]));
+  const visiting = new Set<string>();
+  function visit(id: string): number | undefined {
+    if (shapes.has(id)) return shapes.get(id)?.output;
+    const node = nodes.get(id);
+    if (!node || visiting.has(id)) return undefined;
+    visiting.add(id);
+    const source = incoming.get(id);
+    const input = source === undefined ? undefined : visit(source);
+    const output = BLOCKS[node.kind].inferWidth(node, input);
+    shapes.set(id, { input, output });
+    visiting.delete(id);
+    return output;
   }
+  for (const node of board.nodes) visit(node.id);
   return shapes;
+}
+
+/** Check new wires without discarding existing wires when a layer is resized. */
+export function newConnectionError(
+  board: Board,
+  from: string,
+  to: string,
+  shapes = inferShapes(board),
+): string | null {
+  const error = connectionError(board, from, to);
+  if (error) return error;
+  const width = shapes.get(from)?.output;
+  if (
+    width !== undefined &&
+    width !== 10 &&
+    board.nodes.find((n) => n.id === to)?.kind === 'softmax'
+  )
+    return `Softmax needs Vector · 10. This output is Vector · ${width}. Set the last Dense layer to 10 neurons.`;
+  return null;
 }
 export function compileBoard(board: Board): Compilation {
   const issues: GraphIssue[] = [],
@@ -241,10 +268,10 @@ export function compileBoard(board: Board): Compilation {
     parameters = 0;
   for (const block of path.slice(1)) {
     if (block.kind === 'dense') {
-      if (!BLOCKS.dense.widths!.includes(block.units!))
+      if (!validDenseUnits(block.units))
         return {
           network: null,
-          issues: [{ nodeId: block.id, message: 'Choose 10, 16, 32, 64 or 128 neurons.' }],
+          issues: [{ nodeId: block.id, message: `Choose 1 to ${MAX_DENSE_UNITS} neurons.` }],
         };
       parameters += (width + 1) * block.units!;
       width = block.units!;

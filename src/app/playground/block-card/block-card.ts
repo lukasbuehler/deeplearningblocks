@@ -1,14 +1,13 @@
 import { Dataset, DATASETS } from '../../learning/datasets';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { PercentPipe } from '@angular/common';
 import { DigitPreview } from '../../learning/digit-preview/digit-preview';
 import { BlockIcon } from '../block-icon/block-icon';
 import { blockName } from '../block-catalog';
-import { BLOCKS, BlockNode } from '../graph';
+import { BLOCKS, BlockNode, MAX_DENSE_UNITS, validDenseUnits } from '../graph';
 @Component({
   selector: 'app-block-card',
-  imports: [FormsModule, PercentPipe, DigitPreview, BlockIcon],
+  imports: [PercentPipe, DigitPreview, BlockIcon],
   templateUrl: './block-card.html',
   styleUrl: './block-card.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,6 +22,8 @@ export class BlockCard {
   readonly pixels = input<Float32Array>();
   readonly actual = input<number>();
   readonly custom = input(false);
+  readonly maxDenseUnits = MAX_DENSE_UNITS;
+  readonly inspect = output<void>();
   readonly draw = output<void>();
   readonly probabilities = input<number[]>([]);
   readonly choose = output<void>();
@@ -48,7 +49,10 @@ export class BlockCard {
   stopControls(event: Event): void {
     if ((event.target as HTMLElement).closest('button,select,input')) event.stopPropagation();
   }
-  changeUnits(value: string): void {
-    this.configure.emit({ id: this.node().id, units: +value });
+  changeUnits(event: Event): void {
+    const field = event.target as HTMLInputElement;
+    const units = field.valueAsNumber;
+    if (validDenseUnits(units)) this.configure.emit({ id: this.node().id, units });
+    else field.value = String(this.node().units);
   }
 }

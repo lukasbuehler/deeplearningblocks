@@ -5,7 +5,14 @@ import { LEVELS, LevelId, meetsLevel } from './levels';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { TrainingService } from '../learning/training.service';
 import { ACTIVATIONS } from '../learning/curriculum';
-import { Board, BlockNode, compileBoard, describeNetwork, freshBoard } from './graph';
+import {
+  Board,
+  BlockNode,
+  compileBoard,
+  describeNetwork,
+  freshBoard,
+  validDenseUnits,
+} from './graph';
 import { BoardHistory } from './history';
 import { GameSave, Mode, Workspace, loadGame, saveGame } from './storage';
 
@@ -145,7 +152,7 @@ export class GameService {
   }
 
   configure(change: Partial<BlockNode> & { id: string }): void {
-    if (this.trainer.busy()) return;
+    if (this.trainer.busy() || ('units' in change && !validDenseUnits(change.units))) return;
     this.edit({
       ...this.board(),
       nodes: this.board().nodes.map((n) => (n.id === change.id ? { ...n, ...change } : n)),

@@ -20,7 +20,7 @@ export const ERAS = [
     description:
       'Frank Rosenblatt’s perceptron showed how a machine could learn weights from examples. Start with the same big idea: pixels go in, weighted connections make a decision.',
     challenge:
-      'Build a first network. Connect Flatten, Dense · 10, Softmax and Digit guess, then check your build. Try training to recognize handwritten digits.',
+      'Build a first network. Connect Flatten, a 10-neuron Dense, Softmax and Digit guess, then check your build. Try training to recognize handwritten digits.',
     note: 'Our lab uses softmax and a modern optimizer, not the original perceptron rule. Dates mark influential milestones, not the invention of every ingredient.',
     source:
       'https://web.stanford.edu/class/psych209a/ReadingsByDate/01_30/Rosenblatt58Perceptron.pdf',

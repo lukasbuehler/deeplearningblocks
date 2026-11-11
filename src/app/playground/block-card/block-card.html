@@ -59,19 +59,29 @@
     }
     @case ('dense') {
       <div class="settings">
-        <label
-          >Neurons<select
-            [attr.aria-label]="'Neurons for ' + node().id"
-            [ngModel]="node().units"
-            (ngModelChange)="changeUnits($event)"
+        <label>
+          Neurons
+          <input
+            type="number"
+            min="1"
+            [max]="maxDenseUnits"
+            [value]="node().units"
             [disabled]="busy()"
-          >
-            @for (units of definition().widths; track units) {
-              <option [value]="units">{{ units }}</option>
-            }
-          </select></label
+            (blur)="changeUnits($event)"
+            (keydown.enter)="changeUnits($event)"
+          />
+        </label>
+        <button
+          class="inspect"
+          type="button"
+          aria-label="Inspect network layers"
+          (click)="$event.stopPropagation(); inspect.emit()"
         >
-        <div class="neurons" aria-hidden="true">● ● ●<br />╲│╱<br />● ● ●</div>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10" cy="10" r="6" />
+            <path d="m15 15 5 5" />
+          </svg>
+        </button>
       </div>
       <p class="detail">
         {{ inputSize() === undefined ? 'Needs a vector' : inputSize() + ' inputs' }} →

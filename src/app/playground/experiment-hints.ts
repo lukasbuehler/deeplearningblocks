@@ -26,7 +26,7 @@ export function experimentHint(
         prefix +
         'You made a linear classifier! Try a hidden Dense and ' +
         (era >= 2 ? 'ReLU' : era >= 1 ? 'Sigmoid' : 'an unlocked activation') +
-        ' before Dense · 10.',
+        ' before the 10-neuron Dense.',
       why:
         'A linear classifier can already recognize images. A hidden layer with a nonlinear activation can learn different patterns. ' +
         caveat,

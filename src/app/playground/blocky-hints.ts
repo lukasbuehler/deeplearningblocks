@@ -1,5 +1,5 @@
 import { Dataset, DATASETS } from '../learning/datasets';
-import { Board, Edge, compileBoard, connectionError, hasHiddenActivation } from './graph';
+import { Board, Edge, compileBoard, newConnectionError, hasHiddenActivation } from './graph';
 import { experimentHint } from './experiment-hints';
 import { blockName } from './block-catalog';
 
@@ -29,7 +29,7 @@ export function blockyHint(
 ): BlockyHint {
   const nodeTarget = (id: string): HintTarget => ({ kind: 'node', id });
   if (rejected && board.nodes.some((n) => n.id === rejected.to)) {
-    const error = connectionError(board, rejected.from, rejected.to);
+    const error = newConnectionError(board, rejected.from, rejected.to);
     if (error)
       return {
         id: 'connection',
@@ -79,7 +79,7 @@ export function blockyHint(
       return {
         id: 'output-width',
         text: issue.message,
-        why: `This dataset has ten classes. Dense · 10 learns one score per class. Softmax turns those scores into probabilities; ${dataset.outputTitle} only displays them.`,
+        why: `This dataset has ten classes. A 10-neuron Dense learns one score per class. Softmax turns those scores into probabilities; ${dataset.outputTitle} only displays them.`,
         target: nodeTarget(issue.nodeId!),
       };
     if (tail.kind === 'dense' && tail.units === 10 && !board.edges.some((e) => e.from === tail.id))
@@ -122,7 +122,7 @@ export function blockyHint(
       id: 'nonlinear',
       text:
         network.steps.filter((s) => s.kind === 'dense').length === 1
-          ? 'Add a hidden Dense, then Sigmoid or Tanh, before Dense · 10.'
+          ? 'Add a hidden Dense, then Sigmoid or Tanh, before the 10-neuron Dense.'
           : 'Give these numbers a bend. Disconnect this wire and put Sigmoid or Tanh between Dense layers.',
       why: 'Nonlinear activations let stacked layers describe patterns that a chain of only linear layers cannot. You do not need an activation after every Dense.',
       target:
@@ -139,7 +139,7 @@ export function blockyHint(
   )
     return {
       id: 'deeper',
-      text: 'Try a ReLU block and a second hidden Dense before Dense · 10. What happens to the number of learnable connections?',
+      text: 'Try a ReLU block and a second hidden Dense before the 10-neuron Dense. What happens to the number of learnable connections?',
       why: 'More layers add capacity, but do not guarantee better guesses. Build first; training is an optional experiment.',
       target,
     };

@@ -86,10 +86,13 @@
             [class.probability-port]="definitions[node.kind].input === 'probabilities'"
             [class.image-port]="definitions[node.kind].input === 'image'"
             [class.compatible]="compatible(node.id)"
-            [class.waiting]="pending() && !compatible(node.id)"
+            [class.incompatible]="pending() && !compatible(node.id)"
+            [attr.title]="wireError(node.id)"
             [attr.data-input]="node.id"
             [disabled]="game.trainer.busy()"
-            [attr.aria-label]="'Input of ' + blockName(node) + ' ' + (i + 1)"
+            [attr.aria-label]="
+              'Input of ' + blockName(node) + ' ' + (i + 1) + ': ' + portLabel(node, 'input')
+            "
             (pointerdown)="$event.stopPropagation()"
             (click)="$event.stopPropagation(); finishConnection(node.id)"
           >
@@ -112,6 +115,7 @@
           (choose)="selectNode(node.id)"
           (remove)="deleteNode(node.id)"
           (configure)="game.configure($event)"
+          (inspect)="inspectLayers(node.id)"
           (nextDigit)="game.nextSample()"
         />
         @if (definitions[node.kind].output) {
@@ -123,7 +127,9 @@
             [class.image-port]="definitions[node.kind].output === 'image'"
             [class.active]="pending() === node.id"
             [disabled]="game.trainer.busy()"
-            [attr.aria-label]="'Output of ' + blockName(node) + ' ' + (i + 1)"
+            [attr.aria-label]="
+              'Output of ' + blockName(node) + ' ' + (i + 1) + ': ' + portLabel(node, 'output')
+            "
             (pointerdown)="outputStart($event, node)"
             (pointermove)="outputMove($event)"
             (pointerup)="outputEnd($event)"
@@ -137,6 +143,11 @@
       </div>
     }
   </div>
+  @if (wireBadge(); as badge) {
+    <span class="wire-badge" aria-hidden="true" [style.left.px]="badge.x" [style.top.px]="badge.y">
+      {{ badge.label }}
+    </span>
+  }
   @if (helperTarget() && pointerGeometry()?.visible) {
     <svg
       class="blocky-pointer"
@@ -159,8 +170,7 @@
   @if (game.board().edges.length === 0 && game.board().nodes.length === 2) {
     <div class="first-prompt">
       <span>1.</span> Open the toy box.<br /><span>2.</span>
-      {{
-        game.era() === 0 ? 'Add Flatten, Dense · 10 + Softmax.' : 'Build the path in your mission.'
+      {{ game.era() === 0 ? 'Add Flatten, Dense + Softmax.' : 'Build the path in your mission.'
       }}<br /><span>3.</span>
       Connect the studs!
     </div>
@@ -243,3 +253,42 @@
     </div>
   }
 </div>
+
+<dialog
+  #layerDialog
+  class="layer-dialog"
+  aria-labelledby="layer-diagram-title"
+  (close)="inspected.set(null)"
+>
+  <h2 id="layer-diagram-title">Inside your network</h2>
+  <p>
+    Each Dense block is one layer. Its input count comes from the previous block. You set how many
+    neurons it sends out.
+  </p>
+  <div class="layer-diagram" tabindex="0" role="region" aria-label="Connected Dense layers">
+    @for (stage of diagram(); track $index) {
+      @if (!$first) {
+        <span class="layer-arrow" aria-hidden="true">→</span>
+      }
+      <div class="layer-stage" [class.inspected]="stage.selected">
+        <div class="layer-dots" aria-hidden="true">
+          @for (dot of stage.dots; track dot) {
+            <i></i>
+          } @empty {
+            <span>?</span>
+          }
+        </div>
+        <b>{{ stage.label }}</b>
+        <span>{{ stage.width ?? 'Not connected' }}</span>
+        @if (stage.selected) {
+          <small>This block</small>
+        }
+      </div>
+    }
+  </div>
+  <p>
+    Dots represent up to five values per column. Every input to a Dense layer connects to every
+    neuron in that layer.
+  </p>
+  <form method="dialog"><button autofocus>Back to the board</button></form>
+</dialog>

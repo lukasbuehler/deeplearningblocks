@@ -1,4 +1,12 @@
-import { BlockNode, Board, Point, Viewport, connectionError, portPosition } from './graph';
+import {
+  BlockNode,
+  Board,
+  Point,
+  Viewport,
+  inferShapes,
+  newConnectionError,
+  portPosition,
+} from './graph';
 export const MIN_ZOOM = 0.1,
   MAX_ZOOM = 1.6;
 export function toWorld(point: Point, viewport: Viewport): Point {
@@ -40,12 +48,13 @@ export function snapTarget(
 ): { from: string; to: string; position: Point } | null {
   let best: ReturnType<typeof snapTarget> = null,
     distance = 24;
+  const shapes = inferShapes(board);
   for (const other of board.nodes) {
     for (const [source, target] of [
       [moved, other],
       [other, moved],
     ]) {
-      if (connectionError(board, source.id, target.id)) continue;
+      if (newConnectionError(board, source.id, target.id, shapes)) continue;
       const out = portPosition(source, 'output'),
         input = portPosition(target, 'input');
       const d = Math.hypot(out.x - input.x, out.y - input.y) * board.viewport.zoom;

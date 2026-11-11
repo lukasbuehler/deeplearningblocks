@@ -13,9 +13,9 @@ export const LEVELS = ERAS.map((era, index) => ({
   datasetLabel: index === 0 ? DATASETS.mnist.subject : DATASETS['fashion-mnist'].subject,
   task: ['Read a digit', 'Sort the wardrobe', 'Same clothes, more layers'][index],
   challenge: [
-    'Connect Image → Flatten → Dense · 10 → Softmax → Digit guess. Check your build above. Training is optional.',
-    'Meet ten kinds of clothing. Build a hidden Dense followed by Sigmoid or Tanh before Dense · 10 and Softmax. Give your network a bend!',
-    'Keep the same clothing dataset and explore a deeper recipe. Connect two hidden Dense layers with ReLU between them, then Dense · 10, Softmax and Clothing guess.',
+    'Connect Image → Flatten → Dense (10 neurons) → Softmax → Digit guess. Check your build above. Training is optional.',
+    'Meet ten kinds of clothing. Build a hidden Dense followed by Sigmoid or Tanh before a 10-neuron Dense and Softmax. Give your network a bend!',
+    'Keep the same clothing dataset and explore a deeper recipe. Connect two hidden Dense layers with ReLU between them, then a 10-neuron Dense, Softmax and Clothing guess.',
   ][index],
 }));
 

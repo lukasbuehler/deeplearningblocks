@@ -125,7 +125,7 @@ test('lesson clues place hidden nonlinearities before the score layer', () => {
   const b = board();
   const clue = blockyHint(b, 1, 'journey');
   assert.deepEqual(clue.target, { kind: 'edge', from: 'f', to: 'd' });
-  assert.match(clue.text, /before Dense/);
+  assert.match(clue.text, /before the 10-neuron Dense/);
   // A sigmoid applied only after the final score layer is not a hidden activation.
   b.nodes.push({ id: 'a', kind: 'activation', activation: 'sigmoid', x: 500, y: 0 });
   b.edges = b.edges.filter((e) => e.from !== 'd');
