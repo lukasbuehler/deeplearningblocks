@@ -1,5 +1,6 @@
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { crawlFiles, loadSiteSettings, siteHead } from './site-html.mjs';
+import { structuredData } from './structured-data.mjs';
 
 const output = new URL('../dist/deeplearningblocks/browser/', import.meta.url);
 const index = new URL('index.html', output);
@@ -10,7 +11,10 @@ const [appHtml, template, home] = await Promise.all([
   readFile(new URL('../src/site/home.html', import.meta.url), 'utf8'),
 ]);
 const landing = template
-  .replace('</head>', '<link rel="stylesheet" href="/landing.css" />\n  </head>')
+  .replace(
+    '</head>',
+    () => '<link rel="stylesheet" href="/landing.css" />\n' + structuredData(site) + '  </head>',
+  )
   .replace('<app-root></app-root>', () => home);
 const play = appHtml
   .replace('<title>Deep Learning Blocks</title>', '<title>Play | Deep Learning Blocks</title>')
