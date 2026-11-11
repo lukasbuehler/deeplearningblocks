@@ -1,21 +1,24 @@
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { crawlFiles, loadSiteSettings, siteHead } from './site-html.mjs';
 import { structuredData } from './structured-data.mjs';
+import { LEGAL_PAGES, renderLegalPages, siteFooter } from './legal-pages.mjs';
 
 const output = new URL('../dist/deeplearningblocks/browser/', import.meta.url);
 const index = new URL('index.html', output);
 const site = loadSiteSettings();
-const [appHtml, template, home] = await Promise.all([
+const footer = siteFooter();
+const [appHtml, template, home, legalPages] = await Promise.all([
   readFile(index, 'utf8'),
   readFile(new URL('../src/index.html', import.meta.url), 'utf8'),
   readFile(new URL('../src/site/home.html', import.meta.url), 'utf8'),
+  renderLegalPages(),
 ]);
 const landing = template
   .replace(
     '</head>',
     () => '<link rel="stylesheet" href="/landing.css" />\n' + structuredData(site) + '  </head>',
   )
-  .replace('<app-root></app-root>', () => home);
+  .replace('<app-root></app-root>', () => home + footer);
 const play = appHtml
   .replace('<title>Deep Learning Blocks</title>', '<title>Play | Deep Learning Blocks</title>')
   .replace(
@@ -32,16 +35,23 @@ const notFound = `<!doctype html>
   </head>
   <body>
     <main><h1>Page not found</h1><p><a href="/">Back to Deep Learning Blocks</a></p></main>
+${footer}
   </body>
 </html>
 `;
-const { robots, sitemap } = crawlFiles(site);
+const { robots, sitemap } = crawlFiles(
+  site,
+  LEGAL_PAGES.map((page) => page.path),
+);
 const sitemapFile = new URL('sitemap.xml', output);
 
 await Promise.all([
   writeFile(index, siteHead(landing, site)),
   writeFile(new URL('play.html', output), siteHead(play, { ...site, indexable: false }, '/play')),
   writeFile(new URL('404.html', output), notFound),
+  ...legalPages.map((page) =>
+    writeFile(new URL(page.file + '.html', output), siteHead(page.html, site, page.path)),
+  ),
   writeFile(new URL('robots.txt', output), robots),
   sitemap ? writeFile(sitemapFile, sitemap) : rm(sitemapFile, { force: true }),
 ]);

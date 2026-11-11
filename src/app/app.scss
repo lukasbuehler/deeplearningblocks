@@ -324,6 +324,16 @@ app-brand {
   cursor: pointer;
   font-weight: 700;
 }
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 12px;
+}
+.legal-links a {
+  color: inherit;
+  font-weight: 700;
+}
 .browser-note {
   display: flex;
   align-items: center;

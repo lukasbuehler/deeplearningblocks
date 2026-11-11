@@ -43,12 +43,17 @@ export function siteHead(html, site, path = '/') {
   return html.replace('</head>', () => tags.join('\n    ') + '\n  </head>');
 }
 
-export function crawlFiles(site) {
+export function crawlFiles(site, paths = []) {
   const sitemapUrl = site.indexable ? `${site.origin}/sitemap.xml` : null;
   return {
     robots: 'User-agent: *\nAllow: /\n' + (sitemapUrl ? `Sitemap: ${sitemapUrl}\n` : ''),
     sitemap: sitemapUrl
-      ? `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${site.origin}/</loc></url></urlset>\n`
+      ? `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[
+          '/',
+          ...paths,
+        ]
+          .map((path) => `<url><loc>${new URL(path, site.origin).href}</loc></url>`)
+          .join('')}</urlset>\n`
       : null,
   };
 }

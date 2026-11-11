@@ -12,6 +12,7 @@ test('production uses one public origin for canonical, social metadata and the s
   assert.ok(head.includes(`content="${origin}/share-card.png"`));
   assert.ok(crawlFiles(site).robots.includes(`Sitemap: ${origin}/sitemap.xml`));
   assert.ok(crawlFiles(site).sitemap.includes(`<loc>${origin}/</loc>`));
+  assert.ok(crawlFiles(site, ['/privacy']).sitemap.includes(`<loc>${origin}/privacy</loc>`));
 });
 
 test('local, preview and non-production builds cannot advertise an indexable sitemap', () => {
