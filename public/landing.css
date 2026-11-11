@@ -1,0 +1,198 @@
+:root {
+  color-scheme: light;
+  --ink: #171717;
+  --paper: #fcfaee;
+  --yellow: #ffe14a;
+  --red: #ff7770;
+  --blue: #74a6ff;
+  --purple: #bc9aff;
+  font-family: 'Avenir Next', 'Trebuchet MS', 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-image: radial-gradient(#d5ceb7 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+
+a {
+  color: inherit;
+  font-weight: 750;
+}
+
+a:focus-visible {
+  outline: 3px dashed var(--ink);
+  outline-offset: 5px;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem max(1.25rem, calc((100% - 72rem) / 2));
+  background: var(--paper);
+  border-bottom: 3px solid var(--ink);
+}
+
+.wordmark {
+  display: inline-grid;
+  text-decoration: none;
+  line-height: 1;
+  transform: rotate(-3deg);
+}
+
+.wordmark span {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+
+.wordmark strong {
+  font-size: 2.2rem;
+  letter-spacing: -0.06em;
+  text-shadow: 2px 2px var(--ink);
+  -webkit-text-stroke: 1px var(--ink);
+}
+
+.wordmark i {
+  font-style: normal;
+  color: var(--red);
+}
+
+.wordmark i:nth-child(3n + 2) {
+  color: var(--blue);
+}
+
+.wordmark i:nth-child(3n) {
+  color: var(--yellow);
+}
+
+main {
+  width: min(72rem, calc(100% - 2.5rem));
+  margin: auto;
+  padding-block: clamp(2.5rem, 6vw, 5.5rem);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: center;
+}
+
+h1 {
+  max-width: 12ch;
+  margin: 0;
+  font-size: clamp(2.8rem, 6.1vw, 5.4rem);
+  line-height: 1;
+  letter-spacing: -0.065em;
+  font-weight: 950;
+}
+
+mark {
+  color: inherit;
+  background: linear-gradient(transparent 73%, var(--yellow) 73% 94%, transparent 94%);
+}
+
+p {
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.hero p {
+  max-width: 42ch;
+}
+
+.action,
+.illustration,
+.lesson-grid article {
+  border: 3px solid var(--ink);
+  border-radius: 0.8rem;
+  box-shadow: 5px 5px var(--ink);
+}
+
+.action {
+  display: inline-block;
+  padding: 0.85rem 1.15rem;
+  background: var(--yellow);
+  text-decoration: none;
+}
+
+.action:hover {
+  background: #ffed86;
+}
+
+.note {
+  font-size: 0.92rem;
+}
+
+.illustration {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  aspect-ratio: 475 / 570;
+  background: var(--paper);
+}
+
+.illustration img {
+  position: absolute;
+  right: -5%;
+  top: -5%;
+  width: 253%;
+  height: auto;
+  max-width: none;
+}
+
+#lessons {
+  margin-top: clamp(3rem, 8vw, 7rem);
+}
+
+h2 {
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  letter-spacing: -0.045em;
+  margin: 0 0 1rem;
+}
+
+.lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.lesson-grid article {
+  padding: 1.15rem;
+  background: var(--yellow);
+}
+
+.lesson-grid article:nth-child(2) {
+  background: var(--blue);
+}
+
+.lesson-grid article:nth-child(3) {
+  background: var(--purple);
+}
+
+.lesson-grid h3 {
+  margin: 0;
+}
+
+.lesson-grid p {
+  margin-bottom: 0;
+}
+
+@media (max-width: 680px) {
+  .hero,
+  .lesson-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .illustration {
+    width: min(100%, 21rem);
+    justify-self: center;
+  }
+}

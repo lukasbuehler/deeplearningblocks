@@ -1,6 +1,6 @@
 # Deploy Deep Learning Blocks
 
-The app is an Angular SPA served by **Cloudflare Workers Static Assets**. Training runs in the visitor's browser. There is no AWS dependency, Worker request handler, database or server training service.
+Cloudflare Workers Static Assets serves the build-time HTML introduction at `/` and the Angular playground at `/play`. Unknown paths return a 404. Training runs in the visitor's browser. There is no AWS dependency, Worker request handler, database or server training service.
 
 ## CLI
 
@@ -57,7 +57,7 @@ Local overrides can live in an ignored `.env.local`; `.env.example` shows the fo
 
 ## Event contract
 
-The lazy SDK uses the official `posthog-js/no-external` bundle. Failure to fetch config, import or initialize the SDK, or capture an event does not interrupt the playground.
+Analytics starts when the Angular playground opens. The static introduction loads no analytics scripts. The lazy SDK uses the official `posthog-js/no-external` bundle. Failure to fetch config, import or initialize the SDK, or capture an event does not interrupt the playground.
 
 | Event | Trigger | Extra properties |
 | --- | --- | --- |
@@ -74,10 +74,10 @@ Analytics runs only on non-local HTTPS origins, respects Do Not Track, and is di
 
 There is no autocapture, session replay, survey loading, remote feature configuration, exception capture or persistent analytics storage. IDs last only in memory, so returning-visitor counts and funnels across reloads are intentionally limited. An event filter removes undeclared events/properties, including referrers, query strings, drawings, board contents and raw error messages. PostHog still receives network requests; this configuration is not a claim of anonymous networking. Geography enrichment is disabled per event.
 
-After deploying, open the HTTPS site with Do Not Track off and check PostHog's live events for `$pageview` and `workspace_opened`. Complete a build, run or stop training, and download code to inspect their events. Ad blockers can suppress delivery. Local checks do not establish live dashboard receipt.
+After deploying, open the HTTPS playground at `/play` with Do Not Track off and check PostHog's live events for `$pageview` and `workspace_opened`. Complete a build, run or stop training, and download code to inspect their events. Ad blockers can suppress delivery. Local checks do not establish live dashboard receipt.
 
 ## References
 
-- [Cloudflare static SPA hosting](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)
+- [Cloudflare static site hosting](https://developers.cloudflare.com/workers/static-assets/routing/static-site-generation/)
 - [Static asset headers](https://developers.cloudflare.com/workers/static-assets/headers/)
 - [PostHog browser configuration](https://posthog.com/docs/libraries/js/config)

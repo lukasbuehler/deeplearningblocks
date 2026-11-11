@@ -17,7 +17,7 @@ Open http://localhost:4200. To test the production build on the local Cloudflare
 npm run preview:worker
 ```
 
-Open the localhost URL printed by Wrangler (normally http://localhost:8787).
+Open the localhost URL printed by Wrangler (normally http://localhost:8787). The production build serves the introduction at `/` and the playground at `/play`. The Angular development server opens the playground directly.
 
 ## First lesson
 
