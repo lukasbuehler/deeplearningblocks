@@ -1,6 +1,6 @@
 # Deep Learning Blocks: from first connections to a tiny transformer
 
-Planning snapshot: 3 October 2026. This is a staged product and learning roadmap, not a claim that the planned features exist. Ship one small, complete learning experience at a time. Dates below describe historical milestones, not delivery deadlines.
+Planning snapshot: 11 November 2026. This is a staged product and learning roadmap, not a claim that the planned features exist. Ship one small, complete learning experience at a time. Dates below describe historical milestones, not delivery deadlines.
 
 ## Product direction
 
@@ -18,7 +18,7 @@ Keep these distinctions visible:
 
 ### What exists today
 
-Angular playground, positioned blocks and routed wires, a single connected trainable chain with explicit Dense · 10 and Softmax output operations and a display-only Digit guess, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST and Fashion-MNIST browser training with per-level datasets, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Grouping, general branching, transformers, hardware preflight and the general level engine remain future work.
+Angular playground, positioned blocks and routed wires, a single connected trainable chain with configurable Dense layers, a layer inspector, shape badges during wiring and explicit Softmax output and a display-only Digit guess, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST and Fashion-MNIST browser training with per-level datasets, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Grouping, general branching, transformers, hardware preflight and the general level engine remain future work.
 
 ## Blocky: a helper with somewhere to point
 
@@ -154,11 +154,12 @@ Acceptance for this small pass: add each unlocked activation directly, read its 
 
 ## Groups, modules and branching
 
-Build reuse in three steps so the player and implementation grow together.
+Build reuse in stages so the player and implementation grow together.
 
 1. **Local groups:** name and collapse an existing connected chain, with visible entry/exit ports. Expand or ungroup without changing parameters, computation or trained predictions. Grouping is a structural view operation, not a new learned layer.
 2. **Reusable templates:** save a group in a personal tray and instantiate independent copies. Embed its definition in the saved board so reopening does not depend on an external template library. Treat instances as snapshots initially; editing one does not silently update others. Sharing weights is a later, explicit feature.
-3. **General modules:** groups can contain directed acyclic graphs with named, typed ports. This supports residual paths, attention projections and repeated transformer modules. Groups cannot recursively contain themselves. Validate nesting and expanded node limits before compilation.
+3. **Repeat a template:** choose how many times to stack a named group and show the expanded depth, shape and parameter total before adding it. The output must fit the next copy's input. Start with Dense → activation, then introduce Layer Normalization as its own inspectable block and use Dense → activation → Layer Normalization as a second recipe. Let creators write a short description of what a group does and what it expects. Each copy learns its own weights.
+4. **General modules:** groups can contain directed acyclic graphs with named, typed ports. This supports residual paths, attention projections and repeated transformer modules. Groups cannot recursively contain themselves. Validate nesting and expanded node limits before compilation.
 
 Give moving, grouping, ungrouping, instantiation and deletion clear undo boundaries. Deleting a group must say that its contained blocks and incident edges will be removed. Ungroup is a separate action. Keep nested targets addressable so Blocky can point into a group, offering to open it first.
 
