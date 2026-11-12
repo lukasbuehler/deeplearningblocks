@@ -146,3 +146,7 @@ python3 -m venv .venv
 ```
 
 After changing either list, run `npm run icons:optimize`. Commit the lists, generated WOFF2 files, and updated `src/index.html` hashes together. The generator uses the source font in `scripts/`, fixes fill to 1 or 0 with weight 400, optical size 24 and grade 0, and rebuilds name ligatures. Both faces use `font-display: block` to avoid briefly displaying raw icon names. Angular serves the assets locally under `/assets/fonts/`.
+
+## Favicons
+
+`public/favicon.svg` is Blocky's head on a transparent background. After changing it, run `sh scripts/build-favicons.sh` (needs `rsvg-convert` and ImageMagick) to rebuild `favicon.ico` and the home-screen icons. Those cannot be transparent, so they use the playground's paper colour, `#fffdf1`.

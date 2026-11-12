@@ -59,7 +59,7 @@ export function makeCustomBlock(
   board: Board,
   ids: string[],
   id: string,
-  name = 'My block',
+  name?: string,
 ): Board | string {
   const chain = pickedChain(board, ids);
   if (typeof chain === 'string') return chain;
@@ -69,7 +69,7 @@ export function makeCustomBlock(
   const custom: BlockNode = {
     id,
     kind: 'custom',
-    name,
+    ...(name ? { name } : {}),
     repeat: 1,
     blocks: chain.map((c) => toInner(nodes.get(c)!)),
     x: first.x,

@@ -69,6 +69,14 @@ export const MAX_INNER_BLOCKS = 8;
 export const MAX_NAME_LENGTH = 24;
 export const INNER_KINDS: readonly BlockKind[] = ['dense', 'activation'];
 
+/**
+ * A custom block's name is the part before "block", such as "Transformer" in "Transformer block".
+ * Typing the word "block" yourself is fine: it is dropped so it never shows twice.
+ */
+export function customBlockName(name: string | undefined): string {
+  return (name ?? '').replace(/\s*\bblocks?\s*$/i, '').trim();
+}
+
 /** Every inner block of a custom block, once per copy, in execution order. */
 export function expandCustom(node: BlockNode): InnerBlock[] {
   return Array.from({ length: node.repeat ?? 1 }, () => node.blocks ?? []).flat();
@@ -188,7 +196,7 @@ export const freshBoard = (): Board => ({
   viewport: { x: 0, y: 0, zoom: 1 },
 });
 /** Layout of an expanded custom block: a frame around full-size inner cards. */
-export const FRAME = { pad: 18, head: 150, gap: 40, foot: 40 } as const;
+export const FRAME = { pad: 22, head: 146, gap: 40, foot: 52 } as const;
 
 /** The space a block takes on the paper. Expanded custom blocks grow around their inner cards. */
 export function nodeSize(node: BlockNode): { width: number; height: number } {

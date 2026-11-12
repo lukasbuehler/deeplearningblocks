@@ -581,7 +581,6 @@ export class PaperCanvas {
       ...(tile.activation ? { activation: tile.activation } : {}),
       ...(tile.kind === 'custom'
         ? {
-            name: 'Hidden block',
             repeat: 1,
             blocks: starterRecipe(
               this.game.activations().some((a) => a.value === 'relu') ? 'relu' : 'tanh',

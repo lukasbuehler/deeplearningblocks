@@ -64,7 +64,11 @@ export function legalPage(page, body, info = legal, year) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${page.title} | Deep Learning Blocks</title>
     <meta name="description" content="${escape(page.description)}" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#fffdf1" />
     <link rel="stylesheet" href="/landing.css" />
   </head>
   <body>

@@ -1,5 +1,5 @@
 import { Dataset, DATASETS } from '../learning/datasets';
-import { BlockKind, BlockNode, BLOCKS } from './graph';
+import { BlockKind, BlockNode, BLOCKS, customBlockName } from './graph';
 import { Activation, ACTIVATIONS } from '../learning/curriculum';
 export interface Tile {
   kind: BlockKind;
@@ -63,7 +63,10 @@ export const TILES: Tile[] = [
 export function blockName(node: BlockNode, dataset: Dataset = DATASETS.mnist): string {
   if (node.kind === 'image') return dataset.inputTitle;
   if (node.kind === 'classifier') return dataset.outputTitle;
-  if (node.kind === 'custom') return node.name?.trim() || BLOCKS.custom.title;
+  if (node.kind === 'custom') {
+    const name = customBlockName(node.name);
+    return name ? `${name} block` : BLOCKS.custom.title;
+  }
   return node.kind === 'activation'
     ? ACTIVATIONS.find((a) => a.value === node.activation)!.label
     : BLOCKS[node.kind].title;

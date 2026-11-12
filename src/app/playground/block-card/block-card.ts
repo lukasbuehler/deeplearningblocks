@@ -1,6 +1,6 @@
 import { MatIcon } from '@angular/material/icon';
 import { Dataset, DATASETS } from '../../learning/datasets';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { PercentPipe } from '@angular/common';
 import { DigitPreview } from '../../learning/digit-preview/digit-preview';
 import { BlockIcon } from '../block-icon/block-icon';
@@ -14,6 +14,7 @@ import {
   MAX_DENSE_UNITS,
   MAX_NAME_LENGTH,
   MAX_REPEAT,
+  customBlockName,
   expandCustom,
   nodeSize,
   validDenseInputs,
@@ -80,6 +81,8 @@ export class BlockCard {
         relu: 'Keep positives. Zero negatives.',
       })[this.node().activation ?? 'linear'],
   );
+  /** The editable first part of the title; the card always adds "block" after it. */
+  readonly baseName = computed(() => customBlockName(this.node().name));
   readonly repeat = computed(() => this.node().repeat ?? 1);
   /** "784 → 64 · 3 layers · 58,560 weights", counting every copy. */
   readonly customDetail = computed(() => {
@@ -113,9 +116,15 @@ export class BlockCard {
   setRepeat(repeat: number): void {
     if (repeat >= 1 && repeat <= MAX_REPEAT) this.configure.emit({ id: this.node().id, repeat });
   }
+  /** Text being typed into the name field; a hidden copy of it sizes the field. */
+  readonly typedName = signal<string | null>(null);
   rename(event: Event): void {
-    const name = (event.target as HTMLInputElement).value.trim().slice(0, MAX_NAME_LENGTH);
-    if (name !== (this.node().name ?? '')) this.configure.emit({ id: this.node().id, name });
+    this.typedName.set(null);
+    const field = event.target as HTMLInputElement;
+    const name = customBlockName(field.value).slice(0, MAX_NAME_LENGTH);
+    field.value = name;
+    if (name !== customBlockName(this.node().name))
+      this.configure.emit({ id: this.node().id, name: name || undefined });
   }
   changeInnerUnits(event: Event, index: number): void {
     const field = event.target as HTMLInputElement;

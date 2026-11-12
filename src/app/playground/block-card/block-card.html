@@ -35,18 +35,24 @@
     }
   </header>
   @if (node().kind === 'custom') {
-    <h2>
-      <input
-        class="name-input"
-        type="text"
-        [maxLength]="maxNameLength"
-        [value]="node().name ?? ''"
-        placeholder="Custom block"
-        aria-label="Custom block name"
-        [disabled]="busy()"
-        (blur)="rename($event)"
-        (keydown.enter)="rename($event)"
-      />
+    <h2 class="custom-title">
+      <span class="name-fit">
+        <span class="name-mirror" aria-hidden="true">{{
+          typedName() ?? (baseName() || 'Custom')
+        }}</span>
+        <input
+          class="name-input"
+          type="text"
+          [maxLength]="maxNameLength"
+          [value]="baseName()"
+          placeholder="Custom"
+          aria-label="Name this block, such as Transformer"
+          title="Name this block"
+          [disabled]="busy()"
+          (blur)="rename($event)"
+          (keydown.enter)="rename($event)"
+          (input)="typedName.set($any($event.target).value || 'Custom')" /></span
+      ><span>block</span>
     </h2>
   } @else {
     <h2>{{ name() }}</h2>

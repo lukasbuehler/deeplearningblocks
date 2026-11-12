@@ -35,12 +35,9 @@
 .custom {
   background: #ffb86b;
 }
-/* Expanded: a frame with an orange band that grows around the full-size blocks inside. */
+/* Expanded: an orange frame around a rounded paper panel that holds the full-size blocks. */
 .custom.expanded {
-  background: #fff4e4;
-  box-shadow:
-    inset 0 0 0 7px #ffb86b,
-    6px 6px 0 #171717;
+  box-shadow: 6px 6px 0 #171717;
 }
 .custom.expanded > header,
 .custom.expanded > h2,
@@ -50,10 +47,10 @@
 .custom.expanded::before {
   content: '';
   position: absolute;
-  inset: 0 0 auto;
-  height: 124px;
-  background: #ffb86b;
-  border-radius: 8px 8px 0 0;
+  inset: 124px 8px 34px;
+  border: 2px solid #171717;
+  border-radius: 9px;
+  background: #fff4e4;
 }
 .inside {
   position: absolute;
@@ -75,7 +72,7 @@
   font-size: 10px;
   font-weight: 800;
 }
-.frame-foot {
+.custom.expanded > .frame-foot {
   position: absolute;
   left: 15px;
   bottom: 12px;
@@ -83,7 +80,6 @@
 /* Repeated custom blocks look like a little stack of the same card. */
 .custom.expanded.stacked {
   box-shadow:
-    inset 0 0 0 7px #ffb86b,
     6px 6px 0 #171717,
     12px 12px 0 -3px #ffb86b,
     12px 12px 0 0 #171717,
@@ -98,8 +94,36 @@
     18px 18px 0 -3px #ffb86b,
     18px 18px 0 0 #171717;
 }
+.custom-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+/* The input sits on a hidden copy of its text, so it is exactly as wide as the name. */
+.name-fit {
+  display: inline-grid;
+  min-width: 0;
+  margin: 0 -6px;
+}
+.name-fit > .name-input {
+  margin: 0;
+}
+.name-fit > * {
+  grid-area: 1 / 1;
+}
+.name-mirror {
+  visibility: hidden;
+  white-space: pre;
+  overflow: hidden;
+  max-width: 130px;
+  padding: 0 4px;
+  border: 2px solid transparent;
+}
 .name-input {
-  width: 100%;
+  /* Zero width keeps the input from sizing the grid; the mirror text decides. */
+  width: 0;
+  min-width: 100%;
   font: inherit;
   letter-spacing: inherit;
   color: inherit;
@@ -108,6 +132,9 @@
   border: 2px dashed transparent;
   border-radius: 5px;
   background: transparent;
+}
+.name-input::placeholder {
+  color: inherit;
 }
 .name-input:hover,
 .name-input:focus {

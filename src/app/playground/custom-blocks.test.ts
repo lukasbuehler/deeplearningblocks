@@ -5,6 +5,7 @@ import {
   Board,
   FRAME,
   compileBoard,
+  customBlockName,
   describeNetwork,
   inferShapes,
   nodeSize,
@@ -12,6 +13,7 @@ import {
 } from './graph';
 import { makeCustomBlock, nextPickable, pickedChain, takeApart } from './custom-blocks';
 import { pytorchModel } from './pytorch-export';
+import { blockName } from './block-catalog';
 
 const board: Board = {
   viewport: { x: 0, y: 0, zoom: 1 },
@@ -121,4 +123,14 @@ test('an expanded custom block grows around full-size inner blocks without chang
   const relu = apart.nodes.find((n) => n.id === 'relu')!;
   assert.deepEqual([hidden.x, hidden.y], [open.x + FRAME.pad, open.y + FRAME.head]);
   assert.equal(relu.y, hidden.y + BLOCKS.dense.height + FRAME.gap);
+});
+
+test('custom blocks are named by the part before "block"', () => {
+  assert.equal(customBlockName('Transformer block'), 'Transformer');
+  assert.equal(customBlockName(' Building blocks '), 'Building');
+  assert.equal(customBlockName(undefined), '');
+  const made = makeCustomBlock(board, ['hidden', 'relu'], 'mine') as Board;
+  const custom = made.nodes.find((n) => n.id === 'mine')!;
+  assert.equal(blockName(custom), 'Custom block');
+  assert.equal(blockName({ ...custom, name: 'Transformer' }), 'Transformer block');
 });
