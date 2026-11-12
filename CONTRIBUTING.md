@@ -7,9 +7,11 @@ Thanks for helping build Deep Learning Blocks. Every change reaches `main` throu
 Use the Node version in `.nvmrc` (`nvm use`) and npm.
 
 ```sh
-npm ci
+npm ci --ignore-scripts
 npm start
 ```
+
+`--ignore-scripts` stops dependencies from running code when they install, which is how npm worms such as Shai-Hulud spread. The project works without those scripts. Add packages the same way (`npm install --ignore-scripts <name>`), and point out every new dependency in the pull request.
 
 The development server opens the playground at http://localhost:4200. The [README](README.md) explains how the app works and where the code lives. [ROADMAP.md](ROADMAP.md) lists what is planned and the vocabulary the game uses with players.
 
@@ -31,7 +33,7 @@ git push -u origin softmax-hint
 gh pr create --base development
 ```
 
-Collaborators push branches to this repository. Everyone else forks it and opens the pull request from the fork. Both get the same checks and review.
+Collaborators push branches to this repository. Everyone else forks it and opens the pull request from the fork. CI runs automatically for collaborators; for anyone else, the maintainer reads the pull request first and then approves the run.
 
 ## Before you open a pull request
 
