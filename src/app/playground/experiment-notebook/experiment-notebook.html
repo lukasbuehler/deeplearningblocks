@@ -1,9 +1,9 @@
 <section class="experiment-dock" [class.expanded]="expanded()" aria-label="Experiment notebook">
   <div class="dock-bar">
     <button (click)="expanded.set(!expanded())" [attr.aria-expanded]="expanded()">
-      <span class="notebook-icon">▤</span> My experiments
+      <mat-icon class="notebook-icon">lab_profile</mat-icon> My experiments
       <span class="experiment-count">{{ game.workspace().experiments.length }}</span
-      ><span>{{ expanded() ? '▾' : '▴' }}</span>
+      ><mat-icon>{{ expanded() ? 'expand_more' : 'expand_less' }}</mat-icon>
     </button>
     <p role="status">
       {{

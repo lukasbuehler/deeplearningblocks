@@ -131,3 +131,18 @@ Dataset metadata lives in `src/app/learning/datasets.ts`, with level assignments
 Existing boards, completions and notebooks remain intact. Notebook rows without a dataset field are historical MNIST results, even on a level that now uses Fashion-MNIST. They keep that label and are excluded from the clothing level's latest score. New rows save their dataset ID. The v4 storage shape stays compatible.
 
 See [dataset attribution and reproduction](public/data/README.md). Both current datasets use 28 × 28 grayscale input and ten classes. Color, sequence and other input shapes require separate graph/runtime work; the registry does not imply those are already supported.
+
+## Material icons
+
+The playground uses self-hosted Material Symbols Rounded through Angular Material's `MatIcon`. The root registers the filled face once; standalone components import `MatIcon` where needed. Activation curves and lesson diagrams remain SVG.
+
+Use `<mat-icon>search</mat-icon>` for filled icons or `<mat-icon class="material-symbols-rounded-outline">star</mat-icon>` for outlines. Add every icon name, including dynamic values, to `src/assets/fonts/icons_list.txt` or `icons_outline_list.txt` for the selected face.
+
+Set up the font optimizer once:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python3 -m pip install -r scripts/requirements-icons.txt
+```
+
+After changing either list, run `npm run icons:optimize`. Commit the lists, generated WOFF2 files, and updated `src/index.html` hashes together. The generator uses the source font in `scripts/`, fixes fill to 1 or 0 with weight 400, optical size 24 and grade 0, and rebuilds name ligatures. Both faces use `font-display: block` to avoid briefly displaying raw icon names. Angular serves the assets locally under `/assets/fonts/`.

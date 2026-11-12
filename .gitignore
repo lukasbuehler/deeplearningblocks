@@ -49,3 +49,7 @@ Thumbs.db
 # Local analytics build configuration (public token, not account credentials)
 .env.local
 public/analytics-config.json
+
+# Local font optimizer environment
+.venv/
+__pycache__/

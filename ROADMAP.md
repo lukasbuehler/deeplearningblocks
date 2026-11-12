@@ -18,7 +18,7 @@ Keep these distinctions visible:
 
 ### What exists today
 
-Angular playground, positioned blocks and routed wires, a single connected trainable chain with configurable Dense layers, a layer inspector, shape badges during wiring and explicit Softmax output and a display-only Digit guess, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST and Fashion-MNIST browser training with per-level datasets, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Grouping, general branching, transformers, hardware preflight and the general level engine remain future work.
+Angular playground, positioned blocks and routed wires, a single connected trainable chain with configurable Dense layers (inputs chosen while unwired, neurons always), shape badges during wiring and explicit Softmax output and a display-only Digit guess, shapes and parameter counts, independent Journey/Sandbox saves, undo/redo, three historical chapters, MNIST and Fashion-MNIST browser training with per-level datasets, a handwritten-digit pad, and Python/notebook export. The runtime registers TensorFlow.js WebGL and CPU backends. Activations have dedicated names and curve icons. Blocky offers deterministic clues and targeted highlights. Check my build unlocks the existing chapters without requiring training. Custom blocks with a Repeat ×N setting group a Dense/activation chain into one named block and expand back into ordinary layers for training, inspection and export. Saved custom blocks, Layer Normalization, general branching, transformers, hardware preflight and the general level engine remain future work.
 
 ## Blocky: a helper with somewhere to point
 
@@ -96,7 +96,7 @@ This is the curriculum inventory. Rows are small games, not a requirement to bui
 | 5 | Early stopping and saving the best validation checkpoint | **Stop at the sweet spot:** choose a checkpoint on already measured curves, then compare it. | The final training step need not be the best choice. |
 | 5 | Dropout, weight decay, data augmentation | **Learn with fewer clues:** compare one intervention at a time. | Regularization changes learning; dropout behaves differently during training and inference. Transformations must preserve the label. |
 | 5 | Class balance, confusion matrix, precision/recall (optional) | **The misleading scoreboard:** exploit an imbalanced toy dataset, then expose which labels are missed. | Accuracy alone can conceal poor performance on a class. |
-| 6. Networks within networks | Group, exposed input/output, module interface, reuse | **Box your invention:** select Dense → ReLU, give it a name and reuse it. | Abstraction hides detail without hiding what goes in and out. |
+| 6. Networks within networks | Group, exposed input/output, module interface, reuse | **Box your invention:** pick Dense → ReLU, make it a custom block, name it and repeat it. | Abstraction hides detail without hiding what goes in and out. |
 | 6 | Independent parameters versus shared weights | **Twins or teammates?:** compare copied blocks with a deliberately shared operation. | Repeating the same structure normally creates new weights; reuse does not automatically mean weight sharing. |
 | 6 | Branches, Add, Concatenate, residual connections | **Build a shortcut:** route information around a block and merge it. | Add needs matching shapes; concatenation joins along a named axis. |
 | 7. Images, locally (optional branch) | Convolution, filters, feature maps, channels, receptive field | **Slide the stencil:** slide a small filter over handwritten strokes. | Local patterns can share the same learned detector across positions. |
@@ -145,23 +145,33 @@ Replace decorative Unicode operation glyphs with a small, consistent set of loca
 | Train / Stop | Clear play triangle / square |
 | Undo / Redo | Matching curved arrows |
 | Disconnect / Delete | Separated plugs / a small bin, with distinct labels |
-| Group | A box containing smaller colored blocks |
+| Custom block | A box containing smaller colored blocks, with a ×N badge when repeated |
 | Attention, later | Token tiles connected to a selected token |
 
 Use the same stroke weight, rounded corners and ink color throughout. Icons must remain readable at the smallest supported zoom and must not be the only way to identify an operation. Avoid replacing meaningful graph curves with generic decorative symbols.
 
 Acceptance for this small pass: add each unlocked activation directly, read its curve and shape, connect/train/export it, delete/undo it, and reload an existing board without changing its computation. Check locked variants, touch targets and keyboard names. No new curriculum or training backend is necessary for this milestone.
 
-## Groups, modules and branching
+## Custom blocks, repeats and branching
+
+Deep learning already calls its reusable units blocks: a ResNet stacks residual blocks, a transformer stacks transformer blocks. Keep that word. Players build **custom blocks** out of smaller blocks, and the same idea carries all the way to the tiny transformer.
+
+Vocabulary, used the same way in the UI, Blocky and lessons:
+
+- **Block:** any piece on the paper. Dense, ReLU, Softmax and Layer Normalization are blocks.
+- **Custom block:** a named block made of a chain of smaller blocks. Built-in examples arrive with later chapters (Transformer block, Residual block); players make their own with **Make a block** and turn one back into its parts with **Take apart**.
+- **Repeat ×N:** a setting on a custom block, not a separate kind of block. It stacks N copies of the recipe; each copy learns its own weights. "A repeat block" in conversation simply means a custom block with N > 1.
+
+Keep the transformer story accurate when it arrives: one transformer block holds one (multi-head) self-attention layer and a small MLP, each wrapped in a residual connection and Layer Normalization. The model repeats the whole transformer block N times, which is exactly the "N×" in the original paper's figure.
 
 Build reuse in stages so the player and implementation grow together.
 
-1. **Local groups:** name and collapse an existing connected chain, with visible entry/exit ports. Expand or ungroup without changing parameters, computation or trained predictions. Grouping is a structural view operation, not a new learned layer.
-2. **Reusable templates:** save a group in a personal tray and instantiate independent copies. Embed its definition in the saved board so reopening does not depend on an external template library. Treat instances as snapshots initially; editing one does not silently update others. Sharing weights is a later, explicit feature.
-3. **Repeat a template:** choose how many times to stack a named group and show the expanded depth, shape and parameter total before adding it. The output must fit the next copy's input. Start with Dense → activation, then introduce Layer Normalization as its own inspectable block and use Dense → activation → Layer Normalization as a second recipe. Let creators write a short description of what a group does and what it expects. Each copy learns its own weights.
-4. **General modules:** groups can contain directed acyclic graphs with named, typed ports. This supports residual paths, attention projections and repeated transformer modules. Groups cannot recursively contain themselves. Validate nesting and expanded node limits before compilation.
+1. **Custom blocks (implemented, first slice):** pick a connected chain of Dense and activation blocks and choose Make a block, or add the ready-made Dense → activation custom block from the toy box. The card shows its name, its recipe and its parameters; Take apart restores ordinary blocks. A custom block compiles to exactly the same layers as its expanded chain, so grouping never changes computation.
+2. **Repeat ×N (implemented, first slice):** a stepper on the custom block stacks 1–6 copies, and the card shows the expanded depth and weight total. Each copy learns its own weights. Dense layers adapt to whatever width arrives, so a Dense-first recipe always fits the next copy's input. Next: introduce Layer Normalization as its own inspectable block and offer Dense → activation → Layer Normalization as a second recipe. Let creators write a short description of what a custom block does and what it expects.
+3. **Saved custom blocks:** keep a custom block in a personal tray section and place independent copies. Embed its definition in the saved board so reopening does not depend on an external library. Copies are snapshots; editing one does not silently update others. Sharing weights is a later, explicit feature.
+4. **Custom blocks with branches:** custom blocks contain directed acyclic graphs with named, typed ports. This supports residual paths, attention projections and the transformer block. Custom blocks cannot contain themselves. Validate nesting and expanded layer limits before compilation.
 
-Give moving, grouping, ungrouping, instantiation and deletion clear undo boundaries. Deleting a group must say that its contained blocks and incident edges will be removed. Ungroup is a separate action. Keep nested targets addressable so Blocky can point into a group, offering to open it first.
+Give making, taking apart, placing and deleting custom blocks clear undo boundaries. Deleting a custom block must say that its inner blocks go with it; Take apart is the separate action that keeps them. Keep inner blocks addressable so Blocky can point into a custom block, offering to open it first.
 
 The present graph has one edge per port and only a sequential active path. Transformers require a deliberate evolution: named input/output ports, controlled output fan-out, multiple named inputs, Add/Concatenate semantics, topological execution and shape checking across branches. Inputs still reject implicit replacement; graph cycles remain invalid. Start with one source and one selected prediction/loss path; defer multiple unrelated training objectives.
 
@@ -250,7 +260,7 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 | M2. Blocky's first appearance | One character, manual Help, Mute and three targeted rules: shape mismatch, incomplete path, unnecessary Flatten | M1; stable target references | Blocky points correctly through pan/zoom, never obstructs a drag, handles deleted/offscreen targets, and stays quiet when muted. |
 | M3. Levels and learning games | Construction-based completion, per-level execution modes, loss and learning mini-games | Stable lesson IDs and reusable activity shell | Levels can be completed without training or a GPU; build/exploration evidence is recorded separately from experiments; existing unlocks migrate intact. |
 | M4. Fair experiments | Training/validation/test design, curves, limited-data overfitting game and checkpoint comparison | M3; experiment schema and configurable training settings | Evaluation data never updates weights, validation is used for tuning, and the final check is separated and accurately labeled. |
-| M5. Group a useful pattern | Local chain groups, collapse/expand, ungroup, names and template copies | M1; canonical computational identity | Grouping preserves predictions and parameter totals; copies have independent parameters; saves and undo round-trip. |
+| M5. Make a custom block | Custom blocks from a chain, Take apart, names, Repeat ×N and saved copies | M1; canonical computational identity | Grouping preserves predictions and parameter totals; copies have independent parameters; saves and undo round-trip. |
 | M6. Optional training feasibility | Worker spike, backend status, bounded preflight, tiny real attention forward/backward test, device benchmark table | Can begin as a limited research spike after M3, before committing to full attention UI | Record which configurations can train with finite gradients, stable memory and responsive cancellation. A no-go restricts local training only; it does not block construction levels or reference exploration. |
 | M7. Branches and richer tensors | Named ports, fan-out, Add, Concatenate, rank-aware shapes and general modules | M5; M6 informs optional execution | Topological compilation, source-linked errors, save migration, parameter accounting and exports agree on branched models. |
 | M8. Text playground | Character encoding, shifted targets, disjoint splits, bigram baseline, embeddings and sampling games | M3/M4; dataset abstraction and sequence tensors | Players assemble a text model and inspect next-token behavior using a compatible supplied example or tiny baseline; optional training preserves split isolation. |
@@ -258,7 +268,7 @@ Each milestone gets a small scoped implementation plan, appropriate tests, compu
 | M10. Shakespeare workshop | Expandable decoder module, repeat instances, normalization, GELU, training/checkpoints and matching code export | M4/M5/M7/M8/M9; M6 only for optional local training | Players assemble a tiny transformer and inspect its components without a training requirement. Supported experiments and supplied checkpoints have honest labels and recovery behavior. |
 | Optional image/history branch | Convolution and pooling games, tiny CNN; optional RNN/LSTM history path | Richer tensors and relevant runtime checks | The branch adds intuition without blocking the main transformer journey. |
 
-**Progress:** M1 is implemented. M2 has its first deterministic clue and pointing slice; richer rule coverage remains incremental. Construction checks, stable level IDs and independent saved canvases/notebooks are implemented for the three existing chapters. Dataset metadata, clothing levels and dataset-aware exports/notebooks are now implemented for the existing 28 × 28 / ten-class runtime. CIFAR-10 remains a future color-image/CNN level. **Recommended next implementation:** one exploration task and the first loss game. Keep new datasets, backends and grouping in separate changes.
+**Progress:** M1 is implemented. M2 has its first deterministic clue and pointing slice; richer rule coverage remains incremental. Construction checks, stable level IDs and independent saved canvases/notebooks are implemented for the three existing chapters. Dataset metadata, clothing levels and dataset-aware exports/notebooks are now implemented for the existing 28 × 28 / ten-class runtime. CIFAR-10 remains a future color-image/CNN level. **Recommended next implementation:** one exploration task and the first loss game. Keep new datasets, backends and custom-block stages in separate changes.
 
 ## Architecture guardrails
 

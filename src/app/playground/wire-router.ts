@@ -1,4 +1,4 @@
-import { BLOCKS, BLOCK_WIDTH, BlockNode, Point, portPosition } from './graph';
+import { BlockNode, Point, nodeSize, portPosition } from './graph';
 interface Rect {
   left: number;
   right: number;
@@ -22,12 +22,15 @@ export function routeWire(from: BlockNode, to: BlockNode, nodes: BlockNode[]): P
   const start = portPosition(from, 'output'),
     end = portPosition(to, 'input');
   if (start.x === end.x && start.y === end.y) return [start, end];
-  const boxes = nodes.map((n) => ({
-    left: n.x - 16,
-    right: n.x + BLOCK_WIDTH + 16,
-    top: n.y - 16,
-    bottom: n.y + BLOCKS[n.kind].height + 16,
-  }));
+  const boxes = nodes.map((n) => {
+    const size = nodeSize(n);
+    return {
+      left: n.x - 16,
+      right: n.x + size.width + 16,
+      top: n.y - 16,
+      bottom: n.y + size.height + 16,
+    };
+  });
   const others = boxes.filter((_, i) => nodes[i].id !== from.id && nodes[i].id !== to.id);
   if (start.x === end.x && end.y >= start.y && clear(start, end, others)) return [start, end];
   const a = { x: start.x, y: start.y + 24 },

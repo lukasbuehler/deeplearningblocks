@@ -351,6 +351,9 @@
 .classifier {
   background: #bc9aff;
 }
+.custom {
+  background: #ffb86b;
+}
 .tile:disabled {
   box-shadow: 1px 1px 0 #171717;
   cursor: not-allowed;
@@ -409,6 +412,60 @@
 }
 .first-prompt {
   z-index: 0;
+}
+.node.picked::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border: 3px dashed #171717;
+  border-radius: 16px;
+  background: #ffb86b33;
+  pointer-events: none;
+}
+.pick-actions {
+  position: absolute;
+  bottom: 83px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 32px);
+  padding: 8px 10px 8px 14px;
+  background: #fff;
+  border: 2px solid #171717;
+  border-radius: 7px;
+  box-shadow: 3px 3px 0 #171717;
+  font-size: 12px;
+  z-index: 4;
+}
+.pick-actions span {
+  display: grid;
+  min-width: 0;
+}
+.pick-actions small {
+  font-size: 10px;
+  opacity: 0.75;
+}
+.pick-actions button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  border: 2px solid #171717;
+  background: #ffb86b;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+.pick-actions button.secondary {
+  background: #fffdf1;
+}
+.pick-actions mat-icon.mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
 }
 button:disabled {
   opacity: 0.5;
@@ -568,65 +625,4 @@ button:disabled {
 .incompatible .port-label {
   outline-style: dashed;
   background: #ffe4df;
-}
-.layer-dialog {
-  width: min(620px, calc(100vw - 32px));
-  max-height: calc(100dvh - 32px);
-  padding: 20px;
-  border: 3px solid #171717;
-  border-radius: 12px;
-  box-shadow: 6px 6px #171717;
-  background: #fffdf1;
-  color: #171717;
-}
-.layer-dialog::backdrop {
-  background: #17171766;
-}
-.layer-dialog h2 {
-  margin: 0;
-}
-.layer-diagram {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 4px;
-}
-.layer-stage {
-  display: grid;
-  justify-items: center;
-  flex: 1 0 86px;
-  min-height: 144px;
-  padding: 6px;
-  border: 2px solid #171717;
-  border-radius: 8px;
-  background: #fff;
-  text-align: center;
-}
-.layer-stage.inspected {
-  background: #ffb0ab;
-}
-.layer-dots {
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 3px;
-  height: 62px;
-}
-.layer-dots i {
-  width: 9px;
-  height: 9px;
-  border: 1px solid #171717;
-  border-radius: 50%;
-  background: #74a6ff;
-}
-.layer-arrow {
-  font-weight: 900;
-}
-.layer-dialog button {
-  padding: 8px 12px;
-  border: 2px solid #171717;
-  border-radius: 6px;
-  background: #ffe14a;
-  font-weight: 800;
 }

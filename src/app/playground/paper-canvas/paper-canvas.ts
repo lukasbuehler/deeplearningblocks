@@ -1,3 +1,4 @@
+import { MatIcon } from '@angular/material/icon';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -18,11 +19,13 @@ import {
   BlockKind,
   BlockNode,
   Board,
+  INNER_KINDS,
   Edge,
   Point,
   connect,
   newConnectionError,
   inferShapes,
+  nodeSize,
   portPosition,
   removeNode,
 } from '../graph';
@@ -34,10 +37,16 @@ import { tilesFor, Tile, blockName } from '../block-catalog';
 import { BlockIcon } from '../block-icon/block-icon';
 import { Blocky } from '../blocky/blocky';
 import { blockyHint, hintContext } from '../blocky-hints';
-import { layerDiagram } from '../layer-diagram';
+import {
+  makeCustomBlock,
+  nextPickable,
+  pickedChain,
+  starterRecipe,
+  takeApart,
+} from '../custom-blocks';
 @Component({
   selector: 'app-paper-canvas',
-  imports: [CdkDrag, BlockCard, BlockIcon, Blocky],
+  imports: [MatIcon, CdkDrag, BlockCard, BlockIcon, Blocky],
   templateUrl: './paper-canvas.html',
   styleUrl: './paper-canvas.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +56,7 @@ export class PaperCanvas {
   readonly game = inject(GameService);
   readonly paper = viewChild.required<ElementRef<HTMLDivElement>>('paper');
   readonly definitions = BLOCKS;
+  readonly size = nodeSize;
   readonly tiles = computed(() => tilesFor(this.game.dataset()));
   readonly blockName = (node: BlockNode) => blockName(node, this.game.dataset());
   readonly tray = signal(false);
@@ -56,13 +66,18 @@ export class PaperCanvas {
   readonly draft = signal<BlockNode | null>(null);
   readonly trayGhost = signal<{ tile: Tile; point: Point } | null>(null);
   readonly panning = signal(false);
-  readonly layerDialog = viewChild.required<ElementRef<HTMLDialogElement>>('layerDialog');
-  readonly inspected = signal<string | null>(null);
-  readonly diagram = computed(() => {
-    const id = this.inspected();
-    return id ? layerDiagram(this.game.board(), id) : [];
-  });
+  /** Blocks picked to become one custom block, in the order they were picked. */
+  readonly picked = signal<string[]>([]);
+  readonly pickedChain = computed(() =>
+    this.picked().length ? pickedChain(this.game.board(), this.picked()) : null,
+  );
+  readonly nextPick = computed(() =>
+    this.picked().length ? nextPickable(this.game.board(), this.picked()) : null,
+  );
+  /** Set on pointerdown so the focus that follows does not undo a shift-click pick. */
+  private pickModifier = false;
   readonly shapes = computed(() => inferShapes(this.game.board()));
+  readonly wiredInputs = computed(() => new Set(this.game.board().edges.map((e) => e.to)));
   readonly visualNodes = computed(() =>
     this.game.board().nodes.map((n) => (n.id === this.draft()?.id ? this.draft()! : n)),
   );
@@ -142,7 +157,9 @@ export class PaperCanvas {
     if (t.kind === 'tray' || t.kind === 'check') return null;
     if (t.kind === 'node') {
       const n = nodes.find((n) => n.id === t.id);
-      return n ? { x: n.x + BLOCK_WIDTH / 2, y: n.y + BLOCKS[n.kind].height / 2 } : null;
+      if (!n) return null;
+      const size = nodeSize(n);
+      return { x: n.x + size.width / 2, y: n.y + size.height / 2 };
     }
     const from = nodes.find((n) => n.id === t.from),
       to = nodes.find((n) => n.id === t.to);
@@ -175,12 +192,13 @@ export class PaperCanvas {
     const target = this.helperHint().target;
     const node = target.kind === 'node' ? this.visualNodes().find((n) => n.id === target.id) : null;
     // Match the highlighted outline and calculate in screen space for every zoom level.
+    const box = node ? nodeSize(node) : null;
     const bounds = node
       ? {
           x: (node.x - 12) * v.zoom + v.x,
           y: (node.y - 12) * v.zoom + v.y,
-          width: (BLOCK_WIDTH + 24) * v.zoom,
-          height: (BLOCKS[node.kind].height + 24) * v.zoom,
+          width: (box!.width + 24) * v.zoom,
+          height: (box!.height + 24) * v.zoom,
         }
       : null;
     const aim = bounds
@@ -253,8 +271,8 @@ export class PaperCanvas {
     const r = this.paper().nativeElement.getBoundingClientRect();
     const minX = Math.min(...nodes.map((n) => n.x)),
       minY = Math.min(...nodes.map((n) => n.y));
-    const width = Math.max(...nodes.map((n) => n.x + BLOCK_WIDTH)) - minX,
-      height = Math.max(...nodes.map((n) => n.y + BLOCKS[n.kind].height)) - minY;
+    const width = Math.max(...nodes.map((n) => n.x + nodeSize(n).width)) - minX,
+      height = Math.max(...nodes.map((n) => n.y + nodeSize(n).height)) - minY;
     const zoom = Math.max(
       MIN_ZOOM,
       Math.min(1, (r.width - 100) / width, (r.height - 130) / height),
@@ -288,6 +306,7 @@ export class PaperCanvas {
     )
       return;
     this.game.selected.set(null);
+    this.picked.set([]);
     this.selectedEdge.set(null);
     this.pending.set(null);
     this.panOrigin = { point: this.local(event), view: { ...this.game.board().viewport } };
@@ -347,10 +366,49 @@ export class PaperCanvas {
     this.draft.set(null);
     setTimeout(() => (this.dragged = false), 0);
   }
-  selectNode(id: string): void {
+  notePickModifier(event: PointerEvent): void {
+    this.pickModifier = event.shiftKey || event.metaKey || event.ctrlKey;
+  }
+  /** Focus and plain clicks select one block; shift-click adds or removes it from the picks. */
+  selectNode(id: string, event?: MouseEvent): void {
     if (this.dragged) return;
-    this.game.selected.set(id);
+    const adding = event ? event.shiftKey || event.metaKey || event.ctrlKey : this.pickModifier;
     this.selectedEdge.set(null);
+    if (adding && !event) return;
+    this.pickModifier = false;
+    const node = this.game.board().nodes.find((n) => n.id === id);
+    const pickable = !!node && INNER_KINDS.includes(node.kind);
+    if (adding) {
+      if (pickable)
+        this.picked.update((ids) =>
+          ids.includes(id) ? ids.filter((other) => other !== id) : [...ids, id],
+        );
+    } else this.picked.set(pickable ? [id] : []);
+    this.game.selected.set(id);
+  }
+  readonly isChain = (value: string[] | string | null): value is string[] => Array.isArray(value);
+  pickNext(): void {
+    const next = this.nextPick();
+    if (next) this.picked.update((ids) => [...ids, next]);
+  }
+  makeBlock(): void {
+    if (this.game.trainer.busy()) return;
+    const id = crypto.randomUUID();
+    const result = makeCustomBlock(this.game.board(), this.picked(), id);
+    if (typeof result === 'string') {
+      this.game.message.set(result);
+      return;
+    }
+    this.game.edit(result);
+    this.picked.set([]);
+    this.game.selected.set(id);
+    this.game.message.set('A custom block! Name it, repeat it, or take it apart again.');
+  }
+  takeApartNode(id: string): void {
+    if (this.game.trainer.busy()) return;
+    this.game.edit(takeApart(this.game.board(), id, () => crypto.randomUUID()));
+    this.game.selected.set(null);
+    this.game.message.set('Taken apart. Same layers, now as separate blocks.');
   }
   outputStart(event: PointerEvent, node: BlockNode): void {
     event.stopPropagation();
@@ -433,11 +491,6 @@ export class PaperCanvas {
   compatible(id: string): boolean {
     return !!this.pending() && !this.wireError(id);
   }
-  inspectLayers(id: string): void {
-    this.cancelWire();
-    this.inspected.set(id);
-    this.layerDialog().nativeElement.showModal();
-  }
   cancelWire(): void {
     this.pending.set(null);
     this.pointer.set(null);
@@ -460,6 +513,7 @@ export class PaperCanvas {
   deleteNode(id: string): void {
     if (this.game.trainer.busy()) return;
     this.game.edit(removeNode(this.game.board(), id));
+    this.picked.update((ids) => ids.filter((other) => other !== id));
     this.cancelWire();
     this.game.message.set('Block removed. Undo can bring it back.');
   }
@@ -525,6 +579,16 @@ export class PaperCanvas {
         ? { units: this.game.mode() === 'journey' && this.game.era() === 0 ? 10 : 32 }
         : {}),
       ...(tile.activation ? { activation: tile.activation } : {}),
+      ...(tile.kind === 'custom'
+        ? {
+            name: 'Hidden block',
+            repeat: 1,
+            blocks: starterRecipe(
+              this.game.activations().some((a) => a.value === 'relu') ? 'relu' : 'tanh',
+              () => crypto.randomUUID(),
+            ),
+          }
+        : {}),
     };
     // Offset overlapping placements so every new piece remains reachable.
     while (
@@ -542,6 +606,7 @@ export class PaperCanvas {
   }
   clearSelection(): void {
     this.game.selected.set(null);
+    this.picked.set([]);
     this.selectedEdge.set(null);
     this.cancelWire();
     this.tray.set(false);

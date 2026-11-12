@@ -3,14 +3,16 @@
     <section class="bubble" aria-label="Blocky's clue" (keydown.escape)="dismiss()">
       <header>
         <b>Blocky has a clue</b
-        ><button aria-label="Dismiss Blocky's clue" (click)="dismiss()">×</button>
+        ><button aria-label="Dismiss Blocky's clue" (click)="dismiss()">
+          <mat-icon>close</mat-icon>
+        </button>
       </header>
       <p role="status">{{ hint().text }}</p>
       @if (details()) {
         <p class="why">{{ hint().why }}</p>
       }
       <div class="actions">
-        <button (click)="show.emit()">Show me ↗</button
+        <button (click)="show.emit()">Show me <mat-icon>open_in_new</mat-icon></button
         ><button (click)="details.set(!details())" [attr.aria-expanded]="details()">Why?</button
         ><button (click)="mute()">Mute</button>
       </div>

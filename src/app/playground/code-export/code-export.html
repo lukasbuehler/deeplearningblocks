@@ -12,7 +12,9 @@
       <span class="eyebrow">SAME BLOCKS. A NEW SUPERPOWER.</span>
       <h2 id="code-title">Hello, <span>PyTorch!</span></h2>
     </div>
-    <button class="close" aria-label="Close PyTorch view" (click)="close.emit()">×</button>
+    <button class="close" aria-label="Close PyTorch view" (click)="close.emit()">
+      <mat-icon>close</mat-icon>
+    </button>
   </header>
   @if (network(); as network) {
     <p>
@@ -37,9 +39,11 @@
       scores during training. {{ game.dataset().outputTitle }} is only a display.
     </p>
     <div class="downloads">
-      <button class="python" (click)="download('py')">↓ Python <small>.py</small></button>
+      <button class="python" (click)="download('py')">
+        <mat-icon>download</mat-icon> Python <small>.py</small>
+      </button>
       <button class="notebook" (click)="download('ipynb')">
-        ↓ Colab notebook <small>.ipynb</small>
+        <mat-icon>download</mat-icon> Colab notebook <small>.ipynb</small>
       </button>
     </div>
     <div class="colab-help">
@@ -47,7 +51,7 @@
         ><b>Take it to Colab</b><br />Download the notebook, then choose
         <b>File → Upload notebook</b> in Colab. Run the cells from top to bottom.</span
       ><a href="https://colab.research.google.com/" target="_blank" rel="noopener noreferrer"
-        >Open Colab ↗</a
+        >Open Colab <mat-icon>open_in_new</mat-icon></a
       >
     </div>
     <p class="fine-print">
@@ -57,14 +61,14 @@
     </p>
   } @else {
     <div class="empty">
-      <span aria-hidden="true">&#123; &#125;</span>
+      <mat-icon>code</mat-icon>
       <h3>A few clicks from code.</h3>
       <p>
         Connect the image to the output display first. Your working network will appear here as real
         Python.
       </p>
       <p class="issue">{{ game.compilation().issues[0]?.message }}</p>
-      <button (click)="close.emit()">Back to my blocks →</button>
+      <button (click)="close.emit()">Back to my blocks <mat-icon>arrow_forward</mat-icon></button>
     </div>
   }
   <p class="status" role="status">{{ status() }}</p>

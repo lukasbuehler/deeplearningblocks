@@ -47,6 +47,12 @@ export const TILES: Tile[] = [
     era: 2,
   },
   {
+    kind: 'custom',
+    name: 'Custom block',
+    description: 'Dense → activation. Repeat it ×N',
+    era: 1,
+  },
+  {
     kind: 'classifier',
     name: 'Digit guess',
     description: 'Display 10 digit probabilities',
@@ -57,6 +63,7 @@ export const TILES: Tile[] = [
 export function blockName(node: BlockNode, dataset: Dataset = DATASETS.mnist): string {
   if (node.kind === 'image') return dataset.inputTitle;
   if (node.kind === 'classifier') return dataset.outputTitle;
+  if (node.kind === 'custom') return node.name?.trim() || BLOCKS.custom.title;
   return node.kind === 'activation'
     ? ACTIVATIONS.find((a) => a.value === node.activation)!.label
     : BLOCKS[node.kind].title;

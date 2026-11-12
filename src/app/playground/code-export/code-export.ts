@@ -1,3 +1,4 @@
+import { MatIcon } from '@angular/material/icon';
 import { Analytics } from '../../analytics/analytics';
 import {
   ChangeDetectionStrategy,
@@ -13,7 +14,7 @@ import { pytorchModel, pytorchNotebook, pytorchScript } from '../pytorch-export'
 
 @Component({
   selector: 'app-code-export',
-  imports: [CdkTrapFocus],
+  imports: [MatIcon, CdkTrapFocus],
   templateUrl: './code-export.html',
   styleUrl: './code-export.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

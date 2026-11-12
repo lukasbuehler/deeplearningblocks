@@ -1,3 +1,4 @@
+import { MatIcon, MatIconRegistry } from '@angular/material/icon';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -20,12 +21,15 @@ import { Mode } from './playground/storage';
 import { LEVELS, LevelId } from './playground/levels';
 @Component({
   selector: 'app-root',
-  imports: [PaperCanvas, ExperimentNotebook, DigitPad, CodeExport, Brand],
+  imports: [MatIcon, PaperCanvas, ExperimentNotebook, DigitPad, CodeExport, Brand],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
+  constructor() {
+    inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-rounded');
+  }
   readonly game = inject(GameService);
   readonly canvas = viewChild(PaperCanvas);
   readonly sidebar = signal(window.innerWidth >= 900);

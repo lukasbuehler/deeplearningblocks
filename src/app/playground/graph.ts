@@ -1,6 +1,7 @@
 import { Activation } from '../learning/curriculum';
 
-export type BlockKind = 'image' | 'flatten' | 'dense' | 'activation' | 'softmax' | 'classifier';
+export type BlockKind =
+  'image' | 'flatten' | 'dense' | 'activation' | 'softmax' | 'classifier' | 'custom';
 export type PortType = 'image' | 'vector' | 'probabilities';
 export interface Point {
   x: number;
@@ -9,11 +10,26 @@ export interface Point {
 export interface Viewport extends Point {
   zoom: number;
 }
+/** A block inside a custom block's recipe. Inner blocks have no position on the paper. */
+export interface InnerBlock {
+  id: string;
+  kind: 'dense' | 'activation';
+  units?: number;
+  activation?: Activation;
+}
 export interface BlockNode extends Point {
   id: string;
   kind: BlockKind;
   units?: number;
+  /** Dense only: the input size to use while no wire dictates one. */
+  inputs?: number;
   activation?: Activation;
+  /** Custom blocks only: the player's name, the recipe and how many copies to stack. */
+  name?: string;
+  blocks?: InnerBlock[];
+  repeat?: number;
+  /** Custom blocks only: show the inner blocks at full size inside a frame. */
+  expanded?: boolean;
 }
 export interface Edge {
   from: string;
@@ -32,13 +48,30 @@ export interface BlockDefinition {
   output?: PortType;
   height: number;
   help: string;
-  config?: 'units' | 'activation';
+  config?: 'units' | 'activation' | 'custom';
   inferWidth: (node: BlockNode, input?: number) => number | undefined;
   operation: (node: BlockNode) => Step | null;
 }
 export const MAX_DENSE_UNITS = 128;
 export function validDenseUnits(units: number | undefined): units is number {
   return units !== undefined && Number.isInteger(units) && units >= 1 && units <= MAX_DENSE_UNITS;
+}
+
+/** A Dense layer reads at most one flattened 28 × 28 picture. */
+export const MAX_DENSE_INPUTS = 784;
+export function validDenseInputs(inputs: number | undefined): inputs is number {
+  return (
+    inputs !== undefined && Number.isInteger(inputs) && inputs >= 1 && inputs <= MAX_DENSE_INPUTS
+  );
+}
+export const MAX_REPEAT = 6;
+export const MAX_INNER_BLOCKS = 8;
+export const MAX_NAME_LENGTH = 24;
+export const INNER_KINDS: readonly BlockKind[] = ['dense', 'activation'];
+
+/** Every inner block of a custom block, once per copy, in execution order. */
+export function expandCustom(node: BlockNode): InnerBlock[] {
+  return Array.from({ length: node.repeat ?? 1 }, () => node.blocks ?? []).flat();
 }
 
 export const BLOCK_WIDTH = 236;
@@ -99,6 +132,22 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     height: 160,
     help: 'Turn 10 class scores into probabilities that add to 100%. Softmax learns no weights. Connect a Dense layer with 10 neurons before it.',
   },
+  custom: {
+    config: 'custom',
+    inferWidth: (node, input) =>
+      (node.blocks ?? []).reduce<number | undefined>(
+        (width, inner) => (inner.kind === 'dense' ? inner.units : width),
+        input,
+      ),
+    operation: () => null,
+    title: 'Custom block',
+    subtitle: 'BLOCKS INSIDE A BLOCK',
+    icon: '▤',
+    input: 'vector',
+    output: 'vector',
+    height: 236,
+    help: 'A named chain of smaller blocks. Repeat stacks copies of the whole chain, and each copy learns its own weights. Take it apart to get the ordinary blocks back.',
+  },
   classifier: {
     inferWidth: () => 10,
     operation: () => null,
@@ -138,10 +187,25 @@ export const freshBoard = (): Board => ({
   edges: [],
   viewport: { x: 0, y: 0, zoom: 1 },
 });
-export function portPosition(node: BlockNode, side: 'input' | 'output'): Point {
+/** Layout of an expanded custom block: a frame around full-size inner cards. */
+export const FRAME = { pad: 18, head: 150, gap: 40, foot: 40 } as const;
+
+/** The space a block takes on the paper. Expanded custom blocks grow around their inner cards. */
+export function nodeSize(node: BlockNode): { width: number; height: number } {
+  if (node.kind !== 'custom' || !node.expanded || !node.blocks?.length)
+    return { width: BLOCK_WIDTH, height: BLOCKS[node.kind].height };
+  const inner = node.blocks.reduce((sum, b) => sum + BLOCKS[b.kind].height, 0);
   return {
-    x: node.x + BLOCK_WIDTH / 2,
-    y: node.y + (side === 'output' ? BLOCKS[node.kind].height : 0),
+    width: BLOCK_WIDTH + 2 * FRAME.pad,
+    height: FRAME.head + inner + FRAME.gap * (node.blocks.length - 1) + FRAME.foot,
+  };
+}
+
+export function portPosition(node: BlockNode, side: 'input' | 'output'): Point {
+  const size = nodeSize(node);
+  return {
+    x: node.x + size.width / 2,
+    y: node.y + (side === 'output' ? size.height : 0),
   };
 }
 export function connectionError(board: Board, from: string, to: string): string | null {
@@ -196,7 +260,9 @@ export function inferShapes(board: Board): Map<string, { input?: number; output?
     if (!node || visiting.has(id)) return undefined;
     visiting.add(id);
     const source = incoming.get(id);
-    const input = source === undefined ? undefined : visit(source);
+    // A wire dictates the input size. Without one, a Dense block uses the size the player chose.
+    const input =
+      source !== undefined ? visit(source) : node.kind === 'dense' ? node.inputs : undefined;
     const output = BLOCKS[node.kind].inferWidth(node, input);
     shapes.set(id, { input, output });
     visiting.delete(id);
@@ -258,15 +324,22 @@ export function compileBoard(board: Board): Compilation {
       };
     node = board.nodes.find((n) => n.id === next);
   }
-  if (path.filter((n) => n.kind === 'dense').length > 7)
-    return {
-      network: null,
-      issues: [{ message: 'Try up to six hidden Dense layers plus the 10-neuron output layer.' }],
-    };
   const steps: Step[] = [];
   let width = 784,
     parameters = 0;
   for (const block of path.slice(1)) {
+    if (block.kind === 'custom') {
+      const issue = customBlockIssue(block);
+      if (issue) return { network: null, issues: [{ nodeId: block.id, message: issue }] };
+      for (const inner of expandCustom(block)) {
+        if (inner.kind === 'dense') {
+          parameters += (width + 1) * inner.units!;
+          width = inner.units!;
+          steps.push({ kind: 'dense', units: inner.units! });
+        } else steps.push({ kind: 'activation', activation: inner.activation! });
+      }
+      continue;
+    }
     if (block.kind === 'dense') {
       if (!validDenseUnits(block.units))
         return {
@@ -276,7 +349,7 @@ export function compileBoard(board: Board): Compilation {
       parameters += (width + 1) * block.units!;
       width = block.units!;
     } else if (block.kind === 'activation') {
-      if (!['linear', 'sigmoid', 'tanh', 'relu'].includes(block.activation!))
+      if (!ACTIVATION_VALUES.includes(block.activation!))
         return { network: null, issues: [{ nodeId: block.id, message: 'Choose an activation.' }] };
     } else if (block.kind === 'softmax' && width !== 10) {
       return {
@@ -293,6 +366,16 @@ export function compileBoard(board: Board): Compilation {
     const operation = BLOCKS[block.kind].operation(block);
     if (operation) steps.push(operation);
   }
+  if (steps.filter((step) => step.kind === 'dense').length > MAX_DENSE_LAYERS)
+    return {
+      network: null,
+      issues: [
+        {
+          message:
+            'Try up to six hidden Dense layers plus the 10-neuron output layer. Repeats count every copy.',
+        },
+      ],
+    };
   return {
     network: {
       steps,
@@ -302,6 +385,26 @@ export function compileBoard(board: Board): Compilation {
     },
     issues: [],
   };
+}
+const ACTIVATION_VALUES = ['linear', 'sigmoid', 'tanh', 'relu'];
+export const MAX_DENSE_LAYERS = 7;
+
+/** Why a custom block cannot compile, or null when its recipe and repeat count are usable. */
+export function customBlockIssue(node: BlockNode): string | null {
+  const blocks = node.blocks ?? [];
+  if (!blocks.length || blocks.length > MAX_INNER_BLOCKS)
+    return `A custom block holds 1 to ${MAX_INNER_BLOCKS} blocks.`;
+  if (!Number.isInteger(node.repeat ?? 1) || (node.repeat ?? 1) < 1 || node.repeat! > MAX_REPEAT)
+    return `Repeat a custom block 1 to ${MAX_REPEAT} times.`;
+  for (const inner of blocks) {
+    if (inner.kind === 'dense' && !validDenseUnits(inner.units))
+      return `Choose 1 to ${MAX_DENSE_UNITS} neurons for each Dense layer inside.`;
+    if (inner.kind === 'activation' && !ACTIVATION_VALUES.includes(inner.activation!))
+      return 'Choose an activation for each activation inside.';
+    if (!INNER_KINDS.includes(inner.kind))
+      return 'Custom blocks can hold Dense and activation blocks for now.';
+  }
+  return null;
 }
 export function describeNetwork(network: NetworkSpec): string {
   return network.steps

@@ -1,3 +1,4 @@
+import { MatIcon } from '@angular/material/icon';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -14,7 +15,7 @@ import { DigitPreview } from '../../learning/digit-preview/digit-preview';
 import { normalizeDigit } from './normalize-digit';
 @Component({
   selector: 'app-digit-pad',
-  imports: [CdkTrapFocus, DigitPreview],
+  imports: [MatIcon, CdkTrapFocus, DigitPreview],
   templateUrl: './digit-pad.html',
   styleUrl: './digit-pad.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -7,7 +7,9 @@
   [cdkTrapFocusAutoCapture]="true"
   (keydown.escape)="close.emit()"
 >
-  <button class="close" aria-label="Close drawing pad" (click)="close.emit()">×</button>
+  <button class="close" aria-label="Close drawing pad" (click)="close.emit()">
+    <mat-icon>close</mat-icon>
+  </button>
   <span class="eyebrow">YOUR HANDWRITING. ITS BEST GUESS.</span>
   <h2 id="draw-title">Draw a little digit.</h2>
   <p>Pick any number from 0 to 9. Draw it big in the box.</p>
@@ -36,7 +38,8 @@
   <div class="actions">
     <button (click)="clear()">Clear</button
     ><button class="use" [disabled]="!preview()" (click)="use()">
-      {{ game.trainer.trained() ? 'Guess my digit →' : 'Use my digit →' }}
+      {{ game.trainer.trained() ? 'Guess my digit' : 'Use my digit' }}
+      <mat-icon>arrow_forward</mat-icon>
     </button>
   </div>
 </section>

@@ -8,9 +8,12 @@ import { ACTIVATIONS } from '../learning/curriculum';
 import {
   Board,
   BlockNode,
+  MAX_NAME_LENGTH,
   compileBoard,
+  customBlockIssue,
   describeNetwork,
   freshBoard,
+  validDenseInputs,
   validDenseUnits,
 } from './graph';
 import { BoardHistory } from './history';
@@ -134,9 +137,9 @@ export class GameService {
   }
   edit(board: Board): void {
     const before = this.board();
-    // Layout edits remain available during training. Computational edits do not.
+    // Layout edits (moving, expanding) remain available during training. Computational edits do not.
     const structure = (b: Board) =>
-      JSON.stringify({ nodes: b.nodes.map(({ x, y, ...n }) => n), edges: b.edges });
+      JSON.stringify({ nodes: b.nodes.map(({ x, y, expanded, ...n }) => n), edges: b.edges });
     if (this.trainer.busy() && structure(before) !== structure(board)) return;
     if (JSON.stringify(before) === JSON.stringify(board)) return;
     this.history.record(before);
@@ -152,11 +155,15 @@ export class GameService {
   }
 
   configure(change: Partial<BlockNode> & { id: string }): void {
-    if (this.trainer.busy() || ('units' in change && !validDenseUnits(change.units))) return;
-    this.edit({
-      ...this.board(),
-      nodes: this.board().nodes.map((n) => (n.id === change.id ? { ...n, ...change } : n)),
-    });
+    const layoutOnly = Object.keys(change).every((key) => key === 'id' || key === 'expanded');
+    if (this.trainer.busy() && !layoutOnly) return;
+    if ('units' in change && !validDenseUnits(change.units)) return;
+    if ('inputs' in change && !validDenseInputs(change.inputs)) return;
+    if ('name' in change && (change.name ?? '').length > MAX_NAME_LENGTH) return;
+    const nodes = this.board().nodes.map((n) => (n.id === change.id ? { ...n, ...change } : n));
+    const changed = nodes.find((n) => n.id === change.id);
+    if (changed?.kind === 'custom' && customBlockIssue(changed)) return;
+    this.edit({ ...this.board(), nodes });
   }
   undo(): void {
     if (this.trainer.busy()) return;

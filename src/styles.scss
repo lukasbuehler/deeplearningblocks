@@ -68,3 +68,12 @@ button:active:not(:disabled) {
     scroll-behavior: auto !important;
   }
 }
+
+// Icons follow their control's text size and keep compact controls aligned.
+mat-icon.mat-icon {
+  width: 1em;
+  height: 1em;
+  font-size: 1.25em;
+  vertical-align: middle;
+  flex-shrink: 0;
+}

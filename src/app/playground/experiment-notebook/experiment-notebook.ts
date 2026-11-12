@@ -1,10 +1,11 @@
+import { MatIcon } from '@angular/material/icon';
 import { experimentDataset } from '../../learning/datasets';
 import { ChangeDetectionStrategy, Component, computed, inject, model } from '@angular/core';
 import { DecimalPipe, PercentPipe } from '@angular/common';
 import { GameService } from '../game.service';
 @Component({
   selector: 'app-experiment-notebook',
-  imports: [DecimalPipe, PercentPipe],
+  imports: [MatIcon, DecimalPipe, PercentPipe],
   templateUrl: './experiment-notebook.html',
   styleUrl: './experiment-notebook.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

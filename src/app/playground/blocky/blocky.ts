@@ -1,3 +1,4 @@
+import { MatIcon } from '@angular/material/icon';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -24,6 +25,7 @@ function preferences(): { muted: boolean; dismissed: string[] } {
 }
 @Component({
   selector: 'app-blocky',
+  imports: [MatIcon],
   templateUrl: './blocky.html',
   styleUrl: './blocky.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

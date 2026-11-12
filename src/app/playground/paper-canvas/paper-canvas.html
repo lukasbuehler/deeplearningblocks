@@ -61,11 +61,14 @@
         [class.blocky-target]="highlightedNode() === node.id"
         [attr.data-node]="node.id"
         [attr.data-kind]="node.kind"
+        [style.width.px]="size(node).width"
         [style.z-index]="compatible(node.id) ? 3 : 1"
         tabindex="0"
         role="group"
         [attr.aria-label]="blockName(node) + ' block ' + (i + 1)"
         (focus)="selectNode(node.id)"
+        (pointerdown)="notePickModifier($event)"
+        [class.picked]="picked().includes(node.id) && picked().length > 1"
         cdkDrag
         [cdkDragFreeDragPosition]="{
           x: node.x * game.board().viewport.zoom,
@@ -104,6 +107,7 @@
           [dataset]="game.dataset()"
           [node]="node"
           [inputSize]="shapes().get(node.id)?.input ?? undefined"
+          [inputWired]="wiredInputs().has(node.id)"
           [outputSize]="shapes().get(node.id)?.output ?? undefined"
           [selected]="game.selected() === node.id"
           [custom]="!!game.drawing()"
@@ -112,10 +116,10 @@
           [pixels]="game.pixels()"
           [actual]="game.trainer.test()?.labels?.[game.sample()] ?? undefined"
           [probabilities]="game.probabilities()"
-          (choose)="selectNode(node.id)"
+          (choose)="selectNode(node.id, $event)"
           (remove)="deleteNode(node.id)"
           (configure)="game.configure($event)"
-          (inspect)="inspectLayers(node.id)"
+          (takeApart)="takeApartNode(node.id)"
           (nextDigit)="game.nextSample()"
         />
         @if (definitions[node.kind].output) {
@@ -177,20 +181,41 @@
   }
   @if (pending()) {
     <div class="connection-prompt" role="status">
-      Pick a glowing socket <button (click)="cancelWire()" aria-label="Cancel connection">×</button>
+      Pick a glowing socket
+      <button (click)="cancelWire()" aria-label="Cancel connection">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+  @if (picked().length && !selectedEdge() && !pending() && !game.trainer.busy()) {
+    <div class="pick-actions" role="status">
+      <span>
+        <b>{{ picked().length === 1 ? '1 block picked' : picked().length + ' blocks picked' }}</b>
+        <small>{{ isChain(pickedChain()) ? 'Shift-click to pick more' : pickedChain() }}</small>
+      </span>
+      @if (nextPick()) {
+        <button class="secondary" (click)="pickNext()">
+          Add next <mat-icon>arrow_downward</mat-icon>
+        </button>
+      }
+      <button (click)="makeBlock()" [disabled]="!isChain(pickedChain())">
+        <mat-icon>stacks</mat-icon> Make a block
+      </button>
     </div>
   }
   @if (selectedEdge()) {
     <div class="wire-actions">
       <b>One little connection</b
-      ><button (click)="disconnect()" [disabled]="game.trainer.busy()">Disconnect ×</button>
+      ><button (click)="disconnect()" [disabled]="game.trainer.busy()">
+        Disconnect <mat-icon>link_off</mat-icon>
+      </button>
     </div>
   }
   <div class="canvas-tools">
-    <button aria-label="Zoom out" (click)="zoom(1 / 1.2)">−</button
+    <button aria-label="Zoom out" (click)="zoom(1 / 1.2)"><mat-icon>remove</mat-icon></button
     ><span>{{ (game.board().viewport.zoom * 100).toFixed(0) }}%</span
-    ><button aria-label="Zoom in" (click)="zoom(1.2)">+</button
-    ><button class="fit" (click)="fit()">Fit all ⤢</button>
+    ><button aria-label="Zoom in" (click)="zoom(1.2)"><mat-icon>add</mat-icon></button
+    ><button class="fit" (click)="fit()">Fit all <mat-icon>fit_screen</mat-icon></button>
   </div>
   <span class="canvas-hint">Drag paper to pan · Scroll to zoom</span>
   <button
@@ -200,7 +225,10 @@
     [attr.aria-expanded]="tray()"
     [disabled]="game.trainer.busy()"
   >
-    <span>{{ tray() ? '×' : '+' }}</span> {{ tray() ? 'Close toy box' : 'Blocks' }}
+    <span
+      ><mat-icon>{{ tray() ? 'close' : 'add' }}</mat-icon></span
+    >
+    {{ tray() ? 'Close toy box' : 'Blocks' }}
   </button>
   @if (tray()) {
     <section class="tray" aria-label="Block toy box">
@@ -209,7 +237,9 @@
           <span class="eyebrow">A LITTLE BOX OF POSSIBILITIES</span>
           <h2>Pick a block. Make it click.</h2>
         </div>
-        <button (click)="tray.set(false)" aria-label="Close block tray">×</button>
+        <button (click)="tray.set(false)" aria-label="Close block tray">
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
       <p>Drag onto the paper, or tap to add.</p>
       <div class="tiles">
@@ -253,42 +283,3 @@
     </div>
   }
 </div>
-
-<dialog
-  #layerDialog
-  class="layer-dialog"
-  aria-labelledby="layer-diagram-title"
-  (close)="inspected.set(null)"
->
-  <h2 id="layer-diagram-title">Inside your network</h2>
-  <p>
-    Each Dense block is one layer. Its input count comes from the previous block. You set how many
-    neurons it sends out.
-  </p>
-  <div class="layer-diagram" tabindex="0" role="region" aria-label="Connected Dense layers">
-    @for (stage of diagram(); track $index) {
-      @if (!$first) {
-        <span class="layer-arrow" aria-hidden="true">→</span>
-      }
-      <div class="layer-stage" [class.inspected]="stage.selected">
-        <div class="layer-dots" aria-hidden="true">
-          @for (dot of stage.dots; track dot) {
-            <i></i>
-          } @empty {
-            <span>?</span>
-          }
-        </div>
-        <b>{{ stage.label }}</b>
-        <span>{{ stage.width ?? 'Not connected' }}</span>
-        @if (stage.selected) {
-          <small>This block</small>
-        }
-      </div>
-    }
-  </div>
-  <p>
-    Dots represent up to five values per column. Every input to a Dense layer connects to every
-    neuron in that layer.
-  </p>
-  <form method="dialog"><button autofocus>Back to the board</button></form>
-</dialog>

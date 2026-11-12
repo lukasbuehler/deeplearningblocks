@@ -32,6 +32,179 @@
 .classifier {
   background: #bc9aff;
 }
+.custom {
+  background: #ffb86b;
+}
+/* Expanded: a frame with an orange band that grows around the full-size blocks inside. */
+.custom.expanded {
+  background: #fff4e4;
+  box-shadow:
+    inset 0 0 0 7px #ffb86b,
+    6px 6px 0 #171717;
+}
+.custom.expanded > header,
+.custom.expanded > h2,
+.custom.expanded > .repeat-row {
+  position: relative;
+}
+.custom.expanded::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 124px;
+  background: #ffb86b;
+  border-radius: 8px 8px 0 0;
+}
+.inside {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  cursor: grab;
+}
+.link {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(#171717, #171717) center / 3px 100% no-repeat;
+}
+.link span {
+  padding: 1px 7px;
+  border: 2px solid #171717;
+  border-radius: 9px;
+  background: #fffdf1;
+  font-size: 10px;
+  font-weight: 800;
+}
+.frame-foot {
+  position: absolute;
+  left: 15px;
+  bottom: 12px;
+}
+/* Repeated custom blocks look like a little stack of the same card. */
+.custom.expanded.stacked {
+  box-shadow:
+    inset 0 0 0 7px #ffb86b,
+    6px 6px 0 #171717,
+    12px 12px 0 -3px #ffb86b,
+    12px 12px 0 0 #171717,
+    18px 18px 0 -3px #ffb86b,
+    18px 18px 0 0 #171717;
+}
+.custom.stacked {
+  box-shadow:
+    6px 6px 0 #171717,
+    12px 12px 0 -3px #ffb86b,
+    12px 12px 0 0 #171717,
+    18px 18px 0 -3px #ffb86b,
+    18px 18px 0 0 #171717;
+}
+.name-input {
+  width: 100%;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  padding: 0 4px;
+  margin: 0 -4px;
+  border: 2px dashed transparent;
+  border-radius: 5px;
+  background: transparent;
+}
+.name-input:hover,
+.name-input:focus {
+  border-color: #171717;
+  background: #ffffff80;
+  outline: none;
+}
+.recipe {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 4px 14px;
+  height: 64px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 7px;
+  border: 2px solid #171717;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.chip + .chip::before {
+  content: '→';
+  position: absolute;
+  left: -13px;
+  font-weight: 900;
+}
+.chip.dense {
+  background: #ff7770;
+}
+.chip.activation {
+  background: #75e4a0;
+}
+.chip app-block-icon {
+  width: 18px;
+  height: 18px;
+}
+.chip label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.chip input {
+  width: 46px;
+  padding: 2px 4px;
+  border: 2px solid #171717;
+  border-radius: 4px;
+  background: #ffffffa6;
+  font-size: 11px;
+}
+.repeat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.repeat-label {
+  font-size: 10px;
+  font-weight: 700;
+}
+.stepper {
+  display: flex;
+  align-items: center;
+  margin-right: auto;
+  border: 2px solid #171717;
+  border-radius: 6px;
+  background: #fffdf1;
+}
+.stepper button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.stepper mat-icon.mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+.stepper b {
+  min-width: 30px;
+  text-align: center;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
 .selected {
   outline: 3px dashed #171717;
   outline-offset: 9px;
@@ -116,26 +289,40 @@ h2 {
 .flatten-picture b {
   font-size: 20px;
 }
-.settings {
+.sizes {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.settings label {
-  font-size: 10px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
+  align-items: end;
   gap: 8px;
 }
-.settings input {
+.sizes label {
+  display: grid;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.sizes input {
+  width: 84px;
   border: 2px solid #171717;
   background: #ffffffa6;
   border-radius: 5px;
   padding: 5px;
-  font-size: 12px;
-  width: 68px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* A wired input is dictated by the wire: show the number, not an editable field. */
+.sizes input:disabled {
+  border-style: dashed;
+  background: transparent;
+  color: inherit;
+  opacity: 1;
+  cursor: default;
+}
+.sizes > b {
+  padding-bottom: 7px;
+  font-size: 16px;
 }
 .inspect {
   display: grid;
@@ -146,12 +333,10 @@ h2 {
   border-radius: 6px;
   background: #fffdf1;
 }
-.inspect svg {
+.inspect mat-icon.mat-icon {
   width: 21px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.5;
-  stroke-linecap: round;
+  height: 21px;
+  font-size: 21px;
 }
 .activation-controls {
   display: flex;

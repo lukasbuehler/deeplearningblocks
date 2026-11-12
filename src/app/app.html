@@ -5,7 +5,7 @@
     [attr.aria-expanded]="sidebar()"
     aria-label="Toggle learning guide"
   >
-    ☰
+    <mat-icon>menu</mat-icon>
   </button>
   <app-brand />
   <span class="chapter-pill">{{
@@ -19,8 +19,8 @@
     title="View PyTorch code and download"
     (click)="codeOpen.set(true)"
   >
-    <span class="code-symbol" aria-hidden="true">&#123; &#125;</span
-    ><span class="code-label">PyTorch</span><span class="code-short" aria-hidden="true">Code</span>
+    <mat-icon class="code-symbol">code</mat-icon>
+    <span class="code-label">PyTorch</span><span class="code-short" aria-hidden="true">Code</span>
   </button>
   <div class="history-controls">
     <button
@@ -29,18 +29,20 @@
       [disabled]="!game.canUndo() || game.trainer.busy()"
       (click)="game.undo()"
     >
-      ↶</button
+      <mat-icon>undo</mat-icon></button
     ><button
       aria-label="Redo"
       title="Redo (⌘/Ctrl Shift Z)"
       [disabled]="!game.canRedo() || game.trainer.busy()"
       (click)="game.redo()"
     >
-      ↷
+      <mat-icon>redo</mat-icon>
     </button>
   </div>
   @if (game.trainer.busy()) {
-    <button class="train-button stop" (click)="game.trainer.stop()">Stop <span>■</span></button>
+    <button class="train-button stop" (click)="game.trainer.stop()">
+      Stop <span><mat-icon>stop</mat-icon></span>
+    </button>
   } @else {
     <button
       #checkButton
@@ -55,7 +57,8 @@
           : (game.compilation().issues[0]?.message ?? 'Train your connected network')
       "
     >
-      {{ game.canCheck() ? 'Check build' : 'Train' }} <span>{{ game.canCheck() ? '✓' : '▶' }}</span>
+      {{ game.canCheck() ? 'Check build' : 'Train' }}
+      <mat-icon>{{ game.canCheck() ? 'check' : 'play_arrow' }}</mat-icon>
     </button>
   }
 </header>
@@ -70,7 +73,7 @@
       <div class="guide-top">
         <span class="eyebrow">A PLAYGROUND FOR CURIOUS MINDS</span
         ><button class="close-guide" aria-label="Close guide" (click)="sidebar.set(false)">
-          ×
+          <mat-icon>close</mat-icon>
         </button>
       </div>
       <h1>Big ideas.<br />Little <span>blocks.</span></h1>
@@ -83,7 +86,8 @@
           [disabled]="game.trainer.busy()"
           (click)="switchMode('sandbox')"
         >
-          <span aria-hidden="true">✳</span><strong>Sandbox</strong><small>Always open</small>
+          <span aria-hidden="true"><mat-icon>construction</mat-icon></span
+          ><strong>Sandbox</strong><small>Always open</small>
         </button>
         @for (level of levels; track level.id; let i = $index) {
           <button
@@ -94,13 +98,16 @@
               game.mode() === 'journey' && game.level().id === level.id ? 'step' : null
             "
           >
-            <span>{{
-              game.save().journey.levels[level.id].completed
-                ? '✓'
-                : i > game.save().era
-                  ? '○'
-                  : i + 1
-            }}</span
+            <span>
+              @if (game.save().journey.levels[level.id].completed) {
+                <mat-icon aria-label="Completed" role="img" [attr.aria-hidden]="false"
+                  >check</mat-icon
+                >
+              } @else if (i > game.save().era) {
+                <mat-icon aria-label="Locked" role="img" [attr.aria-hidden]="false">lock</mat-icon>
+              } @else {
+                {{ i + 1 }}
+              }</span
             ><strong>{{ level.year }}</strong
             ><small
               >{{ level.short }}<b class="level-dataset">{{ level.datasetLabel }}</b></small
@@ -115,41 +122,52 @@
           <span class="dataset-tag">{{ game.dataset().name }}</span>
           <p>{{ challenge() }}</p>
           @if (game.levelComplete()) {
-            <p class="level-saved">✓ Discovery saved. Keep experimenting or turn the page.</p>
+            <p class="level-saved">
+              <mat-icon>check</mat-icon> Discovery saved. Keep experimenting or turn the page.
+            </p>
             @if (game.nextLevel(); as next) {
               <button
                 class="next-level"
                 (click)="switchLevel(next.id)"
                 [disabled]="game.trainer.busy()"
               >
-                Next level →
+                Next level <mat-icon>arrow_forward</mat-icon>
               </button>
             }
           } @else {
             <p class="level-saved">Your canvas saves as you build. Check it at the top right.</p>
           }
           <div class="mission-steps">
-            <span [class.done]="game.board().nodes.length > 2">✳ Build</span
-            ><span [class.done]="!!game.compilation().network">↳ Connect</span
-            ><span [class.done]="game.levelComplete()">✓ Check</span>
+            <span [class.done]="game.board().nodes.length > 2"
+              ><mat-icon>construction</mat-icon> Build</span
+            ><span [class.done]="!!game.compilation().network"
+              ><mat-icon>conversion_path</mat-icon> Connect</span
+            ><span [class.done]="game.levelComplete()"><mat-icon>check</mat-icon> Check</span>
           </div>
         </div>
         <details class="story">
-          <summary>A tiny piece of history <span>+</span></summary>
+          <summary>
+            A tiny piece of history <span><mat-icon>add</mat-icon></span>
+          </summary>
           <p>{{ chapter().description }}</p>
           <p class="history-note">{{ chapter().note }}</p>
-          <a [href]="chapter().source" target="_blank" rel="noopener">Read the original work ↗</a>
+          <a [href]="chapter().source" target="_blank" rel="noopener"
+            >Read the original work <mat-icon>open_in_new</mat-icon></a
+          >
         </details>
       } @else {
         <div class="sandbox-note">
-          <span>✳</span>
+          <span><mat-icon>construction</mat-icon></span>
           <h2>Your paper.<br />Your possibilities.</h2>
           <p>Every block is unlocked. Make a chain, pull it apart, and follow your curiosity.</p>
           <small>Your Journey progress stays separate.</small>
         </div>
       }
       <button class="hint-button" (click)="tips.set(!tips())" [attr.aria-expanded]="tips()">
-        A little help? <span>{{ tips() ? '−' : '+' }}</span>
+        A little help?
+        <span
+          ><mat-icon>{{ tips() ? 'remove' : 'add' }}</mat-icon></span
+        >
       </button>
       @if (tips()) {
         <div class="hints">
@@ -182,7 +200,7 @@
           <h3>{{ blockName(node) }}</h3>
           <p>{{ selectedHint() }}</p>
           <button (click)="canvas()?.deleteNode(node.id)" [disabled]="game.trainer.busy()">
-            Delete this block ×
+            Delete this block <mat-icon>delete</mat-icon>
           </button>
         </section>
       }
@@ -197,7 +215,7 @@
           <p><b>Ten classes:</b> {{ game.dataset().classes.join(', ') }}.</p>
           <p>{{ game.dataset().credit }}</p>
           <a [href]="game.dataset().source" target="_blank" rel="noopener"
-            >Meet {{ game.dataset().name }} ↗</a
+            >Meet {{ game.dataset().name }} <mat-icon>open_in_new</mat-icon></a
           >
         </details>
         <nav class="legal-links" aria-label="Legal">
@@ -217,7 +235,7 @@
           (click)="resetRequested.set(!resetRequested())"
           [disabled]="game.trainer.busy()"
         >
-          Fresh paper ↻
+          Fresh paper <mat-icon>refresh</mat-icon>
         </button>
         @if (resetRequested()) {
           <div class="reset-confirm">
@@ -236,26 +254,34 @@
     <app-paper-canvas [checkButton]="checkButton()?.nativeElement" />
     @if (game.celebration()) {
       <div class="celebration" role="status">
-        <span>✷</span>
+        <span><mat-icon>celebration</mat-icon></span>
         <div>
           <b>A NEW LITTLE DISCOVERY!</b>
           <p>{{ game.celebration() }}</p>
           @if (game.nextLevel(); as next) {
-            <button class="next-level" (click)="switchLevel(next.id)">Next level →</button>
+            <button class="next-level" (click)="switchLevel(next.id)">
+              Next level <mat-icon>arrow_forward</mat-icon>
+            </button>
           }
         </div>
-        <button aria-label="Dismiss celebration" (click)="game.celebration.set('')">×</button>
+        <button aria-label="Dismiss celebration" (click)="game.celebration.set('')">
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
     }
     @if (game.error()) {
       <div class="toast error" role="alert">
         {{ game.error() }}<button (click)="game.loadPreview()">Retry images</button
-        ><button aria-label="Dismiss error" (click)="game.error.set('')">×</button>
+        ><button aria-label="Dismiss error" (click)="game.error.set('')">
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
     } @else if (game.message()) {
       <div class="toast" role="status">
         {{ game.message()
-        }}<button aria-label="Dismiss message" (click)="game.message.set('')">×</button>
+        }}<button aria-label="Dismiss message" (click)="game.message.set('')">
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
     }
   </main>
