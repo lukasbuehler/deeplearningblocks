@@ -28,7 +28,10 @@ const escape = (value) =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
   );
 
-/** Fills {{name}}, {{email}}, {{address}}, {{updated}} and {{year}} in legal and footer markup. */
+/**
+ * Fills {{name}}, {{email}}, {{address}}, {{updated}} and {{year}} in legal and footer markup.
+ * Spaces inside the braces are allowed because Prettier's Angular formatter adds them.
+ */
 export function fillLegal(html, info = legal, year = new Date().getFullYear()) {
   const lines = [info.name, ...info.address, info.country].filter(Boolean).map(escape);
   const values = {
@@ -38,7 +41,10 @@ export function fillLegal(html, info = legal, year = new Date().getFullYear()) {
     updated: escape(info.updated),
     year: String(year),
   };
-  return html.replace(/\{\{(\w+)\}\}/g, (match, key) => values[key] ?? match);
+  return html.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
+    if (!(key in values)) throw new Error(`Unknown legal placeholder ${match}`);
+    return values[key];
+  });
 }
 
 export function siteFooter(info = legal, year) {

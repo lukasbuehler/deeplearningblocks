@@ -249,15 +249,23 @@ h2 {
 
 .legal address {
   margin: 1rem 0;
-  padding: 0.9rem 1.1rem;
   font-style: normal;
+}
+
+.legal .contact a {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.75rem 1.1rem;
   background: var(--yellow);
   border: 3px solid var(--ink);
   border-radius: 0.8rem;
   box-shadow: 4px 4px var(--ink);
-  width: fit-content;
-  max-width: 100%;
+  text-decoration: none;
   overflow-wrap: anywhere;
+}
+
+.legal .contact a:hover {
+  background: #ffed86;
 }
 
 .legal li + li {
