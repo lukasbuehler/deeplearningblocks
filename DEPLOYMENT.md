@@ -70,11 +70,11 @@ Analytics starts when the Angular playground opens. The static introduction load
 | `training_failed` | A started run throws | Context and architecture counts, no exception text |
 | `model_exported` | Download a Python script or notebook | Context, format, parameter count |
 
-Analytics runs only on non-local HTTPS origins, respects Do Not Track, and is disabled on localhost and HTTP previews even with a configured token. Automated tests use a fake SDK, never the real project.
+Analytics runs only on non-local HTTPS origins and is disabled on localhost and HTTP previews even with a configured token. A browser that sends Global Privacy Control (`navigator.globalPrivacyControl`) or the deprecated Do Not Track signal never fetches the config or loads the SDK. Brave and DuckDuckGo send GPC by default, so expect no events from them. Automated tests use a fake SDK, never the real project.
 
 There is no autocapture, session replay, survey loading, remote feature configuration, exception capture or persistent analytics storage. IDs last only in memory, so returning-visitor counts and funnels across reloads are intentionally limited. An event filter removes undeclared events/properties, including referrers, query strings, drawings, board contents and raw error messages. PostHog still receives network requests; this configuration is not a claim of anonymous networking. Geography enrichment is disabled per event.
 
-After deploying, open the HTTPS playground at `/play` with Do Not Track off and check PostHog's live events for `$pageview` and `workspace_opened`. Complete a build, run or stop training, and download code to inspect their events. Ad blockers can suppress delivery. Local checks do not establish live dashboard receipt.
+After deploying, open the HTTPS playground at `/play` with Global Privacy Control and Do Not Track off (`navigator.globalPrivacyControl` is not `true`), and check PostHog's live events for `$pageview` and `workspace_opened`. Complete a build, run or stop training, and download code to inspect their events. Ad blockers can suppress delivery. Local checks do not establish live dashboard receipt.
 
 ## References
 

@@ -24,7 +24,8 @@
 
 <h2>1. Who is responsible</h2>
 <p>The controller responsible for processing your data is:</p>
-<address>{{ address }}<br />Email: {{ email }}</address>
+<address>{{ address }}</address>
+<p class="contact">{{ email }}</p>
 <p>For any privacy question or request, write to the email address above.</p>
 
 <h2>2. Data stored on your device</h2>
@@ -97,9 +98,12 @@
   <a href="https://posthog.com/privacy" rel="noopener">PostHog’s privacy policy</a>.
 </p>
 <p>
-  <strong>Opting out:</strong> If your browser sends a “Do Not Track” signal, the playground loads
-  no analytics at all. Content blockers also stop the events. The playground works the same either
-  way.
+  <strong>Opting out:</strong> If your browser sends a
+  <a href="https://globalprivacycontrol.org/" rel="noopener">Global Privacy Control</a> (GPC)
+  signal, the playground loads no analytics at all and sends no events. Some browsers, such as Brave
+  and DuckDuckGo, send it by default, and others let you turn it on in their privacy settings. We
+  also honour the older “Do Not Track” signal in the same way. Content blockers also stop the
+  events. The playground works the same either way.
 </p>
 
 <h2>5. Exported code and external links</h2>

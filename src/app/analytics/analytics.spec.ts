@@ -64,11 +64,14 @@ describe('Usage analytics', () => {
       await flush();
     });
   }
-  it('excludes local traffic and DNT and validates ingestion configuration', () => {
+  it('excludes local traffic, GPC and DNT and validates ingestion configuration', () => {
+    const site = { hostname: 'example.com', protocol: 'https:' };
     for (const hostname of ['localhost', '127.0.0.1', '[::1]', 'test.localhost'])
-      expect(analyticsAllowed({ hostname, protocol: 'https:' }, null)).toBeFalse();
-    expect(analyticsAllowed({ hostname: 'example.com', protocol: 'https:' }, '1')).toBeFalse();
-    expect(analyticsAllowed({ hostname: 'example.com', protocol: 'https:' }, null)).toBeTrue();
+      expect(analyticsAllowed({ hostname, protocol: 'https:' }, {})).toBeFalse();
+    expect(analyticsAllowed(site, { globalPrivacyControl: true })).toBeFalse();
+    expect(analyticsAllowed(site, { doNotTrack: '1' })).toBeFalse();
+    expect(analyticsAllowed(site, { globalPrivacyControl: false, doNotTrack: '0' })).toBeTrue();
+    expect(analyticsAllowed(site, { doNotTrack: null })).toBeTrue();
     expect(
       parseAnalyticsConfig({ token: 'phx_private', host: 'https://eu.i.posthog.com' }),
     ).toBeNull();

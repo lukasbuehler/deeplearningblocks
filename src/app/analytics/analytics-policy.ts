@@ -46,13 +46,21 @@ const properties = new Set([
   '$geoip_disable',
 ]);
 
+/** Browser privacy signals. Global Privacy Control is current; Do Not Track is deprecated but still honored. */
+export interface PrivacySignals {
+  globalPrivacyControl?: boolean;
+  doNotTrack?: string | null;
+}
+export function optedOut({ globalPrivacyControl, doNotTrack }: PrivacySignals): boolean {
+  return globalPrivacyControl === true || doNotTrack === '1' || doNotTrack === 'yes';
+}
 export function analyticsAllowed(
   location: Pick<Location, 'hostname' | 'protocol'>,
-  doNotTrack: string | null,
+  signals: PrivacySignals,
 ): boolean {
   return (
     location.protocol === 'https:' &&
-    doNotTrack !== '1' &&
+    !optedOut(signals) &&
     !(
       /^(localhost|127\.|\[?::1\]?)/.test(location.hostname) ||
       location.hostname.endsWith('.localhost') ||
@@ -85,6 +93,7 @@ export const POSTHOG_OPTIONS: Partial<PostHogConfig> = {
   disable_surveys: true,
   advanced_disable_flags: true,
   disable_external_dependency_loading: true,
+  // Defense in depth: the SDK also refuses to capture under GPC or DNT.
   respect_dnt: true,
   // The SDK also supplies URL/referrer/device properties. Keep only this explicit schema.
   before_send: (event) => {

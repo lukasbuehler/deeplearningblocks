@@ -15,10 +15,21 @@ The development server opens the playground at http://localhost:4200. The [READM
 
 ## Workflow
 
-1. Start from an up-to-date `main` and create a branch with a short, descriptive name, such as `softmax-hint` or `fix-wire-snapping`.
+`main` is what runs on deeplearningblocks.com: Cloudflare deploys every change to it. Nobody pushes to `main` directly. Day-to-day work happens on `development`.
+
+1. Start from an up-to-date `development` and create a branch with a short, descriptive name, such as `softmax-hint` or `fix-wire-snapping`.
 2. Keep each pull request to one change. Small pull requests are reviewed faster.
-3. Open the pull request against `main` and fill in the template. Draft pull requests are welcome for early feedback.
-4. The **Checks** workflow must pass before merging. Pull requests are squash-merged, so the title becomes the commit message on `main`.
+3. Open the pull request against `development` and fill in the template. Draft pull requests are welcome for early feedback.
+4. The **Checks** workflow must pass and the maintainer reviews before merging. Feature pull requests are squash-merged, so the title becomes the commit message.
+5. To release, the maintainer opens a pull request from `development` into `main` and merges it with a merge commit, so the two branches keep the same history.
+
+```sh
+git switch development && git pull
+git switch -c softmax-hint
+# ...work, commit...
+git push -u origin softmax-hint
+gh pr create --base development
+```
 
 Collaborators push branches to this repository. Everyone else forks it and opens the pull request from the fork. Both get the same checks and review.
 

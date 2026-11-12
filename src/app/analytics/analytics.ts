@@ -12,7 +12,12 @@ type Client = Pick<PostHog, 'init' | 'capture'>;
 export const ANALYTICS_RUNTIME = new InjectionToken('analytics runtime', {
   providedIn: 'root',
   factory: () => ({
-    allowed: () => analyticsAllowed(window.location, navigator.doNotTrack),
+    allowed: () =>
+      analyticsAllowed(window.location, {
+        globalPrivacyControl: (navigator as Navigator & { globalPrivacyControl?: boolean })
+          .globalPrivacyControl,
+        doNotTrack: navigator.doNotTrack,
+      }),
     config: async (): Promise<unknown> => {
       const response = await fetch('/analytics-config.json', {
         cache: 'no-store',
