@@ -15,6 +15,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: npm run format:check
       - run: npm run test:config
       - run: npm run test:core
       - run: npm test -- --watch=false --browsers=ChromeHeadless

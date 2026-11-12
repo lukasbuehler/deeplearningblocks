@@ -12,6 +12,7 @@
     "deploy": "npm run build && wrangler deploy",
     "test:core": "node --import tsx --test src/app/learning/*.test.ts src/app/playground/*.test.ts",
     "format": "prettier --write \"src/**/*.{ts,html,scss}\" angular.json package.json wrangler.jsonc",
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss}\" angular.json package.json wrangler.jsonc",
     "prebuild": "node scripts/analytics-config.mjs",
     "prestart": "node scripts/analytics-config.mjs",
     "predev": "node scripts/analytics-config.mjs",
