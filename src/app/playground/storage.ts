@@ -1,4 +1,4 @@
-import { LEVEL_IDS, LevelId } from './levels';
+import { LAST_ERA, LEVEL_IDS, LevelId, levelWorld } from './levels';
 import { splitLegacyOutput } from './board-migration';
 import { MIN_ZOOM, MAX_ZOOM } from './geometry';
 import { Experiment } from '../learning/curriculum';
@@ -14,6 +14,8 @@ import {
   freshBoard,
   validDenseInputs,
   validDenseUnits,
+  validHeads,
+  worldOf,
 } from './graph';
 export type Mode = 'journey' | 'sandbox';
 export interface Workspace {
@@ -44,7 +46,7 @@ export function freshGame(): GameSave {
         LEVEL_IDS.map((id) => [
           id,
           {
-            board: freshBoard(),
+            board: freshBoard(levelWorld(id)),
             experiments: [],
             completed: false,
           },
@@ -78,7 +80,9 @@ function validBoard(value: unknown, era: number): value is Board {
     !Array.isArray(b.nodes) ||
     !Array.isArray(b.edges) ||
     b.nodes.length > 1000 ||
-    b.edges.length > b.nodes.length
+    // Shortcut wires let text boards hold up to two wires per block.
+    b.edges.length > b.nodes.length * (b.world === 'text' ? 2 : 1) ||
+    (b.world !== undefined && b.world !== 'text')
   )
     return false;
   if (
@@ -98,13 +102,19 @@ function validBoard(value: unknown, era: number): value is Board {
         [n.x, n.y].every((v) => Number.isFinite(v) && Math.abs(v) < 100000) &&
         (n.kind !== 'dense' ||
           (validDenseUnits(n.units) && (n.inputs === undefined || validDenseInputs(n.inputs)))) &&
+        (n.kind !== 'embedding' || validDenseUnits(n.units)) &&
+        (n.kind !== 'attention' || validHeads(n.heads)) &&
         (n.kind !== 'activation' || unlocked(n.activation, era)) &&
         (n.kind !== 'custom' || validCustom(n, era)),
     )
   )
     return false;
   if (new Set(b.nodes.map((n) => n.id)).size !== b.nodes.length) return false;
-  if (['image', 'classifier'].some((kind) => b.nodes.filter((n) => n.kind === kind).length > 1))
+  if (
+    ['image', 'classifier', 'text', 'writer'].some(
+      (kind) => b.nodes.filter((n) => n.kind === kind).length > 1,
+    )
+  )
     return false;
   const checked: Board = { ...b, edges: [] };
   for (const e of b.edges) {
@@ -112,7 +122,8 @@ function validBoard(value: unknown, era: number): value is Board {
       !e ||
       typeof e.from !== 'string' ||
       typeof e.to !== 'string' ||
-      connectionError(checked, e.from, e.to)
+      (e.port !== undefined && e.port !== 'skip') ||
+      connectionError(checked, e.from, e.to, e.port)
     )
       return false;
     checked.edges.push(e);
@@ -133,7 +144,7 @@ function validExperiments(value: unknown): Experiment[] {
         e.layers.length <= 1000 &&
         Number.isInteger(e.era) &&
         e.era >= 0 &&
-        e.era <= 2,
+        e.era <= LAST_ERA,
     )
     .slice(-8);
 }
@@ -188,7 +199,7 @@ export function loadGame(): GameSave {
       !['journey', 'sandbox'].includes(save.mode) ||
       !Number.isInteger(save.era) ||
       save.era < 0 ||
-      save.era > 2
+      save.era > LAST_ERA
     )
       return freshGame();
     if (save.version === 2 || save.version === 3) {
@@ -219,7 +230,8 @@ export function loadGame(): GameSave {
       save.version !== 4 ||
       !LEVEL_IDS.includes(save.journey?.activeLevel) ||
       LEVEL_IDS.indexOf(save.journey.activeLevel) > save.era ||
-      !validBoard(save.sandbox?.board, 2)
+      !validBoard(save.sandbox?.board, 2) ||
+      worldOf(save.sandbox.board) !== 'images'
     )
       return freshGame();
     const result = freshGame();
@@ -230,7 +242,10 @@ export function loadGame(): GameSave {
       const level = save.journey.levels?.[id];
       // One damaged level must not erase other boards or earned discoveries.
       result.journey.levels[id] = {
-        board: validBoard(level?.board, save.era) ? level.board : freshBoard(),
+        board:
+          validBoard(level?.board, save.era) && worldOf(level.board) === levelWorld(id)
+            ? level.board
+            : freshBoard(levelWorld(id)),
         experiments: validExperiments(level?.experiments),
         completed: level?.completed === true,
       };

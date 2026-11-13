@@ -626,3 +626,40 @@ button:disabled {
   outline-style: dashed;
   background: #ffe4df;
 }
+
+/* Text world. A sequence is a little table: one row of numbers per letter. */
+.sequence-wire,
+.shortcut-wire {
+  stroke: #74a6ff;
+  stroke-width: 4;
+}
+/* Shortcut wires skip blocks on their way into Add, so they stand out from the main road. */
+.shortcut-wire {
+  stroke: #ffb86b;
+}
+.token-wire {
+  stroke: #ffe14a;
+}
+.sequence-port .port-shape {
+  background: repeating-linear-gradient(#fffdf1 0 3px, #74a6ff 3px 6px);
+  box-shadow: none;
+}
+.output.sequence-port .port-shape {
+  background: repeating-linear-gradient(#171717 0 3px, #74a6ff 3px 6px);
+}
+.token-port .port-shape {
+  border-radius: 12px;
+  background: #ffe14a;
+  box-shadow: none;
+}
+/* Add's second socket sits right of the main one (SKIP_PORT_OFFSET in graph.ts). */
+.port.skip-port {
+  left: calc(50% + 51px);
+}
+.skip-port .port-shape {
+  background: repeating-linear-gradient(#fffdf1 0 3px, #ffb86b 3px 6px);
+}
+.skip-port .port-label {
+  right: auto;
+  left: 58px;
+}

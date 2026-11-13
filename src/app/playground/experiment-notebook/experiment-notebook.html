@@ -23,25 +23,25 @@
       <div class="training-summary">
         <span class="eyebrow">TRY. CHANGE. DISCOVER.</span>
         <h2>{{ game.trainer.status() }}</h2>
-        <p>{{ game.dataset().name }}<br />3,000 examples · 5 passes · 500 test images</p>
+        <p>{{ game.dataset().name }}<br />{{ words().recipe }}</p>
         @if (game.trainer.busy()) {
           <progress
             [value]="game.trainer.epochs().length"
-            max="5"
+            [max]="words().rounds"
             aria-label="Training progress"
           ></progress>
         }
         @if (latest(); as result) {
           <div class="score">
             <strong>{{ result.accuracy | percent: '1.1-1' }}</strong
-            ><span>last test accuracy<br />random guessing ≈ 10%</span>
+            ><span>{{ words().score }}<br />{{ words().chance }}</span>
           </div>
         } @else {
           <p>Finish an experiment to put your first result here.</p>
         }
       </div>
       <div class="loss-chart">
-        <span class="eyebrow">LEARNING CURVE / TRAINING LOSS</span>
+        <span class="eyebrow">{{ words().curve }}</span>
         @if (game.trainer.epochs().length) {
           <svg viewBox="0 0 230 80" role="img" aria-label="Training loss by pass">
             <path
@@ -53,7 +53,7 @@
             <polyline [attr.points]="lossPoints()" fill="none" stroke="#171717" stroke-width="3" />
           </svg>
           <p>
-            Pass {{ game.trainer.epochs().length }} ·
+            {{ words().round }} {{ game.trainer.epochs().length }} ·
             {{ game.trainer.epochs().at(-1)?.loss | number: '1.3-3' }} loss
           </p>
         } @else {
@@ -69,8 +69,8 @@
               <th>Try</th>
               <th>Dataset</th>
               <th>Your recipe</th>
-              <th>Test accuracy</th>
-              <th>Test loss</th>
+              <th>{{ words().accuracy }}</th>
+              <th>{{ words().loss }}</th>
             </tr>
           </thead>
           <tbody>

@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { BlockNode, Board, compileBoard } from './graph';
 import { pytorchModel, pytorchNotebook, pytorchScript } from './pytorch-export';
+import { transformerBoard } from './text-fixtures';
 
 function compiled(middle: Partial<BlockNode>[]) {
   const nodes = [
@@ -98,4 +99,25 @@ test('clothing exports load Fashion-MNIST and use class names in both formats', 
     ),
   );
   assert.ok(notebook.cells[0].source.join('').includes('Fashion-MNIST'));
+});
+
+test('a text network exports a module whose forward follows the shortcut wires', () => {
+  const network = compileBoard(transformerBoard()).network!;
+  const code = pytorchModel(network);
+  assert.match(code, /self.embedding0 = nn.Embedding\(VOCAB_SIZE, 48\)/);
+  assert.match(code, /self.attention3 = SelfAttention\(48, heads=4\)/);
+  assert.match(code, /self.dense6 = nn.Linear\(48, 96\)/);
+  assert.match(code, /x4 = x3 \+ x1 {2}# Add/);
+  assert.match(code, /x9 = x8 \+ x4/);
+  assert.match(code, /return x11 {2}# letter scores/);
+  assert.match(code, /is_causal=True/);
+  assert.match(code, new RegExp(`== ${network.parameters}\\n`));
+  const script = pytorchScript(network, DATASETS['tiny-shakespeare']);
+  assert.match(script, /char-rnn\/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/);
+  assert.match(script, /range\(600\)/);
+  assert.match(script, /def write\(/);
+  assert.doesNotMatch(script, /torchvision/);
+  const notebook = JSON.parse(pytorchNotebook(network, DATASETS['tiny-shakespeare']));
+  assert.equal(notebook.cells.length, 10);
+  assert.match(notebook.cells[5].source.join(''), /class YourModel/);
 });

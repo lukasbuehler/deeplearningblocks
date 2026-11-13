@@ -33,10 +33,15 @@ test('v3 migration preserves the current canvas, earned progress and each notebo
   assert.equal(save.journey.activeLevel, 'deeper-network');
   assert.deepEqual(save.journey.levels['deeper-network'].board, board);
   assert.deepEqual(save.journey.levels['first-network'].board, freshBoard());
-  Object.values(save.journey.levels).forEach((level, i) => {
-    assert.equal(level.completed, true);
-    assert.deepEqual(level.experiments, [experiments[i]]);
-  });
+  // The three picture levels existed in v3; the 2017 text level starts fresh and incomplete.
+  Object.values(save.journey.levels)
+    .slice(0, 3)
+    .forEach((level, i) => {
+      assert.equal(level.completed, true);
+      assert.deepEqual(level.experiments, [experiments[i]]);
+    });
+  assert.equal(save.journey.levels.attention.completed, false);
+  assert.equal(save.journey.levels.attention.board.world, 'text');
   saveGame(save);
   assert.equal(memory.get(PREVIOUS_SAVE_KEY), recovery);
   assert.deepEqual(loadGame(), save);

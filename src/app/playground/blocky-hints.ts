@@ -1,11 +1,20 @@
 import { Dataset, DATASETS } from '../learning/datasets';
-import { Board, Edge, compileBoard, newConnectionError, hasHiddenActivation } from './graph';
+import {
+  Board,
+  Edge,
+  InputPort,
+  compileBoard,
+  newConnectionError,
+  hasHiddenActivation,
+  worldOf,
+} from './graph';
+import { textHint } from './text-hints';
 import { experimentHint } from './experiment-hints';
 import { blockName } from './block-catalog';
 
 export type HintTarget =
   | { kind: 'node'; id: string }
-  | { kind: 'edge'; from: string; to: string }
+  | { kind: 'edge'; from: string; to: string; port?: InputPort }
   | { kind: 'tray' }
   | { kind: 'check' };
 export interface BlockyHint {
@@ -29,7 +38,7 @@ export function blockyHint(
 ): BlockyHint {
   const nodeTarget = (id: string): HintTarget => ({ kind: 'node', id });
   if (rejected && board.nodes.some((n) => n.id === rejected.to)) {
-    const error = newConnectionError(board, rejected.from, rejected.to);
+    const error = newConnectionError(board, rejected.from, rejected.to, undefined, rejected.port);
     if (error)
       return {
         id: 'connection',
@@ -38,6 +47,7 @@ export function blockyHint(
         target: nodeTarget(rejected.to),
       };
   }
+  if (worldOf(board) === 'text') return textHint(board, completed, mode, accuracy);
   const image = board.nodes.find((n) => n.kind === 'image');
   if (!image)
     return {

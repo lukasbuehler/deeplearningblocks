@@ -30,7 +30,7 @@ test('bundled Fashion-MNIST records match manifests and contain all ten clothing
 test('levels use explicit datasets while old experiment scores retain MNIST provenance', () => {
   assert.deepEqual(
     LEVELS.map((level) => level.dataset),
-    ['mnist', 'fashion-mnist', 'fashion-mnist'],
+    ['mnist', 'fashion-mnist', 'fashion-mnist', 'tiny-shakespeare'],
   );
   assert.equal(experimentDataset({}).id, 'mnist');
   assert.equal(experimentDataset({ dataset: 'fashion-mnist' }).name, 'Fashion-MNIST');

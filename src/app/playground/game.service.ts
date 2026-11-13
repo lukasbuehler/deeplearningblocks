@@ -1,7 +1,8 @@
 import { Analytics } from '../analytics/analytics';
 import type { LearningEventProperties } from '../analytics/analytics-policy';
 import { DATASETS } from '../learning/datasets';
-import { LEVELS, LevelId, meetsLevel } from './levels';
+import { LAST_ERA, LEVELS, LevelId, meetsLevel } from './levels';
+import { CONTEXT, decode, encode } from '../learning/shakespeare';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { TrainingService } from '../learning/training.service';
 import { ACTIVATIONS } from '../learning/curriculum';
@@ -15,6 +16,7 @@ import {
   freshBoard,
   validDenseInputs,
   validDenseUnits,
+  validHeads,
 } from './graph';
 import { BoardHistory } from './history';
 import { GameSave, Mode, Workspace, loadGame, saveGame } from './storage';
@@ -66,6 +68,19 @@ export class GameService {
       this.drawing() ??
       this.trainer.test()?.pixels.slice(this.sample() * 784, (this.sample() + 1) * 784),
   );
+  /** The writer's starting words and how adventurous its letter picks are. */
+  readonly prompt = signal('ROMEO:\n');
+  readonly temperature = signal(0.8);
+  /** One practice question from held-out text: 32 letters and the letter that follows. */
+  readonly snippet = computed(() => {
+    const region = this.trainer.text()?.validation;
+    if (!region) return null;
+    const start = (this.sample() * 7919) % (region.length - CONTEXT - 1);
+    return {
+      letters: decode(region.subarray(start, start + CONTEXT)),
+      next: decode(region.subarray(start + CONTEXT, start + CONTEXT + 1)),
+    };
+  });
   readonly historyVersion = signal(0);
   private readonly histories = new Map<string, BoardHistory>();
   private get history(): BoardHistory {
@@ -159,6 +174,7 @@ export class GameService {
     if (this.trainer.busy() && !layoutOnly) return;
     if ('units' in change && !validDenseUnits(change.units)) return;
     if ('inputs' in change && !validDenseInputs(change.inputs)) return;
+    if ('heads' in change && !validHeads(change.heads)) return;
     if ('name' in change && (change.name ?? '').length > MAX_NAME_LENGTH) return;
     const nodes = this.board().nodes.map((n) => (n.id === change.id ? { ...n, ...change } : n));
     const changed = nodes.find((n) => n.id === change.id);
@@ -218,7 +234,10 @@ export class GameService {
     if (this.trainer.busy()) return;
     this.clearRuntime();
     // Fresh paper is local to this workspace. Earned discoveries remain earned.
-    this.updateWorkspace(() => ({ board: freshBoard(), experiments: [] }));
+    this.updateWorkspace(() => ({
+      board: freshBoard(this.mode() === 'sandbox' ? 'images' : this.level().world),
+      experiments: [],
+    }));
     this.history.clear();
     this.historyVersion.update((v) => v + 1);
     this.message.set('Fresh paper. Your other levels and discoveries are safe.');
@@ -242,7 +261,7 @@ export class GameService {
   }
   nextSample(): void {
     this.drawing.set(null);
-    this.sample.update((i) => (i + 1) % (this.trainer.test()?.count ?? 1));
+    this.sample.update((i) => (i + 1) % (this.trainer.test()?.count ?? 1000));
     this.refreshPrediction();
   }
   checkBuild(): void {
@@ -264,7 +283,7 @@ export class GameService {
     }
     this.save.update((save) => ({
       ...save,
-      era: Math.max(save.era, Math.min(2, era + 1)),
+      era: Math.max(save.era, Math.min(LAST_ERA, era + 1)),
       journey: {
         ...save.journey,
         levels: {
@@ -278,7 +297,9 @@ export class GameService {
         ? 'First build discovered! Sigmoid & Tanh are in your toy box.'
         : era === 1
           ? 'Nonlinearity discovered! ReLU joins your toy box.'
-          : 'A deeper network discovered! Try training and compare your guesses.',
+          : era === 2
+            ? 'A deeper network discovered! Next stop: 2017, a tiny transformer that writes.'
+            : 'A transformer discovered! Press Train and watch it learn to write.',
     );
     this.analytics.track('level_completed', this.analyticsContext());
     this.message.set('Build checked. Training is an optional experiment.');
@@ -302,7 +323,10 @@ export class GameService {
     this.celebration.set('');
     this.probabilities.set([]);
     try {
-      const result = await this.trainer.train(network, this.dataset().id);
+      const result =
+        network.world === 'text'
+          ? await this.trainer.trainText(network, this.prompt())
+          : await this.trainer.train(network, this.dataset().id);
       if (!result) {
         this.analytics.track('training_cancelled', {
           ...context,
@@ -322,13 +346,39 @@ export class GameService {
           { ...result, era, dataset: this.dataset().id, layers: describeNetwork(network) },
         ].slice(-8),
       }));
-      this.message.set('An experiment in the books! Change one thing and try again.');
+      this.message.set(
+        network.world === 'text'
+          ? 'Practice done! Type your own start in the writer and press Write.'
+          : 'An experiment in the books! Change one thing and try again.',
+      );
       this.refreshPrediction();
     } catch (error) {
       this.analytics.track('training_failed', context);
       this.error.set(
         error instanceof Error ? error.message : 'That experiment could not finish. Try again.',
       );
+    }
+  }
+  setPrompt(prompt: string): void {
+    const { ids, dropped } = encode(prompt.slice(0, 200));
+    this.prompt.set(prompt.slice(0, 200));
+    this.message.set(
+      dropped
+        ? `${dropped === 1 ? 'One letter is' : dropped + ' letters are'} not in Shakespeare’s alphabet, so the writer skips ${dropped === 1 ? 'it' : 'them'}.`
+        : ids.length
+          ? ''
+          : 'An empty start is fine. The writer begins with a new line.',
+    );
+  }
+  async write(): Promise<void> {
+    if (!this.trainer.trained()) {
+      this.message.set('Train first. Then the writer can use what it practiced.');
+      return;
+    }
+    try {
+      await this.trainer.write(this.prompt(), this.temperature());
+    } catch {
+      this.error.set('The writer stopped. Train again and retry.');
     }
   }
 }

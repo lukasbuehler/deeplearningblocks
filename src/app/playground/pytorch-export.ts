@@ -1,10 +1,12 @@
 import { Dataset, DATASETS } from '../learning/datasets';
 import type { NetworkSpec } from './graph';
+import { pytorchTextCells, pytorchTextModel, pytorchTextScript } from './pytorch-text-export';
 
 const activations = { linear: 'Identity', sigmoid: 'Sigmoid', tanh: 'Tanh', relu: 'ReLU' };
 
 /** Consume the compiled path, never node positions or loose blocks. */
 export function pytorchModel(network: NetworkSpec): string {
+  if (network.world === 'text') return pytorchTextModel(network);
   let width = 784;
   const layers = network.steps.map((step): string => {
     switch (step.kind) {
@@ -19,6 +21,8 @@ export function pytorchModel(network: NetworkSpec): string {
         return `    nn.${activations[step.activation]}(),`;
       case 'softmax':
         return '    # Softmax block: applied in the prediction cell, after training on logits.';
+      default:
+        throw new Error(`${step.kind} belongs in a text network.`);
     }
   });
   return `from torch import nn
@@ -106,6 +110,7 @@ The first run downloads ${dataset.name}. Try changing one layer and running the 
 `;
 
 export function pytorchScript(network: NetworkSpec, dataset: Dataset = DATASETS.mnist): string {
+  if (network.world === 'text') return pytorchTextScript(network);
   return `# Deep Learning Blocks | Your connected network
 # Install once: python -m pip install torch torchvision
 # Run: python deep-learning-blocks.py
@@ -131,30 +136,33 @@ export function pytorchNotebook(network: NetworkSpec, dataset: Dataset = DATASET
           language_info: { name: 'python' },
           colab: { name: 'deep-learning-blocks.ipynb', provenance: [] },
         },
-        cells: [
-          cell('markdown', intro(dataset)),
-          cell('code', '%pip install -q torch torchvision\n'),
-          cell(
-            'markdown',
-            `## 1. Meet ${dataset.name}\n${dataset.subject}. We use the same small, seeded subset as the playground.\n\n${dataset.credit} [Dataset source](${dataset.source}).\n`,
-          ),
-          cell('code', dataCode(dataset)),
-          cell(
-            'markdown',
-            `## 2. Your blocks, in order\n${network.parameters.toLocaleString('en-US')} learnable parameters. Flatten makes a vector; Linear is your Dense block. The last Linear makes 10 scores.\n\n[CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html) takes raw scores, so softmax belongs in the prediction cell.\n`,
-          ),
-          cell('code', pytorchModel(network)),
-          cell(
-            'markdown',
-            '## 3. Let it learn\nEach pass adjusts the weights using training examples. A smaller loss means the model fits these examples better.\n',
-          ),
-          cell('code', trainingCode),
-          cell(
-            'markdown',
-            '## 4. Try unseen images\nNow test on images that did not teach the model. A confident guess can still be wrong!\n',
-          ),
-          cell('code', evaluationCode),
-        ],
+        cells:
+          network.world === 'text'
+            ? pytorchTextCells(network).map(([type, source]) => cell(type, source))
+            : [
+                cell('markdown', intro(dataset)),
+                cell('code', '%pip install -q torch torchvision\n'),
+                cell(
+                  'markdown',
+                  `## 1. Meet ${dataset.name}\n${dataset.subject}. We use the same small, seeded subset as the playground.\n\n${dataset.credit} [Dataset source](${dataset.source}).\n`,
+                ),
+                cell('code', dataCode(dataset)),
+                cell(
+                  'markdown',
+                  `## 2. Your blocks, in order\n${network.parameters.toLocaleString('en-US')} learnable parameters. Flatten makes a vector; Linear is your Dense block. The last Linear makes 10 scores.\n\n[CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html) takes raw scores, so softmax belongs in the prediction cell.\n`,
+                ),
+                cell('code', pytorchModel(network)),
+                cell(
+                  'markdown',
+                  '## 3. Let it learn\nEach pass adjusts the weights using training examples. A smaller loss means the model fits these examples better.\n',
+                ),
+                cell('code', trainingCode),
+                cell(
+                  'markdown',
+                  '## 4. Try unseen images\nNow test on images that did not teach the model. A confident guess can still be wrong!\n',
+                ),
+                cell('code', evaluationCode),
+              ],
       },
       null,
       2,

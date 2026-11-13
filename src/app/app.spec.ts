@@ -42,7 +42,7 @@ describe('App', () => {
     fixture.detectChanges();
     expect(app.game.mode()).toBe('sandbox');
     expect(sandbox.getAttribute('aria-current')).toBe('page');
-    expect(root.querySelectorAll('.chapters button').length).toBe(4);
+    expect(root.querySelectorAll('.chapters button').length).toBe(5);
     const lessons = root.querySelectorAll<HTMLButtonElement>(
       '.chapters button:not(.sandbox-level)',
     );

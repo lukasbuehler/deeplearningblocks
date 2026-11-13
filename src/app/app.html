@@ -175,10 +175,21 @@
             <b>Make it click.</b> Drag from a bottom stud to a top socket. Or tap one, then the
             other. Matching sockets glow green.
           </p>
-          <p>
-            <b>Make it fit.</b> Pictures have square sockets. Lists of numbers have striped sockets.
-            Flatten connects the two worlds.
-          </p>
+          @if (game.dataset().kind === 'text') {
+            <p>
+              <b>Make it fit.</b> Letters have dotted sockets. Tables of numbers, one row per
+              letter, have striped sockets. Letter embedding connects the two worlds.
+            </p>
+            <p>
+              <b>Take a shortcut.</b> A striped stud can feed two sockets. Wire one into the next
+              block and one into Add’s orange shortcut socket, past the blocks you want to skip.
+            </p>
+          } @else {
+            <p>
+              <b>Make it fit.</b> Pictures have square sockets. Lists of numbers have striped
+              sockets. Flatten connects the two worlds.
+            </p>
+          }
           <p>
             <b>Make it yours.</b> Drag blocks by their bodies. Drag the paper to move around. Select
             a wire or an occupied port to unplug it. Use × to delete a block, or Undo to bring it
@@ -188,10 +199,17 @@
             <b>Use the keyboard.</b> Tab to blocks or ports. Enter connects, arrows move a focused
             block, and Delete removes it. Undo works with ⌘/Ctrl Z.
           </p>
-          <p>
-            <b>Let it learn.</b> Weights are adjustable connections. One pass means seeing all 3,000
-            training images. Lower loss means better-fitting guesses.
-          </p>
+          @if (game.dataset().kind === 'text') {
+            <p>
+              <b>Let it learn.</b> Training plays a guessing game: read 32 letters, guess the next
+              one, adjust the weights, repeat 600 times. Lower loss means better guesses.
+            </p>
+          } @else {
+            <p>
+              <b>Let it learn.</b> Weights are adjustable connections. One pass means seeing all
+              3,000 training images. Lower loss means better-fitting guesses.
+            </p>
+          }
         </div>
       }
       @if (game.selectedNode(); as node) {
@@ -207,12 +225,21 @@
       <div class="guide-bottom">
         <span class="browser-note"><i></i> Learns right here in your browser</span>
         <details>
-          <summary>About these images</summary>
-          <p>
-            {{ game.dataset().name }}: 3,000 training images and 500 separate test images. Each is
-            28 × 28 grayscale pixels. Five passes, real learning.
-          </p>
-          <p><b>Ten classes:</b> {{ game.dataset().classes.join(', ') }}.</p>
+          @if (game.dataset().kind === 'text') {
+            <summary>About this text</summary>
+            <p>
+              {{ game.dataset().name }}: 1.1 million letters. The model practices on the first 90%
+              and is checked on the last 10%, which it never practices on.
+            </p>
+            <p><b>65 letters:</b> A–Z, a–z, space, new line and a few marks such as ! ? , . ; :</p>
+          } @else {
+            <summary>About these images</summary>
+            <p>
+              {{ game.dataset().name }}: 3,000 training images and 500 separate test images. Each is
+              28 × 28 grayscale pixels. Five passes, real learning.
+            </p>
+            <p><b>Ten classes:</b> {{ game.dataset().classes.join(', ') }}.</p>
+          }
           <p>{{ game.dataset().credit }}</p>
           <a [href]="game.dataset().source" target="_blank" rel="noopener"
             >Meet {{ game.dataset().name }} <mat-icon>open_in_new</mat-icon></a
@@ -271,7 +298,9 @@
     }
     @if (game.error()) {
       <div class="toast error" role="alert">
-        {{ game.error() }}<button (click)="game.loadPreview()">Retry images</button
+        {{ game.error()
+        }}<button (click)="game.loadPreview()">
+          {{ game.dataset().kind === 'text' ? 'Retry text' : 'Retry images' }}</button
         ><button aria-label="Dismiss error" (click)="game.error.set('')">
           <mat-icon>close</mat-icon>
         </button>

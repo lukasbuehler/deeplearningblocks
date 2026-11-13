@@ -10,6 +10,14 @@ export const CONTEXT = 32;
 export const SHAKESPEARE_CHARACTERS = 1115394;
 /** The first 90% of the text teaches the model; the rest is held out to check it. */
 export const TRAIN_FRACTION = 0.9;
+/**
+ * One browser experiment: 600 practice steps of 32 windows, in 6 rounds. Measured on the CPU
+ * backend, a 27k-parameter model reaches a held-out loss near 2.2 (35% next-letter accuracy) in
+ * 300 steps. WebGL is much faster. The Python export uses the same recipe.
+ */
+export const TEXT_TRAINING = { steps: 600, rounds: 6, batch: 32, learningRate: 0.01 } as const;
+export const SHAKESPEARE_SOURCE =
+  'https://raw.githubusercontent.com/karpathy/char-rnn/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/data/tinyshakespeare/input.txt';
 
 const INDEX = new Map([...SHAKESPEARE_ALPHABET].map((letter, id) => [letter, id]));
 

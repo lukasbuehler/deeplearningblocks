@@ -35,6 +35,27 @@
 .custom {
   background: #ffb86b;
 }
+.text {
+  background: #ffe14a;
+}
+.embedding {
+  background: #74a6ff;
+}
+.position {
+  background: #a8c8ff;
+}
+.layernorm {
+  background: #c8f08f;
+}
+.attention {
+  background: #9be7ff;
+}
+.add {
+  background: #ffd9b0;
+}
+.writer {
+  background: #bc9aff;
+}
 /* Expanded: an orange frame around a rounded paper panel that holds the full-size blocks. */
 .custom.expanded {
   box-shadow: 6px 6px 0 #171717;
@@ -438,4 +459,164 @@ select:disabled {
   flex-shrink: 0;
   overflow-wrap: anywhere;
   line-height: 1.1;
+}
+
+/* Text level cards. */
+.text-window,
+.page {
+  border: 2px solid #171717;
+  border-radius: 9px;
+  background: #fffdf1;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.text-window {
+  height: 66px;
+  overflow: hidden;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.next-letter {
+  display: inline-block;
+  min-width: 1.3em;
+  margin-left: 2px;
+  border-radius: 4px;
+  background: #171717;
+  color: #ffe14a;
+  font-weight: 900;
+  text-align: center;
+}
+.next-snippet,
+.write-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border: 2px solid #171717;
+  border-radius: 8px;
+  background: #fffdf1;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+:is(.next-snippet, .write-row button) mat-icon.mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+:is(.next-snippet, .write-row button):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.seats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.seats b {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  border: 2px solid #171717;
+  border-radius: 6px;
+  background: #fffdf1;
+  font-size: 13px;
+}
+.heads {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.heads button {
+  width: 32px;
+  height: 30px;
+  border: 2px solid #171717;
+  border-radius: 7px;
+  background: #fffdf1;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.heads button.chosen {
+  background: #171717;
+  color: #fffdf1;
+}
+.page {
+  height: 128px;
+  overflow-y: auto;
+  padding: 7px 9px;
+  font-size: 13px;
+  line-height: 1.35;
+  user-select: text;
+}
+.page.empty {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: #171717;
+  animation: blink 0.8s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .caret {
+    animation: none;
+  }
+}
+.prompt {
+  display: grid;
+  gap: 3px;
+  margin-top: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.prompt textarea {
+  resize: none;
+  border: 2px solid #171717;
+  border-radius: 7px;
+  padding: 3px 6px;
+  background: #fffdf1;
+  font:
+    12px ui-monospace,
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+  text-transform: none;
+}
+.write-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.temperature {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 8px;
+  font-size: 9px;
+  font-weight: 800;
+}
+.temperature input {
+  width: 70px;
 }

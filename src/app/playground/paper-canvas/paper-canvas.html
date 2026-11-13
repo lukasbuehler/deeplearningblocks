@@ -27,20 +27,23 @@
     "
   >
     <svg class="wires" aria-label="Network connections">
-      @for (wire of wires(); track wire.from) {
-        @if (highlightedEdge() === wire.from) {
+      @for (wire of wires(); track wire.key) {
+        @if (highlightedEdge() === wire.key) {
           <path class="blocky-wire" [attr.d]="wire.path" />
         }
         <path class="wire-outline" [attr.d]="wire.path" />
         <path
           class="wire"
           [class.image-wire]="wire.type === 'image'"
-          [class.selected]="selectedEdge()?.from === wire.from"
+          [class.token-wire]="wire.type === 'tokens'"
+          [class.sequence-wire]="wire.type === 'sequence'"
+          [class.shortcut-wire]="!!wire.port"
+          [class.selected]="!!selectedEdge() && edgeKey(selectedEdge()!) === wire.key"
           [attr.d]="wire.path"
         />
         <path
           class="wire-hit"
-          [attr.data-edge-from]="wire.from"
+          [attr.data-edge]="wire.key"
           [attr.d]="wire.path"
           role="button"
           tabindex="0"
@@ -86,8 +89,10 @@
             class="port input"
             (mousedown)="$event.stopPropagation()"
             (touchstart)="$event.stopPropagation()"
-            [class.probability-port]="definitions[node.kind].input === 'probabilities'"
-            [class.image-port]="definitions[node.kind].input === 'image'"
+            [class.probability-port]="portType(node, 'input') === 'probabilities'"
+            [class.image-port]="portType(node, 'input') === 'image'"
+            [class.token-port]="portType(node, 'input') === 'tokens'"
+            [class.sequence-port]="portType(node, 'input') === 'sequence'"
             [class.compatible]="compatible(node.id)"
             [class.incompatible]="pending() && !compatible(node.id)"
             [attr.title]="wireError(node.id)"
@@ -103,6 +108,32 @@
             ><span class="port-label">{{ portLabel(node, 'input') }}</span>
           </button>
         }
+        @if (definitions[node.kind].skip) {
+          <button
+            class="port input skip-port sequence-port"
+            (mousedown)="$event.stopPropagation()"
+            (touchstart)="$event.stopPropagation()"
+            [class.compatible]="compatible(node.id, 'skip')"
+            [class.incompatible]="pending() && !compatible(node.id, 'skip')"
+            [attr.title]="wireError(node.id, 'skip') ?? 'Shortcut socket'"
+            [attr.data-input]="node.id"
+            data-port="skip"
+            [disabled]="game.trainer.busy()"
+            [attr.aria-label]="
+              'Shortcut input of ' +
+              blockName(node) +
+              ' ' +
+              (i + 1) +
+              ': ' +
+              portLabel(node, 'input', 'skip')
+            "
+            (pointerdown)="$event.stopPropagation()"
+            (click)="$event.stopPropagation(); finishConnection(node.id, 'skip')"
+          >
+            <span class="port-shape"></span
+            ><span class="port-label">{{ portLabel(node, 'input', 'skip') }}</span>
+          </button>
+        }
         <app-block-card
           [dataset]="game.dataset()"
           [node]="node"
@@ -116,6 +147,16 @@
           [pixels]="game.pixels()"
           [actual]="game.trainer.test()?.labels?.[game.sample()] ?? undefined"
           [probabilities]="game.probabilities()"
+          [snippet]="game.snippet()"
+          [written]="game.trainer.written()"
+          [writing]="game.trainer.writing()"
+          [trained]="game.trainer.trained()"
+          [prompt]="game.prompt()"
+          [temperature]="game.temperature()"
+          (write)="game.write()"
+          (stopWrite)="game.trainer.stopWritingText()"
+          (promptChange)="game.setPrompt($event)"
+          (temperatureChange)="game.temperature.set($event)"
           (choose)="selectNode(node.id, $event)"
           (remove)="deleteNode(node.id)"
           (configure)="game.configure($event)"
@@ -127,8 +168,10 @@
             class="port output"
             (mousedown)="$event.stopPropagation()"
             (touchstart)="$event.stopPropagation()"
-            [class.probability-port]="definitions[node.kind].output === 'probabilities'"
-            [class.image-port]="definitions[node.kind].output === 'image'"
+            [class.probability-port]="portType(node, 'output') === 'probabilities'"
+            [class.image-port]="portType(node, 'output') === 'image'"
+            [class.token-port]="portType(node, 'output') === 'tokens'"
+            [class.sequence-port]="portType(node, 'output') === 'sequence'"
             [class.active]="pending() === node.id"
             [disabled]="game.trainer.busy()"
             [attr.aria-label]="
@@ -174,7 +217,12 @@
   @if (game.board().edges.length === 0 && game.board().nodes.length === 2) {
     <div class="first-prompt">
       <span>1.</span> Open the toy box.<br /><span>2.</span>
-      {{ game.era() === 0 ? 'Add Flatten, Dense + Softmax.' : 'Build the path in your mission.'
+      {{
+        game.era() === 0
+          ? 'Add Flatten, Dense + Softmax.'
+          : boardWorld() === 'text'
+            ? 'Start with Letter embedding.'
+            : 'Build the path in your mission.'
       }}<br /><span>3.</span>
       Connect the studs!
     </div>
@@ -262,7 +310,9 @@
               locked(tile)
                 ? tile.era === 1
                   ? 'Check a Dense build to unlock'
-                  : 'Check Sigmoid or Tanh to unlock'
+                  : tile.era === 2
+                    ? 'Check Sigmoid or Tanh to unlock'
+                    : 'Check a deeper build to unlock'
                 : exists(tile)
                   ? 'Already on your paper'
                   : tile.description

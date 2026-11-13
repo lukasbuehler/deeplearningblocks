@@ -1,4 +1,4 @@
-import { BlockNode, Point, nodeSize, portPosition } from './graph';
+import { BlockNode, InputPort, Point, nodeSize, portPosition } from './graph';
 interface Rect {
   left: number;
   right: number;
@@ -18,9 +18,14 @@ const clear = (a: Point, b: Point, boxes: Rect[]) =>
   );
 
 /** Orthogonal visibility-grid search. Clearance also leaves space for rounded corners. */
-export function routeWire(from: BlockNode, to: BlockNode, nodes: BlockNode[]): Point[] {
+export function routeWire(
+  from: BlockNode,
+  to: BlockNode,
+  nodes: BlockNode[],
+  port?: InputPort,
+): Point[] {
   const start = portPosition(from, 'output'),
-    end = portPosition(to, 'input');
+    end = portPosition(to, 'input', port);
   if (start.x === end.x && start.y === end.y) return [start, end];
   const boxes = nodes.map((n) => {
     const size = nodeSize(n);

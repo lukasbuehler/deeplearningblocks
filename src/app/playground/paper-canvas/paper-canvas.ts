@@ -21,14 +21,19 @@ import {
   Board,
   INNER_KINDS,
   Edge,
+  InputPort,
   Point,
+  classCount,
   connect,
   newConnectionError,
   inferShapes,
   nodeSize,
   portPosition,
+  portType,
   removeNode,
+  worldOf,
 } from '../graph';
+import { CONTEXT } from '../../learning/shakespeare';
 import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget, closestPointOnRect } from '../geometry';
 import { GameService } from '../game.service';
 import { BlockCard } from '../block-card/block-card';
@@ -57,6 +62,11 @@ export class PaperCanvas {
   readonly paper = viewChild.required<ElementRef<HTMLDivElement>>('paper');
   readonly definitions = BLOCKS;
   readonly size = nodeSize;
+  readonly boardWorld = computed(() => worldOf(this.game.board()));
+  readonly portType = (node: BlockNode, side: 'input' | 'output') =>
+    portType(node.kind, side, this.boardWorld());
+  /** A stable name for a wire. Text outputs can feed several sockets, so `from` is not enough. */
+  readonly edgeKey = (edge: Edge) => `${edge.from}>${edge.to}>${edge.port ?? ''}`;
   readonly tiles = computed(() => tilesFor(this.game.dataset()));
   readonly blockName = (node: BlockNode) => blockName(node, this.game.dataset());
   readonly tray = signal(false);
@@ -77,7 +87,15 @@ export class PaperCanvas {
   /** Set on pointerdown so the focus that follows does not undo a shift-click pick. */
   private pickModifier = false;
   readonly shapes = computed(() => inferShapes(this.game.board()));
-  readonly wiredInputs = computed(() => new Set(this.game.board().edges.map((e) => e.to)));
+  readonly wiredInputs = computed(
+    () =>
+      new Set(
+        this.game
+          .board()
+          .edges.filter((e) => !e.port)
+          .map((e) => e.to),
+      ),
+  );
   readonly visualNodes = computed(() =>
     this.game.board().nodes.map((n) => (n.id === this.draft()?.id ? this.draft()! : n)),
   );
@@ -87,9 +105,10 @@ export class PaperCanvas {
         to = this.visualNodes().find((n) => n.id === edge.to)!;
       return {
         ...edge,
-        path: roundedWire(routeWire(from, to, this.visualNodes())),
-        label: `${this.blockName(from)} to ${this.blockName(to)}`,
-        type: BLOCKS[from.kind].output,
+        key: this.edgeKey(edge),
+        path: roundedWire(routeWire(from, to, this.visualNodes(), edge.port)),
+        label: `${this.blockName(from)} to ${edge.port ? 'the shortcut socket of ' : ''}${this.blockName(to)}`,
+        type: this.portType(from, 'output'),
       };
     }),
   );
@@ -149,7 +168,7 @@ export class PaperCanvas {
   });
   readonly highlightedEdge = computed(() => {
     const t = this.helperTarget();
-    return t?.kind === 'edge' ? t.from : null;
+    return t?.kind === 'edge' ? this.edgeKey(t) : null;
   });
   readonly targetPoint = computed(() => {
     const t = this.helperHint().target,
@@ -164,7 +183,7 @@ export class PaperCanvas {
     const from = nodes.find((n) => n.id === t.from),
       to = nodes.find((n) => n.id === t.to);
     if (!from || !to) return null;
-    const points = routeWire(from, to, nodes),
+    const points = routeWire(from, to, nodes, t.port),
       i = Math.floor((points.length - 1) / 2);
     return { x: (points[i].x + points[i + 1].x) / 2, y: (points[i].y + points[i + 1].y) / 2 };
   });
@@ -237,7 +256,7 @@ export class PaperCanvas {
     const selector =
       target.kind === 'node'
         ? `[data-node="${CSS.escape(target.id)}"]`
-        : `[data-edge-from="${CSS.escape(target.from)}"]`;
+        : `[data-edge="${CSS.escape(this.edgeKey(target))}"]`;
     this.paper().nativeElement.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
   }
   private panOrigin?: { point: Point; view: Board['viewport'] };
@@ -414,7 +433,7 @@ export class PaperCanvas {
     event.stopPropagation();
     if (this.game.trainer.busy()) return;
     const occupied = this.game.board().edges.find((e) => e.from === node.id);
-    if (occupied) {
+    if (occupied && !this.branches(node)) {
       this.chooseEdge(occupied);
       return;
     }
@@ -437,7 +456,11 @@ export class PaperCanvas {
       const target = document
         .elementFromPoint(event.clientX, event.clientY)
         ?.closest<HTMLElement>('[data-input]');
-      if (target) this.finishConnection(target.dataset['input']!);
+      if (target)
+        this.finishConnection(
+          target.dataset['input']!,
+          target.dataset['port'] as InputPort | undefined,
+        );
       else this.cancelWire();
     }
   }
@@ -445,51 +468,79 @@ export class PaperCanvas {
     event.stopPropagation();
     if (event.detail === 0 && !this.game.trainer.busy()) {
       const occupied = this.game.board().edges.find((e) => e.from === id);
-      if (occupied) this.chooseEdge(occupied);
+      const node = this.game.board().nodes.find((n) => n.id === id);
+      if (occupied && !(node && this.branches(node))) this.chooseEdge(occupied);
       else {
         this.pending.set(id);
         this.pointer.set(null);
       }
     }
   }
-  finishConnection(id: string): void {
+  /** Sequence outputs may feed several sockets, such as a block and a shortcut. */
+  branches(node: BlockNode): boolean {
+    return this.portType(node, 'output') === 'sequence';
+  }
+  finishConnection(id: string, port?: InputPort): void {
     const from = this.pending();
     if (this.game.trainer.busy()) return;
     if (!from) {
-      const occupied = this.game.board().edges.find((e) => e.to === id);
+      const occupied = this.game
+        .board()
+        .edges.find((e) => e.to === id && (e.port ?? null) === (port ?? null));
       if (occupied) this.chooseEdge(occupied);
       return;
     }
-    const error = this.wireError(id);
+    const error = this.wireError(id, port);
     if (error) {
       this.game.message.set(error);
-      this.rejected.set({ edge: { from, to: id }, context: this.helperContext() });
+      this.rejected.set({
+        edge: port ? { from, to: id, port } : { from, to: id },
+        context: this.helperContext(),
+      });
       this.cancelWire();
       return;
     }
-    this.game.edit(connect(this.game.board(), from, id));
-    this.game.message.set('Click! Your blocks are connected.');
+    this.game.edit(connect(this.game.board(), from, id, port));
+    this.game.message.set(
+      port
+        ? 'Click! A shortcut wire. It skips the blocks in between.'
+        : 'Click! Your blocks are connected.',
+    );
     this.cancelWire();
   }
-  portLabel(node: BlockNode, side: 'input' | 'output'): string {
-    const type = BLOCKS[node.kind][side];
+  portLabel(node: BlockNode, side: 'input' | 'output', port?: InputPort): string {
+    const type = this.portType(node, side);
+    const classes = classCount(this.boardWorld());
     if (type === 'image') return '28 × 28 × 1';
+    if (type === 'tokens') return `${CONTEXT} letters`;
     if (node.kind === 'classifier') return '10 probabilities';
+    if (node.kind === 'writer') return `${classes} letter chances`;
     if (node.kind === 'softmax' && side === 'input') {
       const actual = this.shapes().get(node.id)?.input;
-      return actual !== undefined && actual !== 10 ? `Needs 10 · got ${actual}` : 'Vector · 10';
+      const unit = this.boardWorld() === 'text' ? `${CONTEXT} letters × ` : 'Vector · ';
+      return actual !== undefined && actual !== classes
+        ? `Needs ${classes} · got ${actual}`
+        : `${unit}${classes}`;
     }
-    const width =
-      this.shapes().get(node.id)?.[side] ??
-      (side === 'output' ? BLOCKS[node.kind].inferWidth(node) : undefined);
+    const shortcut = port
+      ? this.game.board().edges.find((e) => e.to === node.id && e.port === port)?.from
+      : undefined;
+    const width = port
+      ? shortcut && this.shapes().get(shortcut)?.output
+      : (this.shapes().get(node.id)?.[side] ??
+        (side === 'output' ? BLOCKS[node.kind].inferWidth(node) : undefined));
+    if (port) return `Shortcut · ${width || 'N'}`;
+    if (type === 'sequence') return `${CONTEXT} letters × ${width ?? 'N'}`;
+    if (type === 'probabilities' && this.boardWorld() === 'text')
+      return `${classes} letter chances`;
     return `${type === 'probabilities' ? 'Probabilities' : 'Vector'} · ${width ?? 'N'}`;
   }
-  wireError(id: string): string | null {
+  wireError(id: string, port?: InputPort): string | null {
     const from = this.pending();
-    return from ? newConnectionError(this.game.board(), from, id, this.shapes()) : null;
+    return from ? newConnectionError(this.game.board(), from, id, this.shapes(), port) : null;
   }
-  compatible(id: string): boolean {
-    return !!this.pending() && !this.wireError(id);
+  compatible(id: string, port?: InputPort): boolean {
+    return !!this.pending() && !this.wireError(id, port);
   }
   cancelWire(): void {
     this.pending.set(null);
@@ -506,7 +557,7 @@ export class PaperCanvas {
     if (!edge || this.game.trainer.busy()) return;
     this.game.edit({
       ...this.game.board(),
-      edges: this.game.board().edges.filter((e) => e.from !== edge.from || e.to !== edge.to),
+      edges: this.game.board().edges.filter((e) => this.edgeKey(e) !== this.edgeKey(edge)),
     });
     this.selectedEdge.set(null);
   }
@@ -522,7 +573,7 @@ export class PaperCanvas {
   }
   exists(tile: Tile): boolean {
     return (
-      ['image', 'classifier'].includes(tile.kind) &&
+      ['image', 'classifier', 'text', 'writer'].includes(tile.kind) &&
       this.game.board().nodes.some((n) => n.kind === tile.kind)
     );
   }
@@ -576,8 +627,17 @@ export class PaperCanvas {
       x: Math.round(center.x - BLOCK_WIDTH / 2),
       y: Math.round(center.y - BLOCKS[tile.kind].height / 2),
       ...(tile.kind === 'dense'
-        ? { units: this.game.mode() === 'journey' && this.game.era() === 0 ? 10 : 32 }
+        ? {
+            units:
+              this.boardWorld() === 'text'
+                ? 48
+                : this.game.mode() === 'journey' && this.game.era() === 0
+                  ? 10
+                  : 32,
+          }
         : {}),
+      ...(tile.kind === 'embedding' ? { units: 48 } : {}),
+      ...(tile.kind === 'attention' ? { heads: 4 } : {}),
       ...(tile.activation ? { activation: tile.activation } : {}),
       ...(tile.kind === 'custom'
         ? {

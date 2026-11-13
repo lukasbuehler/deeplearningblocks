@@ -204,11 +204,13 @@ describe('Playground state', () => {
     trainer.busy.set(false);
     game.checkBuild();
     expect(game.levelComplete()).toBeTrue();
+    // The 2010 level unlocks the 2017 text level.
+    expect(game.nextLevel()?.id).toBe('attention');
     game.switchMode('sandbox');
     game.edit(connected());
     game.checkBuild();
     expect(game.canCheck()).toBeFalse();
-    expect(game.save().era).toBe(2);
+    expect(game.save().era).toBe(3);
   });
   it('rejects incomplete builds and leaves progress alone while training', () => {
     game.edit({ ...game.board(), edges: [] });
