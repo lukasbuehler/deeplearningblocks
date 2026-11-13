@@ -2,60 +2,84 @@
   [class]="'block ' + node().kind"
   [class.stacked]="node().kind === 'custom' && repeat() > 1"
   [class.expanded]="expanded()"
+  [attr.data-input-feedback]="inputFeedback()"
+  [attr.data-output-feedback]="outputFeedback()"
   [class.selected]="selected()"
   [style.height.px]="size().height"
   (click)="choose.emit($event)"
   (mousedown)="stopControls($event)"
   (touchstart)="stopControls($event)"
 >
-  <header>
-    <app-block-icon [kind]="node().kind" [activation]="node().activation" /><span class="eyebrow">{{
-      node().kind === 'classifier' ? 'TEN CLASSES. ONE GUESS.' : definition().subtitle
-    }}</span>
-    @if (node().kind === 'custom') {
-      <button
-        class="delete"
-        [attr.aria-label]="expanded() ? 'Minimize ' + name() : 'Expand ' + name()"
-        [attr.title]="expanded() ? 'Minimize' : 'Show the blocks inside'"
-        [attr.aria-expanded]="expanded()"
-        (click)="$event.stopPropagation(); toggleExpanded()"
-      >
-        <mat-icon>{{ expanded() ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
-      </button>
+  <svg
+    class="block-outline"
+    [attr.viewBox]="'0 0 ' + size().width + ' ' + size().height"
+    aria-hidden="true"
+  >
+    @if (inputFeedback()) {
+      <path [class]="'connector-glow ' + inputFeedback()" [attr.d]="inputEdge()" />
     }
-    @if (!nested()) {
-      <button
-        class="delete"
-        [disabled]="busy()"
-        (click)="$event.stopPropagation(); remove.emit()"
-        [attr.aria-label]="'Delete ' + name()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+    @if (outputFeedback()) {
+      <path [class]="'connector-glow ' + outputFeedback()" [attr.d]="outputEdge()" />
     }
-  </header>
+    <path [attr.d]="outline()" />
+    @for (label of connectorLabels(); track $index) {
+      <text [attr.x]="label.x" [attr.y]="label.y" text-anchor="middle">{{ label.text }}</text>
+    }
+  </svg>
   @if (node().kind === 'custom') {
-    <h2 class="custom-title">
-      <span class="name-fit">
-        <span class="name-mirror" aria-hidden="true">{{
-          typedName() ?? (baseName() || 'Custom')
-        }}</span>
-        <input
-          class="name-input"
-          type="text"
-          [maxLength]="maxNameLength"
-          [value]="baseName()"
-          placeholder="Custom"
-          aria-label="Name this block, such as Transformer"
-          title="Name this block"
-          [disabled]="busy()"
-          (blur)="rename($event)"
-          (keydown.enter)="rename($event)"
-          (input)="typedName.set($any($event.target).value || 'Custom')" /></span
-      ><span>block</span>
-    </h2>
-  } @else {
-    <h2>{{ name() }}</h2>
+    <svg
+      class="frame-bridges"
+      [attr.viewBox]="'0 0 ' + size().width + ' ' + size().height"
+      aria-hidden="true"
+    >
+      @for (well of wells(); track well.top) {
+        <path
+          [attr.d]="well.path"
+          [attr.transform]="'translate(' + (frame.pad - frame.inset) + ',' + well.top + ')'"
+        />
+      }
+    </svg>
+  }
+  <header>
+    @if (node().kind === 'custom') {
+      <h2 class="custom-title">
+        <span class="name-fit">
+          <span class="name-mirror" aria-hidden="true">{{
+            typedName() ?? (baseName() || 'Custom')
+          }}</span>
+          <input
+            class="name-input"
+            type="text"
+            [maxLength]="maxNameLength"
+            [value]="baseName()"
+            placeholder="Custom"
+            aria-label="Name this block, such as Transformer"
+            title="Name this block"
+            [disabled]="busy()"
+            (blur)="rename($event)"
+            (keydown.enter)="rename($event)"
+            (input)="typedName.set($any($event.target).value || 'Custom')" /></span
+        ><span>block</span>
+      </h2>
+    } @else {
+      <h2>{{ name() }}</h2>
+    }
+    <button
+      class="icon-button help"
+      type="button"
+      [class.open]="helpOpen()"
+      [attr.aria-label]="'What does ' + name() + ' do?'"
+      [attr.aria-expanded]="helpOpen()"
+      title="What does this block do?"
+      (click)="$event.stopPropagation(); helpOpen.set(!helpOpen())"
+    >
+      <mat-icon>question_mark</mat-icon>
+    </button>
+  </header>
+  @if (helpOpen()) {
+    <p class="help-bubble" role="note" (click)="$event.stopPropagation(); helpOpen.set(false)">
+      {{ help() }}
+    </p>
   }
   @switch (node().kind) {
     @case ('image') {
@@ -92,7 +116,10 @@
     }
     @case ('flatten') {
       <div class="flatten-picture"><span>▦</span><b>→</b><span>▪▪▪▪▪▪▪</span></div>
-      <p class="detail">28 × 28 × 1 → <b>784 numbers</b></p>
+      <p class="detail">
+        {{ inputSize() === undefined ? 'N × N' : '28 × 28' }} →
+        <b>{{ outputSize() ?? 'N · N' }} numbers</b>
+      </p>
     }
     @case ('dense') {
       <div class="sizes">
@@ -105,7 +132,8 @@
             placeholder="N"
             [value]="inputSize() ?? ''"
             [disabled]="busy() || inputWired()"
-            [attr.title]="inputWired() ? 'Set by the block wired into this one' : null"
+            [attr.title]="inputWired() ? 'Set by the block above' : null"
+            (input)="updateInputs($event)"
             (blur)="changeInputs($event)"
             (keydown.enter)="changeInputs($event)"
           />
@@ -119,6 +147,7 @@
             [max]="maxDenseUnits"
             [value]="node().units"
             [disabled]="busy()"
+            (input)="updateUnits($event)"
             (blur)="changeUnits($event)"
             (keydown.enter)="changeUnits($event)"
           />
@@ -129,8 +158,8 @@
           textWorld()
             ? 'Same weights for every letter'
             : inputWired()
-              ? 'Set by the wire'
-              : 'Your pick until wired'
+              ? 'Set by the block above'
+              : 'Your pick until attached'
         }}
         @if (inputSize() !== undefined) {
           · {{ ((inputSize()! + 1) * node().units!).toLocaleString('en-US') }} weights
@@ -157,108 +186,112 @@
     @case ('softmax') {
       <div class="flatten-picture"><b>scores</b><span>→</span><b>100%</b></div>
       <p class="detail">
-        @let classes = textWorld() ? vocab : 10;
         {{
           inputSize() === undefined
-            ? 'Needs ' + classes + ' scores'
-            : inputSize() === classes
-              ? classes + ' scores → ' + classes + ' probabilities'
-              : 'Needs ' + classes + ' scores. Got ' + inputSize() + '.'
-        }}
-      </p>
-      <p class="detail">
-        {{
-          textWorld() ? 'One set of chances for every letter.' : 'No weights. Just probabilities.'
+            ? 'N scores → N probabilities'
+            : inputSize() + ' scores → ' + inputSize() + ' probabilities'
         }}
       </p>
     }
     @case ('custom') {
-      @if (!expanded()) {
-        <ol class="recipe" aria-label="Blocks inside, in order">
-          @for (inner of node().blocks; track inner.id; let j = $index) {
-            <li [class]="'chip ' + inner.kind">
-              @if (inner.kind === 'dense') {
-                <label>
-                  Dense
-                  <input
-                    type="number"
-                    min="1"
-                    [max]="maxDenseUnits"
-                    [value]="inner.units"
-                    [disabled]="busy()"
-                    [attr.aria-label]="'Neurons in Dense layer ' + (j + 1) + ' inside'"
-                    (blur)="changeInnerUnits($event, j)"
-                    (keydown.enter)="changeInnerUnits($event, j)"
-                  />
-                </label>
-              } @else {
-                <app-block-icon kind="activation" [activation]="inner.activation" />
-                {{ activationName(inner.activation) }}
-              }
-            </li>
-          }
-        </ol>
-      }
-      <div class="repeat-row">
-        <span class="repeat-label">Repeat</span>
-        <span class="stepper" role="group" aria-label="Repeat copies">
-          <button
-            type="button"
-            aria-label="One fewer copy"
-            [disabled]="busy() || repeat() <= 1"
-            (click)="$event.stopPropagation(); setRepeat(repeat() - 1)"
+      <ol
+        class="inside recipe-drop-zone"
+        [class.drop-valid]="recipeFeedback() === 'valid'"
+        [class.drop-invalid]="recipeFeedback() === 'invalid'"
+        aria-label="Editable recipe"
+        [attr.data-custom-recipe]="node().id"
+        [style.top.px]="frame.head - frame.neck"
+        [style.left.px]="frame.pad - frame.inset"
+        [style.width.px]="330 + 2 * frame.inset"
+        [style.height.px]="layout().recipeHeight + 2 * frame.neck"
+      >
+        @for (card of editableCards(); track card.key) {
+          <li
+            class="inner-card"
+            [attr.data-inner-id]="card.node.id"
+            cdkDrag
+            [cdkDragScale]="zoom()"
+            [cdkDragDisabled]="busy()"
+            [cdkDragStartDelay]="{ touch: 120, mouse: 0 }"
+            (cdkDragMoved)="previewInnerDrag($event, card.node.id)"
+            (cdkDragEnded)="finishInnerDrag($event, card.node.id)"
           >
-            <mat-icon>remove</mat-icon></button
-          ><b aria-live="polite">×{{ repeat() }}</b
-          ><button
-            type="button"
-            aria-label="One more copy"
-            [disabled]="busy() || repeat() >= maxRepeat"
-            (click)="$event.stopPropagation(); setRepeat(repeat() + 1)"
-          >
-            <mat-icon>add</mat-icon>
-          </button>
-        </span>
+            <app-block-card
+              [node]="card.node"
+              [connectorShape]="card.connectors"
+              [nested]="true"
+              [inputSize]="card.input"
+              [inputWired]="true"
+              [outputSize]="card.output"
+              [busy]="busy()"
+              (configure)="configureInner($event)"
+            />
+          </li>
+        } @empty {
+          <li class="empty-recipe">Drop Dense or activation blocks here.</li>
+        }
+      </ol>
+      <div class="repeat-row" [style.top.px]="layout().controlsTop">
+        <label class="repeat-count"
+          >Repeat ×
+          <input
+            type="number"
+            min="1"
+            [max]="maxRepeat"
+            [value]="repeat()"
+            [disabled]="busy()"
+            aria-label="Number of copies"
+            (input)="updateRepeat($event)"
+            (blur)="changeRepeat($event)"
+            (keydown.enter)="changeRepeat($event)"
+          />
+        </label>
         <button
-          class="inspect"
+          class="inspect repeat-toggle"
+          type="button"
+          [attr.aria-expanded]="expanded()"
+          [attr.aria-label]="expanded() ? 'Collapse repetitions' : 'Expand repetitions'"
+          [disabled]="repeat() <= 1"
+          (click)="$event.stopPropagation(); toggleExpanded()"
+        >
+          {{ expanded() ? 'Hide copies' : 'Show copies' }}
+        </button>
+        <button
+          class="inspect take-apart"
           type="button"
           aria-label="Take apart into separate blocks"
-          title="Take apart"
-          [disabled]="busy()"
+          [disabled]="busy() || !node().blocks?.length"
           (click)="$event.stopPropagation(); takeApart.emit()"
         >
-          <mat-icon>unfold_more</mat-icon>
+          Take apart
         </button>
       </div>
-      @if (expanded()) {
-        <ol
-          class="inside"
-          aria-label="Blocks inside, in order"
-          [style.top.px]="frame.head - 3"
-          [style.left.px]="frame.pad - 3"
+      @for (group of copyGroups(); track group.number) {
+        <section
+          class="copy-group"
+          [style.top.px]="group.top"
+          [style.left.px]="frame.pad - frame.inset"
         >
-          @for (card of innerCards(); track card.node.id; let j = $index) {
-            @if (j > 0) {
-              <li class="link" aria-hidden="true" [style.height.px]="frame.gap">
-                <span>{{ card.input ?? 'N' }}</span>
+          <h3>Copy {{ group.number }} of {{ repeat() }}</h3>
+          <ol aria-label="Repeated copy">
+            @for (card of group.cards; track card.key) {
+              <li>
+                <app-block-card
+                  [node]="card.node"
+                  [connectorShape]="card.connectors"
+                  [nested]="true"
+                  [inputSize]="card.input"
+                  [inputWired]="true"
+                  [outputSize]="card.output"
+                  [busy]="true"
+                />
               </li>
             }
-            <li>
-              <app-block-card
-                [node]="card.node"
-                [nested]="true"
-                [inputSize]="card.input"
-                [inputWired]="true"
-                [outputSize]="card.output"
-                [busy]="busy()"
-                (configure)="configureInner($event)"
-              />
-            </li>
-          }
-        </ol>
+          </ol>
+        </section>
       }
-      <p class="detail" [class.frame-foot]="expanded()">
-        {{ repeat() > 1 && expanded() ? '×' + repeat() + ' copies · ' : '' }}{{ customDetail() }}
+      <p class="detail frame-foot">
+        {{ customDetail() }} · {{ repeat() }} {{ repeat() === 1 ? 'copy' : 'copies' }}
       </p>
     }
     @case ('text') {

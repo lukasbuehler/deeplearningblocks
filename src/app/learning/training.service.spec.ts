@@ -8,6 +8,20 @@ async function images(label: number): Promise<Response> {
 }
 
 describe('Dataset previews', () => {
+  it('loads clothing bytes already decompressed by the local server and bypasses stale HTTP cache', async () => {
+    const compressed = await images(8);
+    const raw = await new Response(
+      compressed.body!.pipeThrough(new DecompressionStream('gzip')),
+    ).arrayBuffer();
+    const fetcher = spyOn(window, 'fetch').and.resolveTo(
+      new Response(raw, { headers: { 'Content-Encoding': 'gzip' } }),
+    );
+    const service = new TrainingService();
+    await service.loadPreview('fashion-mnist');
+    expect(service.test()!.count).toBe(500);
+    expect(service.test()!.labels[0]).toBe(8);
+    expect(fetcher.calls.mostRecent().args[1]?.cache).toBe('no-store');
+  });
   it('isolates cached datasets and ignores a slower preview from a previous level', async () => {
     const service = new TrainingService();
     let resolveDigits!: (response: Response) => void;

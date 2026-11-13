@@ -1,4 +1,4 @@
-import { Board, NetworkSpec } from './graph';
+import { Board, NetworkSpec, networkParts } from './graph';
 import { BlockyHint } from './blocky-hints';
 
 /** Suggestions are experiments, not diagnoses or guaranteed accuracy improvements. */
@@ -8,17 +8,20 @@ export function experimentHint(
   era: number,
   accuracy: number,
 ): BlockyHint {
-  const path = network.nodeIds.map((id) => board.nodes.find((n) => n.id === id)!);
-  const dense = path.filter((n) => n.kind === 'dense');
+  const path = networkParts(board, network.nodeIds);
+  const dense = path.filter((part) => part.node.kind === 'dense');
   const first = dense[0],
     last = dense.at(-1)!;
   const bends = path
     .slice(path.indexOf(first) + 1, path.indexOf(last))
-    .filter((n) => n.kind === 'activation' && n.activation !== 'linear');
+    .filter(({ node }) => node.kind === 'activation' && node.activation !== 'linear');
   const prefix = `Your experiment scored ${(accuracy * 100).toFixed(1)}%. `;
   const caveat =
     'Change one thing and compare notebook results. A higher score is not guaranteed; repeatedly tuning on these test images can overfit the test set.';
-  const edge = board.edges.find((e) => e.to === last.id)!;
+  const before = (part: (typeof path)[number]): BlockyHint['target'] => {
+    const edge = board.edges.find((e) => e.to === part.owner.id);
+    return edge ? { kind: 'edge', ...edge } : { kind: 'node', id: part.owner.id };
+  };
   if (dense.length === 1)
     return {
       id: 'experiment-hidden',
@@ -30,7 +33,7 @@ export function experimentHint(
       why:
         'A linear classifier can already recognize images. A hidden layer with a nonlinear activation can learn different patterns. ' +
         caveat,
-      target: { kind: 'edge', ...edge },
+      target: before(last),
     };
   if (!bends.length && era >= 1)
     return {
@@ -40,9 +43,14 @@ export function experimentHint(
       why:
         'Without a nonlinear activation between layers, stacked Dense layers still form a linear transformation. ' +
         caveat,
-      target: { kind: 'edge', ...board.edges.find((e) => e.from === first.id)! },
+      target:
+        first.owner.kind === 'custom'
+          ? { kind: 'node', id: first.owner.id }
+          : { kind: 'edge', ...board.edges.find((e) => e.from === first.owner.id)! },
     };
-  const saturating = bends.find((n) => n.activation === 'sigmoid' || n.activation === 'tanh');
+  const saturating = bends.find(
+    ({ node }) => node.activation === 'sigmoid' || node.activation === 'tanh',
+  );
   if (saturating && era >= 2)
     return {
       id: 'experiment-relu',
@@ -50,15 +58,15 @@ export function experimentHint(
       why:
         'Sigmoid and Tanh can have very small gradients at extreme inputs. ReLU behaves differently, but can also leave neurons inactive. ' +
         caveat,
-      target: { kind: 'node', id: saturating.id },
+      target: { kind: 'node', id: saturating.owner.id },
     };
-  const narrow = dense.slice(0, -1).find((n) => n.units! < 64);
+  const narrow = dense.slice(0, -1).find(({ node }) => node.units! < 64);
   if (narrow)
     return {
       id: 'experiment-width',
       text: prefix + 'Try 64 neurons in this hidden Dense. Does the extra capacity help?',
       why: 'More neurons add learnable parameters and computation, and can also overfit. ' + caveat,
-      target: { kind: 'node', id: narrow.id },
+      target: { kind: 'node', id: narrow.owner.id },
     };
   return {
     id: 'experiment-inspect',
@@ -67,6 +75,6 @@ export function experimentHint(
     why:
       'Accuracy alone hides the kinds of mistakes a network makes. Try Next image and compare the actual class with the guess. ' +
       caveat,
-    target: { kind: 'node', id: path.at(-1)!.id },
+    target: { kind: 'node', id: path.at(-1)!.owner.id },
   };
 }

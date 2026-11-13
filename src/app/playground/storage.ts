@@ -70,7 +70,7 @@ function validCustom(n: BlockNode, era: number): boolean {
         b.id.length < 100 &&
         (b.kind !== 'activation' || unlocked(b.activation, era)),
     ) &&
-    customBlockIssue(n) === null
+    customBlockIssue(n, true) === null
   );
 }
 function validBoard(value: unknown, era: number): value is Board {

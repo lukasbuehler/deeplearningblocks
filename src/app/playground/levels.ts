@@ -14,6 +14,12 @@ export const LEVELS = ERAS.map((era, index) => ({
   dataset: LEVEL_DATASETS[index],
   world: (DATASETS[LEVEL_DATASETS[index]].kind === 'text' ? 'text' : 'images') as World,
   datasetLabel: DATASETS[LEVEL_DATASETS[index]].subject,
+  buildLabel: [
+    'One score layer',
+    'Hidden layer + Sigmoid/Tanh',
+    'Two hidden layers + ReLU',
+    'Attention + two shortcuts',
+  ][index],
   task: [
     'Read a digit',
     'Sort the wardrobe',

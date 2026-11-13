@@ -1,3 +1,4 @@
+import { readGzipResponse } from './gzip';
 import { DATASETS, DatasetId } from './datasets';
 export interface DigitSet {
   pixels: Float32Array;
@@ -22,11 +23,11 @@ export async function loadDigits(
 ): Promise<DigitSet> {
   const response = await fetch(`/data/${dataset}-${split}.bin.gz`, {
     signal: AbortSignal.timeout(20000),
+    // Decoded datasets are cached by TrainingService; retries need fresh transport bytes.
+    cache: 'no-store',
   });
-  if (!response.ok || !response.body)
+  if (!response.ok)
     throw new Error(`Could not load ${DATASETS[dataset].name}. Check your connection and retry.`);
-  const buffer = await new Response(
-    response.body.pipeThrough(new DecompressionStream('gzip')),
-  ).arrayBuffer();
+  const buffer = await readGzipResponse(response);
   return decodeDigits(buffer, split === 'train' ? 3000 : 500);
 }

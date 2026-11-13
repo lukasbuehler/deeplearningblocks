@@ -1,3 +1,5 @@
+import { readGzipResponse } from './gzip';
+
 /**
  * Tiny Shakespeare as letter IDs. The alphabet is declared here, not fitted at runtime, so a
  * saved model, the browser and the Python export always agree on what each ID means.
@@ -53,12 +55,11 @@ export function decodeCorpus(buffer: ArrayBuffer): TextCorpus {
 export async function loadShakespeare(): Promise<TextCorpus> {
   const response = await fetch('/data/tiny-shakespeare.txt.gz', {
     signal: AbortSignal.timeout(20000),
+    cache: 'no-store',
   });
   if (!response.ok || !response.body)
     throw new Error('Could not load Tiny Shakespeare. Check your connection and retry.');
-  const buffer = await new Response(
-    response.body.pipeThrough(new DecompressionStream('gzip')),
-  ).arrayBuffer();
+  const buffer = await readGzipResponse(response);
   return decodeCorpus(buffer);
 }
 

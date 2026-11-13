@@ -11,6 +11,7 @@ import {
   hasTransformerBlock,
   inferShapes,
   newConnectionError,
+  nodeSize,
   portPosition,
   skippedKinds,
   textStepParameters,
@@ -110,7 +111,7 @@ test('text wires check types, shortcut sockets, fan-out and loops', () => {
   assert.match(connectionError(loose, 'add2', 'norm1')!, /loop/);
 });
 
-test('Add and Softmax widths are checked while wiring', () => {
+test('Add matches shortcut widths and the writer checks vocabulary size', () => {
   const board = transformerBoard();
   board.nodes.find((n) => n.id === 'down')!.units = 40;
   board.edges = board.edges.filter((e) => e.to !== 'add2');
@@ -123,9 +124,12 @@ test('Add and Softmax widths are checked while wiring', () => {
   );
   const scores = transformerBoard();
   scores.nodes.find((n) => n.id === 'scores')!.units = 64;
-  assert.match(compileBoard(scores).issues[0].message, /65 letter scores/);
+  assert.match(compileBoard(scores).issues[0].message, /65 letter chances/);
   scores.edges = scores.edges.filter((e) => e.to !== 'softmax');
-  assert.match(newConnectionError(scores, 'scores', 'softmax')!, /65 letter scores/);
+  assert.equal(newConnectionError(scores, 'scores', 'softmax'), null);
+  scores.edges.push({ from: 'scores', to: 'softmax' });
+  scores.edges = scores.edges.filter((e) => e.to !== 'writer');
+  assert.match(newConnectionError(scores, 'softmax', 'writer')!, /65 letter chances/);
 });
 
 test('attention heads must share the width equally', () => {
@@ -146,5 +150,5 @@ test('fresh text paper and the shortcut socket position', () => {
   assert.equal(freshBoard().world, undefined);
   const add: BlockNode = { id: 'a', kind: 'add', x: 0, y: 100 };
   assert.ok(portPosition(add, 'input', 'skip').x > portPosition(add, 'input').x);
-  assert.equal(portPosition(add, 'input', 'skip').y, 100);
+  assert.equal(portPosition(add, 'input', 'skip').y, 100 + nodeSize(add).height / 2);
 });

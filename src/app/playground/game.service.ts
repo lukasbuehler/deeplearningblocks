@@ -19,6 +19,7 @@ import {
   validHeads,
 } from './graph';
 import { BoardHistory } from './history';
+import { layoutStacks } from './stacks';
 import { GameSave, Mode, Workspace, loadGame, saveGame } from './storage';
 
 @Injectable({ providedIn: 'root' })
@@ -48,7 +49,7 @@ export class GameService {
   readonly nextLevel = computed(() =>
     this.levelComplete() ? LEVELS[this.level().era + 1] : undefined,
   );
-  readonly board = computed(() => this.workspace().board);
+  readonly board = computed(() => layoutStacks(this.workspace().board));
   readonly era = computed(() => (this.mode() === 'sandbox' ? 2 : this.level().era));
   readonly compilation = computed(() => compileBoard(this.board()));
   readonly unlockedEra = computed(() => (this.mode() === 'sandbox' ? 2 : this.save().era));
@@ -151,6 +152,7 @@ export class GameService {
       this.selected.set(null);
   }
   edit(board: Board): void {
+    board = layoutStacks(board);
     const before = this.board();
     // Layout edits (moving, expanding) remain available during training. Computational edits do not.
     const structure = (b: Board) =>
@@ -178,7 +180,7 @@ export class GameService {
     if ('name' in change && (change.name ?? '').length > MAX_NAME_LENGTH) return;
     const nodes = this.board().nodes.map((n) => (n.id === change.id ? { ...n, ...change } : n));
     const changed = nodes.find((n) => n.id === change.id);
-    if (changed?.kind === 'custom' && customBlockIssue(changed)) return;
+    if (changed?.kind === 'custom' && customBlockIssue(changed, true)) return;
     this.edit({ ...this.board(), nodes });
   }
   undo(): void {

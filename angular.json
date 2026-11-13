@@ -61,6 +61,7 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": { "proxyConfig": "scripts/dev-pages.mjs" },
           "configurations": {
             "production": {
               "buildTarget": "deeplearningblocks:build:production"

@@ -73,18 +73,17 @@
         (pointerdown)="notePickModifier($event)"
         [class.picked]="picked().includes(node.id) && picked().length > 1"
         cdkDrag
-        [cdkDragFreeDragPosition]="{
-          x: node.x * game.board().viewport.zoom,
-          y: node.y * game.board().viewport.zoom,
-        }"
+        [cdkDragFreeDragPosition]="dragPositions().get(node.id)!"
+        [cdkDragDisabled]="game.trainer.busy()"
         [cdkDragScale]="game.board().viewport.zoom"
         [cdkDragStartDelay]="{ touch: 120, mouse: 0 }"
         (cdkDragStarted)="startDrag($event, node)"
         (cdkDragMoved)="moveDrag($event, node)"
         (cdkDragEnded)="endDrag($event, node)"
-        [class.snap-ready]="snap()?.from === node.id || snap()?.to === node.id"
+        [class.fresh]="fresh() === node.id"
+        [class.clicked-in]="clicked()?.to === node.id"
       >
-        @if (definitions[node.kind].input) {
+        @if (boardWorld() === 'text' && definitions[node.kind].input) {
           <button
             class="port input"
             (mousedown)="$event.stopPropagation()"
@@ -137,6 +136,15 @@
         <app-block-card
           [dataset]="game.dataset()"
           [node]="node"
+          [connectorShape]="connectorShapes().get(node.id)"
+          [zoom]="game.board().viewport.zoom"
+          [inputFeedback]="edgeFeedback().get(node.id + ':input') ?? null"
+          [outputFeedback]="edgeFeedback().get(node.id + ':output') ?? null"
+          [recipeFeedback]="
+            recipeHover()?.id === node.id ? (recipeHover()?.error ? 'invalid' : 'valid') : null
+          "
+          (innerMove)="previewInner(node.id, $event)"
+          (innerDrop)="moveInner(node.id, $event)"
           [inputSize]="shapes().get(node.id)?.input ?? undefined"
           [inputWired]="wiredInputs().has(node.id)"
           [outputSize]="shapes().get(node.id)?.output ?? undefined"
@@ -158,12 +166,11 @@
           (promptChange)="game.setPrompt($event)"
           (temperatureChange)="game.temperature.set($event)"
           (choose)="selectNode(node.id, $event)"
-          (remove)="deleteNode(node.id)"
           (configure)="game.configure($event)"
           (takeApart)="takeApartNode(node.id)"
           (nextDigit)="game.nextSample()"
         />
-        @if (definitions[node.kind].output) {
+        @if (boardWorld() === 'text' && definitions[node.kind].output) {
           <button
             class="port output"
             (mousedown)="$event.stopPropagation()"
@@ -224,23 +231,18 @@
             ? 'Start with Letter embedding.'
             : 'Build the path in your mission.'
       }}<br /><span>3.</span>
-      Connect the studs!
+      Fit the studs into the sockets!
     </div>
   }
-  @if (pending()) {
-    <div class="connection-prompt" role="status">
-      Pick a glowing socket
-      <button (click)="cancelWire()" aria-label="Cancel connection">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-  }
-  @if (picked().length && !selectedEdge() && !pending() && !game.trainer.busy()) {
+  @if (picked().length >= 2 && !selectedEdge() && !pending() && !game.trainer.busy()) {
     <div class="pick-actions" role="status">
       <span>
         <b>{{ picked().length === 1 ? '1 block picked' : picked().length + ' blocks picked' }}</b>
         <small>{{ isChain(pickedChain()) ? 'Shift-click to pick more' : pickedChain() }}</small>
       </span>
+      @if (selectedJoint()) {
+        <button class="secondary" (click)="detachSelected()">Detach above</button>
+      }
       @if (nextPick()) {
         <button class="secondary" (click)="pickNext()">
           Add next <mat-icon>arrow_downward</mat-icon>
@@ -251,11 +253,16 @@
       </button>
     </div>
   }
+  @if (selectedJoint() && picked().length < 2 && !draft() && !game.trainer.busy()) {
+    <div class="wire-actions">
+      <b>Attached to the block above</b><button (click)="detachSelected()">Detach</button>
+    </div>
+  }
   @if (selectedEdge()) {
     <div class="wire-actions">
-      <b>One little connection</b
+      <b>One block joint</b
       ><button (click)="disconnect()" [disabled]="game.trainer.busy()">
-        Disconnect <mat-icon>link_off</mat-icon>
+        Detach <mat-icon>link_off</mat-icon>
       </button>
     </div>
   }
@@ -263,8 +270,38 @@
     <button aria-label="Zoom out" (click)="zoom(1 / 1.2)"><mat-icon>remove</mat-icon></button
     ><span>{{ (game.board().viewport.zoom * 100).toFixed(0) }}%</span
     ><button aria-label="Zoom in" (click)="zoom(1.2)"><mat-icon>add</mat-icon></button
-    ><button class="fit" (click)="fit()">Fit all <mat-icon>fit_screen</mat-icon></button>
+    ><button class="fit" (click)="fit()">Fit all <mat-icon>fit_screen</mat-icon></button
+    ><button
+      class="sound"
+      [attr.aria-label]="sound.muted() ? 'Turn sounds on' : 'Turn sounds off'"
+      [attr.aria-pressed]="!sound.muted()"
+      [attr.title]="sound.muted() ? 'Sounds off' : 'Sounds on'"
+      (click)="sound.toggleMute()"
+    >
+      <mat-icon>{{ sound.muted() ? 'volume_off' : 'volume_up' }}</mat-icon>
+    </button>
   </div>
+  <button
+    #trash
+    class="trash"
+    type="button"
+    [class.armed]="!!draft()"
+    [class.hot]="overTrash()"
+    [class.gulp]="gulping()"
+    [disabled]="game.trainer.busy() || (!draft() && !selectedBlockName())"
+    [attr.aria-label]="
+      selectedBlockName() ? 'Throw away ' + selectedBlockName() : 'Trashcan: drag a block here'
+    "
+    [attr.title]="
+      selectedBlockName()
+        ? 'Throw away ' + selectedBlockName()
+        : 'Drag a block here to throw it away'
+    "
+    (click)="deleteSelected()"
+  >
+    <mat-icon>{{ overTrash() ? 'delete_forever' : 'delete' }}</mat-icon>
+  </button>
+  <span class="visually-hidden" aria-live="polite">{{ announcement() }}</span>
   <span class="canvas-hint">Drag paper to pan · Scroll to zoom</span>
   <button
     class="fab"
@@ -289,7 +326,7 @@
           <mat-icon>close</mat-icon>
         </button>
       </div>
-      <p>Drag onto the paper, or tap to add.</p>
+      <p>Drag a block under another to attach it. Tap to add to the picked stack.</p>
       <div class="tiles">
         @for (tile of tiles(); track tile.name) {
           <button
@@ -303,16 +340,23 @@
             (click)="tileClick($event, tile)"
             [attr.aria-label]="'Add ' + tile.name + (locked(tile) ? ' (locked)' : '')"
           >
-            <app-block-icon [kind]="tile.kind" [activation]="tile.activation" /><b>{{
-              tile.name
-            }}</b
-            ><small>{{
+            <svg
+              class="tile-outline"
+              viewBox="-2 -2 184 142"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path [attr.d]="tile.outline" />
+              @for (label of tile.labels; track $index) {
+                <text [attr.x]="label.x" [attr.y]="label.y" text-anchor="middle">
+                  {{ label.text }}
+                </text>
+              }
+            </svg>
+            <b>{{ tile.name }}</b>
+            <small>{{
               locked(tile)
-                ? tile.era === 1
-                  ? 'Check a Dense build to unlock'
-                  : tile.era === 2
-                    ? 'Check Sigmoid or Tanh to unlock'
-                    : 'Check a deeper build to unlock'
+                ? 'Complete the earlier level to unlock'
                 : exists(tile)
                   ? 'Already on your paper'
                   : tile.description

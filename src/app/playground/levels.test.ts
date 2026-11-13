@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { freshBoard } from './graph';
+import { LEVELS, meetsLevel } from './levels';
+import { freshBoard, NetworkSpec } from './graph';
 import { freshGame, loadGame, PREVIOUS_SAVE_KEY, SAVE_KEY, saveGame } from './storage';
 
 test('v3 migration preserves the current canvas, earned progress and each notebook without touching recovery', () => {
@@ -61,4 +62,26 @@ test('fresh levels have independent loose endpoints and notebooks', () => {
   save.journey.levels['first-network'].board.nodes[0].x = 999;
   assert.notEqual(save.journey.levels['hidden-layers'].board.nodes[0].x, 999);
   assert.equal(save.journey.levels['hidden-layers'].board.edges.length, 0);
+});
+
+test('the two clothing levels require different depths and activations', () => {
+  const network = (hidden: number, activation: 'sigmoid' | 'relu'): NetworkSpec => ({
+    signature: 'test',
+    parameters: 0,
+    nodeIds: [],
+    steps: [
+      ...Array.from({ length: hidden }, () => [
+        { kind: 'dense' as const, units: 32 },
+        { kind: 'activation' as const, activation },
+      ]).flat(),
+      { kind: 'dense', units: 10 },
+      { kind: 'softmax' },
+    ],
+  });
+  assert.equal(LEVELS[1].dataset, LEVELS[2].dataset);
+  assert.notEqual(LEVELS[1].buildLabel, LEVELS[2].buildLabel);
+  assert.equal(meetsLevel(1, network(1, 'sigmoid')), true);
+  assert.equal(meetsLevel(2, network(1, 'sigmoid')), false);
+  assert.equal(meetsLevel(2, network(1, 'relu')), false);
+  assert.equal(meetsLevel(2, network(2, 'relu')), true);
 });

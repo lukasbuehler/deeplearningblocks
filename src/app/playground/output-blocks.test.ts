@@ -5,6 +5,7 @@ import { splitLegacyOutput } from './board-migration';
 import { freshGame, loadGame, PREVIOUS_SAVE_KEY, SAVE_KEY, saveGame } from './storage';
 import { blockyHint } from './blocky-hints';
 import { experimentHint } from './experiment-hints';
+import { takeApart } from './custom-blocks';
 function board(): Board {
   const nodes: Board['nodes'] = [
     { id: 'i', kind: 'image', x: 0, y: 0 },
@@ -35,6 +36,7 @@ test('display cannot hide learning; explicit linear classifier has exactly 7850 
   assert.equal(compileBoard(removeNode(b, 's')).network, null);
   b.nodes.find((n) => n.id === 'd')!.units = 32;
   assert.match(compileBoard(b).issues[0].message, /gets 32/);
+  assert.equal(compileBoard(b).issues[0].nodeId, 'c');
   assert.equal(blockyHint(b, 0, 'journey').id, 'output-width');
 });
 test('v2 migration preserves both notebooks, unlocks, unique IDs and the recovery copy', () => {
@@ -131,4 +133,58 @@ test('lesson clues place hidden nonlinearities before the score layer', () => {
   b.edges = b.edges.filter((e) => e.from !== 'd');
   b.edges.push({ from: 'd', to: 'a' }, { from: 'a', to: 's' });
   assert.equal(blockyHint(b, 1, 'journey').id, 'nonlinear');
+});
+
+test('experiment advice sees every repeated layer and activation inside a custom block', () => {
+  for (const [units, activation, era, expected] of [
+    [64, 'sigmoid', 1, 'experiment-inspect'],
+    [64, 'sigmoid', 2, 'experiment-relu'],
+    [32, 'relu', 2, 'experiment-width'],
+    [32, 'linear', 2, 'experiment-bend'],
+  ] as const) {
+    const b = board();
+    b.nodes.push({
+      id: 'repeat',
+      kind: 'custom',
+      x: 0,
+      y: 300,
+      repeat: 3,
+      blocks: [
+        { id: 'hidden', kind: 'dense', units },
+        { id: 'bend', kind: 'activation', activation },
+      ],
+    });
+    b.edges = b.edges.filter((e) => e.from !== 'f');
+    b.edges.push({ from: 'f', to: 'repeat' }, { from: 'repeat', to: 'd' });
+    const hint = experimentHint(b, compileBoard(b).network!, era, 0.736);
+    assert.equal(hint.id, expected);
+    assert.doesNotMatch(hint.text, /linear classifier/);
+    assert.deepEqual(hint.target, {
+      kind: 'node',
+      id: expected === 'experiment-inspect' ? 'c' : 'repeat',
+    });
+    let counter = 0;
+    const ungrouped = takeApart(b, 'repeat', () => `expanded-${counter++}`);
+    const equivalent = experimentHint(ungrouped, compileBoard(ungrouped).network!, era, 0.736);
+    assert.equal(hint.id, equivalent.id);
+    assert.equal(hint.text, equivalent.text);
+  }
+});
+
+test('lesson and experiment clues recognize a Dense that exists only inside a custom block', () => {
+  const b = board();
+  b.nodes = b.nodes.map((n) =>
+    n.id === 'd'
+      ? {
+          ...n,
+          kind: 'custom',
+          repeat: 1,
+          blocks: [{ id: 'inner-score', kind: 'dense', units: 10 }],
+        }
+      : n,
+  );
+  assert.equal(blockyHint(b, 1, 'journey')?.id, 'nonlinear');
+  const hint = experimentHint(b, compileBoard(b).network!, 1, 0.7);
+  assert.equal(hint.id, 'experiment-hidden');
+  assert.deepEqual(hint.target, { kind: 'edge', from: 'f', to: 'd' });
 });
