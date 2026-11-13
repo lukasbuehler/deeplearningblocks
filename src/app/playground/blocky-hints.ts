@@ -11,6 +11,7 @@ import {
 } from './graph';
 import { textHint } from './text-hints';
 import { experimentHint } from './experiment-hints';
+import { activationHint } from './activation-hints';
 
 export type HintTarget =
   | { kind: 'node'; id: string }
@@ -108,7 +109,8 @@ export function blockyHint(
     return null;
   }
   const network = compilation.network;
-  if (accuracy !== undefined) return experimentHint(board, network, era, accuracy);
+  const advice = activationHint(board, network.nodeIds);
+  if (accuracy !== undefined) return advice ?? experimentHint(board, network, era, accuracy);
   const dense = networkParts(board, network.nodeIds).find(
     ({ node }) => node.kind === 'dense',
   )?.owner;
@@ -160,6 +162,7 @@ export function blockyHint(
       why: 'Dense multiplies and adds. Doing that twice is still just multiplying and adding, so two Dense layers in a row can only learn what one Dense layer could. An activation bends the numbers in between, and that bend lets the second layer learn new patterns. A Linear activation does not bend anything.',
       target: stacked,
     };
+  if (advice) return advice;
   return {
     id: completed ? 'complete' : 'ready',
     text:
