@@ -70,45 +70,28 @@
         (pointerdown)="notePickModifier($event)"
         [class.picked]="picked().includes(node.id) && picked().length > 1"
         cdkDrag
-        [cdkDragFreeDragPosition]="{
-          x: node.x * game.board().viewport.zoom,
-          y: node.y * game.board().viewport.zoom,
-        }"
+        [cdkDragFreeDragPosition]="dragPositions().get(node.id)!"
+        [cdkDragDisabled]="game.trainer.busy()"
         [cdkDragScale]="game.board().viewport.zoom"
         [cdkDragStartDelay]="{ touch: 120, mouse: 0 }"
         (cdkDragStarted)="startDrag($event, node)"
         (cdkDragMoved)="moveDrag($event, node)"
         (cdkDragEnded)="endDrag($event, node)"
-        [class.snap-ready]="snap()?.from === node.id || snap()?.to === node.id"
         [class.fresh]="fresh() === node.id"
         [class.clicked-in]="clicked()?.to === node.id"
       >
-        @if (definitions[node.kind].input) {
-          <button
-            class="port input"
-            (mousedown)="$event.stopPropagation()"
-            (touchstart)="$event.stopPropagation()"
-            [class.probability-port]="definitions[node.kind].input === 'probabilities'"
-            [class.image-port]="definitions[node.kind].input === 'image'"
-            [class.compatible]="compatible(node.id)"
-            [class.clicked]="clicked()?.to === node.id"
-            [class.incompatible]="pending() && !compatible(node.id)"
-            [attr.title]="wireError(node.id)"
-            [attr.data-input]="node.id"
-            [disabled]="game.trainer.busy()"
-            [attr.aria-label]="
-              'Input of ' + blockName(node) + ' ' + (i + 1) + ': ' + portLabel(node, 'input')
-            "
-            (pointerdown)="$event.stopPropagation()"
-            (click)="$event.stopPropagation(); finishConnection(node.id)"
-          >
-            <span class="port-shape"></span
-            ><span class="port-label">{{ portLabel(node, 'input') }}</span>
-          </button>
-        }
         <app-block-card
           [dataset]="game.dataset()"
           [node]="node"
+          [connectorShape]="connectorShapes().get(node.id)"
+          [zoom]="game.board().viewport.zoom"
+          [inputFeedback]="edgeFeedback().get(node.id + ':input') ?? null"
+          [outputFeedback]="edgeFeedback().get(node.id + ':output') ?? null"
+          [recipeFeedback]="
+            recipeHover()?.id === node.id ? (recipeHover()?.error ? 'invalid' : 'valid') : null
+          "
+          (innerMove)="previewInner(node.id, $event)"
+          (innerDrop)="moveInner(node.id, $event)"
           [inputSize]="shapes().get(node.id)?.input ?? undefined"
           [inputWired]="wiredInputs().has(node.id)"
           [outputSize]="shapes().get(node.id)?.output ?? undefined"
@@ -124,29 +107,6 @@
           (takeApart)="takeApartNode(node.id)"
           (nextDigit)="game.nextSample()"
         />
-        @if (definitions[node.kind].output) {
-          <button
-            class="port output"
-            (mousedown)="$event.stopPropagation()"
-            (touchstart)="$event.stopPropagation()"
-            [class.probability-port]="definitions[node.kind].output === 'probabilities'"
-            [class.image-port]="definitions[node.kind].output === 'image'"
-            [class.active]="pending() === node.id"
-            [class.clicked]="clicked()?.from === node.id"
-            [disabled]="game.trainer.busy()"
-            [attr.aria-label]="
-              'Output of ' + blockName(node) + ' ' + (i + 1) + ': ' + portLabel(node, 'output')
-            "
-            (pointerdown)="outputStart($event, node)"
-            (pointermove)="outputMove($event)"
-            (pointerup)="outputEnd($event)"
-            (pointercancel)="cancelWire()"
-            (click)="outputClick($event, node.id)"
-          >
-            <span class="port-shape"></span
-            ><span class="port-label">{{ portLabel(node, 'output') }}</span>
-          </button>
-        }
       </div>
     }
   </div>
@@ -179,15 +139,18 @@
       <span>1.</span> Open the toy box.<br /><span>2.</span>
       {{ game.era() === 0 ? 'Add Flatten, Dense + Softmax.' : 'Build the path in your mission.'
       }}<br /><span>3.</span>
-      Connect the studs!
+      Fit the studs into the sockets!
     </div>
   }
-  @if (picked().length && !selectedEdge() && !pending() && !game.trainer.busy()) {
+  @if (picked().length >= 2 && !selectedEdge() && !pending() && !game.trainer.busy()) {
     <div class="pick-actions" role="status">
       <span>
         <b>{{ picked().length === 1 ? '1 block picked' : picked().length + ' blocks picked' }}</b>
         <small>{{ isChain(pickedChain()) ? 'Shift-click to pick more' : pickedChain() }}</small>
       </span>
+      @if (selectedJoint()) {
+        <button class="secondary" (click)="detachSelected()">Detach above</button>
+      }
       @if (nextPick()) {
         <button class="secondary" (click)="pickNext()">
           Add next <mat-icon>arrow_downward</mat-icon>
@@ -198,11 +161,16 @@
       </button>
     </div>
   }
+  @if (selectedJoint() && picked().length < 2 && !draft() && !game.trainer.busy()) {
+    <div class="wire-actions">
+      <b>Attached to the block above</b><button (click)="detachSelected()">Detach</button>
+    </div>
+  }
   @if (selectedEdge()) {
     <div class="wire-actions">
-      <b>One little connection</b
+      <b>One block joint</b
       ><button (click)="disconnect()" [disabled]="game.trainer.busy()">
-        Disconnect <mat-icon>link_off</mat-icon>
+        Detach <mat-icon>link_off</mat-icon>
       </button>
     </div>
   }
@@ -266,7 +234,7 @@
           <mat-icon>close</mat-icon>
         </button>
       </div>
-      <p>Drag onto the paper, or tap to add.</p>
+      <p>Drag a block under another to attach it. Tap to add to the picked stack.</p>
       <div class="tiles">
         @for (tile of tiles(); track tile.name) {
           <button
@@ -280,14 +248,23 @@
             (click)="tileClick($event, tile)"
             [attr.aria-label]="'Add ' + tile.name + (locked(tile) ? ' (locked)' : '')"
           >
-            <app-block-icon [kind]="tile.kind" [activation]="tile.activation" /><b>{{
-              tile.name
-            }}</b
-            ><small>{{
+            <svg
+              class="tile-outline"
+              viewBox="-2 -2 184 142"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path [attr.d]="tile.outline" />
+              @for (label of tile.labels; track $index) {
+                <text [attr.x]="label.x" [attr.y]="label.y" text-anchor="middle">
+                  {{ label.text }}
+                </text>
+              }
+            </svg>
+            <b>{{ tile.name }}</b>
+            <small>{{
               locked(tile)
-                ? tile.era === 1
-                  ? 'Check a Dense build to unlock'
-                  : 'Check Sigmoid or Tanh to unlock'
+                ? 'Complete the earlier level to unlock'
                 : exists(tile)
                   ? 'Already on your paper'
                   : tile.description

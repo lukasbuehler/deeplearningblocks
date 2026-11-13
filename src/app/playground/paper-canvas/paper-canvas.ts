@@ -22,23 +22,38 @@ import {
   INNER_KINDS,
   Edge,
   Point,
-  connect,
   newConnectionError,
   inferShapes,
   nodeSize,
   portPosition,
   removeNode,
 } from '../graph';
-import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget, closestPointOnRect } from '../geometry';
+import { MIN_ZOOM, toWorld, wirePath, zoomAt, closestPointOnRect } from '../geometry';
 import { GameService } from '../game.service';
+import {
+  attachStacks,
+  applyStackDrop,
+  moveStack,
+  stackIds,
+  stackSnapTarget,
+  stackDropTarget,
+} from '../stacks';
 import { BlockCard } from '../block-card/block-card';
 import { routeWire, roundedWire } from '../wire-router';
 import { SoundService } from '../sound';
 import { tilesFor, Tile, blockName } from '../block-catalog';
 import { BlockIcon } from '../block-icon/block-icon';
+import {
+  blockOutline,
+  connectorLabels,
+  inferConnectorShapes,
+  nodeConnectors,
+} from '../block-connectors';
 import { Blocky } from '../blocky/blocky';
 import { blockyHint, hintContext } from '../blocky-hints';
 import {
+  insertIntoRecipe,
+  extractFromRecipe,
   makeCustomBlock,
   nextPickable,
   pickedChain,
@@ -58,7 +73,31 @@ export class PaperCanvas {
   readonly paper = viewChild.required<ElementRef<HTMLDivElement>>('paper');
   readonly definitions = BLOCKS;
   readonly size = nodeSize;
-  readonly tiles = computed(() => tilesFor(this.game.dataset()));
+  readonly defaultUnits = computed(() =>
+    this.game.mode() === 'journey' && this.game.era() === 0 ? 10 : 32,
+  );
+  readonly tiles = computed(() =>
+    tilesFor(this.game.dataset()).map((tile) => {
+      const node: BlockNode = {
+        id: 'preview',
+        kind: tile.kind,
+        units: this.defaultUnits(),
+        x: 0,
+        y: 0,
+        ...(tile.kind === 'custom' ? { blocks: [{ id: 'dense', kind: 'dense', units: 32 }] } : {}),
+      };
+      const { input, output } = nodeConnectors(node);
+      if (tile.kind === 'dense' && output) {
+        output.size = undefined;
+        output.label = 'M';
+      }
+      return {
+        ...tile,
+        outline: blockOutline(180, 118, input, output),
+        labels: [...connectorLabels(input, 180, 0), ...connectorLabels(output, 180, 118)],
+      };
+    }),
+  );
   readonly blockName = (node: BlockNode) => blockName(node, this.game.dataset());
   readonly tray = signal(false);
   readonly pending = signal<string | null>(null);
@@ -88,6 +127,15 @@ export class PaperCanvas {
     this.announcement.set(`Click! ${name(from)} connected to ${name(to)}.`);
   }
   readonly trash = viewChild<ElementRef<HTMLButtonElement>>('trash');
+  readonly selectedJoint = computed(() =>
+    this.game.board().edges.find((e) => e.to === this.game.selected()),
+  );
+  detachSelected(): void {
+    const edge = this.selectedJoint();
+    if (!edge) return;
+    this.selectedEdge.set(edge);
+    this.disconnect();
+  }
   readonly selectedBlockName = computed(() => {
     const node = this.game.selectedNode();
     return node ? this.blockName(node) : null;
@@ -105,6 +153,70 @@ export class PaperCanvas {
       point.y < r.bottom + 16
     );
   }
+  readonly dragIntent = signal<{
+    point: Point;
+    tile?: Tile;
+    inner?: { parent: string; id: string };
+  } | null>(null);
+  previewInner(parent: string, event: { id: string; point: Point }): void {
+    this.dragIntent.set({ point: event.point, inner: { parent, id: event.id } });
+  }
+  readonly dropSource = computed(() => {
+    const draft = this.draft();
+    if (draft) return { board: this.game.board(), node: draft };
+    const ghost = this.trayGhost();
+    if (!ghost) return null;
+    const world = toWorld(ghost.point, this.game.board().viewport);
+    const node: BlockNode = {
+      id: '__palette__',
+      kind: ghost.tile.kind,
+      units: this.defaultUnits(),
+      activation: ghost.tile.activation,
+      x: world.x - BLOCK_WIDTH / 2,
+      y: world.y - BLOCKS[ghost.tile.kind].height / 2,
+    };
+    return { node, board: { ...this.game.board(), nodes: [...this.game.board().nodes, node] } };
+  });
+  readonly recipeHover = computed(() => {
+    const intent = this.dragIntent();
+    if (!intent || this.game.trainer.busy()) return null;
+    const target = this.recipeAt(intent.point, intent.inner?.id);
+    if (!target) return null;
+    let board = this.dropSource()?.board ?? this.game.board();
+    let ids: string[];
+    if (intent.inner) {
+      board = extractFromRecipe(
+        board,
+        intent.inner.parent,
+        intent.inner.id,
+        { x: 0, y: 0 },
+        () => '__inner__',
+      );
+      ids = [board.nodes.at(-1)!.id];
+    } else {
+      const source = this.dropSource();
+      if (!source) return null;
+      ids = stackIds(board, source.node.id);
+      if (ids.includes(target.id)) return null;
+    }
+    const result = insertIntoRecipe(board, target.id, ids, target.index);
+    return { ...target, error: typeof result === 'string' ? result : null };
+  });
+  readonly dropCandidate = computed(() => {
+    const source = this.dropSource();
+    return source && !this.recipeHover() && !this.game.trainer.busy()
+      ? stackDropTarget(source.board, source.node)
+      : null;
+  });
+  readonly edgeFeedback = computed(() => {
+    const feedback = new Map<string, 'valid' | 'invalid'>();
+    for (const pair of this.dropCandidate()?.pairs ?? []) {
+      const state = pair.error ? 'invalid' : 'valid';
+      feedback.set(pair.from + ':output', state);
+      feedback.set(pair.to + ':input', state);
+    }
+    return feedback;
+  });
   readonly trayGhost = signal<{ tile: Tile; point: Point } | null>(null);
   readonly panning = signal(false);
   /** Blocks picked to become one custom block, in the order they were picked. */
@@ -117,29 +229,57 @@ export class PaperCanvas {
   );
   /** Set on pointerdown so the focus that follows does not undo a shift-click pick. */
   private pickModifier = false;
-  readonly shapes = computed(() => inferShapes(this.game.board()));
-  readonly wiredInputs = computed(() => new Set(this.game.board().edges.map((e) => e.to)));
-  readonly visualNodes = computed(() =>
-    this.game.board().nodes.map((n) => (n.id === this.draft()?.id ? this.draft()! : n)),
-  );
+  readonly visualBoard = computed(() => {
+    const draft = this.draft();
+    return draft ? moveStack(this.game.board(), draft.id, draft) : this.game.board();
+  });
+  readonly shapes = computed(() => inferShapes(this.visualBoard()));
+  readonly connectorShapes = computed(() => inferConnectorShapes(this.visualBoard()));
+  readonly wiredInputs = computed(() => new Set(this.visualBoard().edges.map((e) => e.to)));
+  readonly visualNodes = computed(() => this.visualBoard().nodes);
+  readonly positions = computed(() => new Map(this.visualNodes().map((n) => [n.id, n])));
+  private readonly committedPositions = computed(() => {
+    const { zoom } = this.game.board().viewport;
+    return new Map(this.game.board().nodes.map((n) => [n.id, { x: n.x * zoom, y: n.y * zoom }]));
+  });
+  readonly dragPositions = computed(() => {
+    const draft = this.draft();
+    const committed = this.committedPositions();
+    if (!draft) return committed;
+    const zoom = this.game.board().viewport.zoom;
+    return new Map(
+      this.visualNodes().map((n) => [
+        n.id,
+        n.id === draft.id ? committed.get(n.id)! : { x: n.x * zoom, y: n.y * zoom },
+      ]),
+    );
+  });
   /** Last drawn route per wire, so a dragged card does not make near-tied wires flip sides. */
   private readonly lastRoutes = new Map<string, Point[]>();
   readonly wires = computed(() => {
     const routes = new Map<string, Point[]>();
-    const wires = this.game.board().edges.map((edge) => {
-      const from = this.visualNodes().find((n) => n.id === edge.from)!,
-        to = this.visualNodes().find((n) => n.id === edge.to)!;
-      const key = `${edge.from}>${edge.to}`;
-      const points = routeWire(from, to, this.visualNodes(), this.lastRoutes.get(key));
-      routes.set(key, points);
-      return {
-        ...edge,
-        points,
-        path: roundedWire(points),
-        label: `${this.blockName(from)} to ${this.blockName(to)}`,
-        type: BLOCKS[from.kind].output,
-      };
-    });
+    const wires = this.visualBoard()
+      .edges.filter((edge) => {
+        const source = this.positions().get(edge.from)!,
+          target = this.positions().get(edge.to)!;
+        const out = portPosition(source, 'output'),
+          input = portPosition(target, 'input');
+        return Math.hypot(out.x - input.x, out.y - input.y) > 0.5;
+      })
+      .map((edge) => {
+        const from = this.visualNodes().find((n) => n.id === edge.from)!,
+          to = this.visualNodes().find((n) => n.id === edge.to)!;
+        const key = `${edge.from}>${edge.to}`;
+        const points = routeWire(from, to, this.visualNodes(), this.lastRoutes.get(key));
+        routes.set(key, points);
+        return {
+          ...edge,
+          points,
+          path: roundedWire(points),
+          label: `${this.blockName(from)} to ${this.blockName(to)}`,
+          type: BLOCKS[from.kind].output,
+        };
+      });
     this.lastRoutes.clear();
     for (const [key, points] of routes) this.lastRoutes.set(key, points);
     return wires;
@@ -155,8 +295,8 @@ export class PaperCanvas {
     const { width } = this.paperSize();
     return {
       label: this.portLabel(source, 'output'),
-      x: Math.min(Math.max(x, 80), Math.max(width - 80, 80)),
-      y: y < 36 ? y + 22 : y - 32,
+      x: Math.min(Math.max(x - 28, 168), width - 8),
+      y: Math.max(20, y),
     };
   });
   readonly ghostPath = computed(() => {
@@ -165,9 +305,10 @@ export class PaperCanvas {
     const start = portPosition(source, 'output');
     return wirePath(start, this.pointer() ?? { x: start.x + 90, y: start.y + 100 });
   });
-  readonly snap = computed(() =>
-    this.draft() && !this.game.trainer.busy() ? snapTarget(this.game.board(), this.draft()!) : null,
-  );
+  readonly snap = computed(() => {
+    const drop = this.dropCandidate();
+    return drop?.error ? null : drop;
+  });
   private readonly destroyRef = inject(DestroyRef);
   readonly paperSize = signal({ width: 0, height: 0 });
   readonly helperVisible = signal(false);
@@ -192,7 +333,7 @@ export class PaperCanvas {
     () => !!(this.tray() || this.pending() || this.game.drawingOpen() || this.game.trainer.busy()),
   );
   readonly helperTarget = computed(() =>
-    this.helperVisible() && !this.helperSuppressed() ? this.helperHint().target : null,
+    this.helperVisible() && !this.helperSuppressed() ? this.helperHint()?.target : null,
   );
   readonly highlightedNode = computed(() => {
     const t = this.helperTarget();
@@ -203,9 +344,9 @@ export class PaperCanvas {
     return t?.kind === 'edge' ? t.from : null;
   });
   readonly targetPoint = computed(() => {
-    const t = this.helperHint().target,
+    const t = this.helperHint()?.target,
       nodes = this.visualNodes();
-    if (t.kind === 'tray' || t.kind === 'check') return null;
+    if (!t || t.kind === 'tray' || t.kind === 'check') return null;
     if (t.kind === 'node') {
       const n = nodes.find((n) => n.id === t.id);
       if (!n) return null;
@@ -225,7 +366,7 @@ export class PaperCanvas {
     const p = this.targetPoint(),
       v = this.game.board().viewport,
       size = this.paperSize();
-    if (this.helperHint().target.kind === 'check') {
+    if (this.helperHint()?.target?.kind === 'check') {
       const button = this.checkButton()?.getBoundingClientRect();
       if (!button) return null;
       const paper = this.paper().nativeElement.getBoundingClientRect();
@@ -242,8 +383,9 @@ export class PaperCanvas {
     }
     if (!p) return null;
     const center = { x: size.width - 78, y: 61 };
-    const target = this.helperHint().target;
-    const node = target.kind === 'node' ? this.visualNodes().find((n) => n.id === target.id) : null;
+    const target = this.helperHint()?.target;
+    const node =
+      target?.kind === 'node' ? this.visualNodes().find((n) => n.id === target.id) : null;
     // Match the highlighted outline and calculate in screen space for every zoom level.
     const box = node ? nodeSize(node) : null;
     const bounds = node
@@ -268,7 +410,8 @@ export class PaperCanvas {
   });
   showClueTarget(): void {
     this.game.message.set('');
-    const target = this.helperHint().target;
+    const target = this.helperHint()?.target;
+    if (!target) return;
     if (target.kind === 'check') {
       this.checkButton()?.focus({ preventScroll: true });
       return;
@@ -382,6 +525,51 @@ export class PaperCanvas {
     this.panOrigin = undefined;
     this.panning.set(false);
   }
+  private recipeAt(point: Point, omit?: string): { id: string; index: number } | null {
+    for (const zone of this.paper().nativeElement.querySelectorAll<HTMLElement>(
+      '[data-custom-recipe]',
+    )) {
+      const rect = zone.getBoundingClientRect();
+      if (
+        point.x < rect.left ||
+        point.x > rect.right ||
+        point.y < rect.top ||
+        point.y > rect.bottom
+      )
+        continue;
+      const items = [...zone.querySelectorAll<HTMLElement>('[data-inner-id]')].filter(
+        (n) => n.dataset['innerId'] !== omit,
+      );
+      return {
+        id: zone.dataset['customRecipe']!,
+        index: items.filter((n) => {
+          const r = n.getBoundingClientRect();
+          return point.y > r.top + r.height / 2;
+        }).length,
+      };
+    }
+    return null;
+  }
+  moveInner(parent: string, event: { id: string; point: Point; drop: Point }): void {
+    this.dragIntent.set(null);
+    if (this.game.trainer.busy()) return;
+    const paper = this.paper().nativeElement.getBoundingClientRect();
+    const position = toWorld(
+      { x: event.point.x - paper.left, y: event.point.y - paper.top },
+      this.game.board().viewport,
+    );
+    const target = this.recipeAt(event.drop, event.id);
+    let board = extractFromRecipe(this.game.board(), parent, event.id, position, () =>
+      crypto.randomUUID(),
+    );
+    const moved = board.nodes.at(-1)!;
+    if (target) {
+      const inserted = insertIntoRecipe(board, target.id, [moved.id], target.index);
+      if (typeof inserted === 'string') this.game.message.set(inserted);
+      else board = inserted;
+    }
+    this.game.edit(board);
+  }
   startDrag(event: CdkDragStart, node: BlockNode): void {
     this.dragged = true;
     this.pending.set(null);
@@ -390,6 +578,7 @@ export class PaperCanvas {
     this.draft.set({ ...node });
   }
   moveDrag(event: CdkDragMove, node: BlockNode): void {
+    this.dragIntent.set({ point: event.pointerPosition });
     this.overTrash.set(this.inTrash(event.pointerPosition));
     const p = event.source.getFreeDragPosition();
     this.draft.set({
@@ -399,6 +588,7 @@ export class PaperCanvas {
     });
   }
   endDrag(event: CdkDragEnd, node: BlockNode): void {
+    this.dragIntent.set(null);
     this.overTrash.set(false);
     if (this.inTrash(event.dropPoint) && !this.game.trainer.busy()) {
       this.draft.set(null);
@@ -406,19 +596,32 @@ export class PaperCanvas {
       setTimeout(() => (this.dragged = false), 0);
       return;
     }
+    const recipe = this.recipeAt(event.dropPoint);
+    if (recipe && INNER_KINDS.includes(node.kind) && !this.game.trainer.busy()) {
+      const inserted = insertIntoRecipe(
+        this.game.board(),
+        recipe.id,
+        stackIds(this.game.board(), node.id),
+        recipe.index,
+      );
+      if (typeof inserted !== 'string') {
+        this.game.edit(inserted);
+        this.draft.set(null);
+        setTimeout(() => (this.dragged = false), 0);
+        return;
+      }
+      this.game.message.set(inserted);
+    }
     const position = event.source.getFreeDragPosition();
     const moved = {
         ...node,
         x: position.x / this.game.board().viewport.zoom,
         y: position.y / this.game.board().viewport.zoom,
       },
-      snap = !this.game.trainer.busy() ? snapTarget(this.game.board(), moved) : null;
+      snap = !this.game.trainer.busy() ? stackSnapTarget(this.game.board(), moved) : null;
     const finalNode = snap ? { ...moved, ...snap.position } : moved;
-    let board = {
-      ...this.game.board(),
-      nodes: this.game.board().nodes.map((n) => (n.id === node.id ? finalNode : n)),
-    };
-    if (snap) board = connect(board, snap.from, snap.to);
+    let board = moveStack(this.game.board(), node.id, finalNode);
+    if (snap) board = applyStackDrop(this.game.board(), moved, snap);
     this.game.edit(board);
     if (snap) this.celebrateConnection(snap.from, snap.to);
     event.source.setFreeDragPosition({
@@ -454,7 +657,7 @@ export class PaperCanvas {
     if (next) this.picked.update((ids) => [...ids, next]);
   }
   makeBlock(): void {
-    if (this.game.trainer.busy()) return;
+    if (this.game.trainer.busy() || this.picked().length < 2) return;
     const id = crypto.randomUUID();
     const result = makeCustomBlock(this.game.board(), this.picked(), id);
     if (typeof result === 'string') {
@@ -529,22 +732,21 @@ export class PaperCanvas {
       this.cancelWire();
       return;
     }
-    this.game.edit(connect(this.game.board(), from, id));
+    this.game.edit(attachStacks(this.game.board(), from, id));
     this.cancelWire();
     this.celebrateConnection(from, id);
   }
   portLabel(node: BlockNode, side: 'input' | 'output'): string {
     const type = BLOCKS[node.kind][side];
-    if (type === 'image') return '28 × 28 × 1';
+    if (type === 'image')
+      return node.kind === 'image' || this.shapes().get(node.id)?.input !== undefined
+        ? '28 × 28'
+        : 'N × N';
     if (node.kind === 'classifier') return '10 probabilities';
-    if (node.kind === 'softmax' && side === 'input') {
-      const actual = this.shapes().get(node.id)?.input;
-      return actual !== undefined && actual !== 10 ? `Needs 10 · got ${actual}` : 'Vector · 10';
-    }
     const width =
       this.shapes().get(node.id)?.[side] ??
       (side === 'output' ? BLOCKS[node.kind].inferWidth(node) : undefined);
-    return `${type === 'probabilities' ? 'Probabilities' : 'Vector'} · ${width ?? 'N'}`;
+    return `${type === 'probabilities' ? 'Probabilities' : 'Vector'} · ${width ?? (node.kind === 'flatten' && side === 'output' ? 'N·N' : 'N')}`;
   }
   wireError(id: string): string | null {
     const from = this.pending();
@@ -566,10 +768,8 @@ export class PaperCanvas {
   disconnect(): void {
     const edge = this.selectedEdge();
     if (!edge || this.game.trainer.busy()) return;
-    this.game.edit({
-      ...this.game.board(),
-      edges: this.game.board().edges.filter((e) => e.from !== edge.from || e.to !== edge.to),
-    });
+    const node = this.game.board().nodes.find((n) => n.id === edge.to)!;
+    this.game.edit(moveStack(this.game.board(), node.id, { x: node.x + 32, y: node.y + 40 }));
     this.selectedEdge.set(null);
   }
   /** Tapping the trashcan deletes the selected block, for anyone who cannot drag. */
@@ -604,14 +804,20 @@ export class PaperCanvas {
   tileMove(event: PointerEvent): void {
     if (!this.tileDrag) return;
     const p = this.local(event);
-    if (Math.hypot(p.x - this.tileDrag.start.x, p.y - this.tileDrag.start.y) > 8)
+    if (Math.hypot(p.x - this.tileDrag.start.x, p.y - this.tileDrag.start.y) > 8) {
       this.trayGhost.set({ tile: this.tileDrag.tile, point: p });
+      this.dragIntent.set({
+        point: { x: event.clientX, y: event.clientY },
+        tile: this.tileDrag.tile,
+      });
+    }
   }
   tileEnd(event: PointerEvent): void {
     if (!this.tileDrag) return;
     const tile = this.tileDrag.tile,
       dragging = !!this.trayGhost();
     this.tileDrag = undefined;
+    this.dragIntent.set(null);
     this.trayGhost.set(null);
     const p = this.local(event),
       el = this.paper().nativeElement;
@@ -628,6 +834,7 @@ export class PaperCanvas {
   }
   tileCancel(): void {
     this.tileDrag = undefined;
+    this.dragIntent.set(null);
     this.trayGhost.set(null);
   }
   tileClick(event: MouseEvent, tile: Tile): void {
@@ -644,9 +851,7 @@ export class PaperCanvas {
       kind: tile.kind,
       x: Math.round(center.x - BLOCK_WIDTH / 2),
       y: Math.round(center.y - BLOCKS[tile.kind].height / 2),
-      ...(tile.kind === 'dense'
-        ? { units: this.game.mode() === 'journey' && this.game.era() === 0 ? 10 : 32 }
-        : {}),
+      ...(tile.kind === 'dense' ? { units: this.defaultUnits() } : {}),
       ...(tile.activation ? { activation: tile.activation } : {}),
       ...(tile.kind === 'custom'
         ? {
@@ -667,7 +872,30 @@ export class PaperCanvas {
       node.x += 35;
       node.y += 35;
     }
-    this.game.edit({ ...this.game.board(), nodes: [...this.game.board().nodes, node] });
+    let board = { ...this.game.board(), nodes: [...this.game.board().nodes, node] };
+    const rect = this.paper().nativeElement.getBoundingClientRect(),
+      view = board.viewport;
+    const recipe = point
+      ? this.recipeAt({
+          x: rect.left + point.x * view.zoom + view.x,
+          y: rect.top + point.y * view.zoom + view.y,
+        })
+      : null;
+    if (recipe) {
+      const inserted = insertIntoRecipe(board, recipe.id, [node.id], recipe.index);
+      if (typeof inserted !== 'string') {
+        this.game.edit(inserted);
+        this.tray.set(false);
+        return;
+      }
+      this.game.message.set(inserted);
+    }
+    const selected = this.game.selected();
+    const tail = selected ? stackIds(board, selected).at(-1) : undefined;
+    const snap = stackSnapTarget(board, node);
+    if (snap) board = applyStackDrop(board, node, snap);
+    else if (!point && tail) board = attachStacks(board, tail, node.id);
+    this.game.edit(board);
     this.game.selected.set(node.id);
     this.tray.set(false);
     this.sound.play('drop');
@@ -715,22 +943,14 @@ export class PaperCanvas {
       event.preventDefault();
       const node = this.game.selectedNode()!;
       const amount = event.shiftKey ? 30 : 10;
-      this.game.edit({
-        ...this.game.board(),
-        nodes: this.game.board().nodes.map((n) =>
-          n.id === node.id
-            ? {
-                ...n,
-                x:
-                  n.x +
-                  (event.key === 'ArrowRight' ? amount : event.key === 'ArrowLeft' ? -amount : 0),
-                y:
-                  n.y +
-                  (event.key === 'ArrowDown' ? amount : event.key === 'ArrowUp' ? -amount : 0),
-              }
-            : n,
-        ),
-      });
+      this.game.edit(
+        moveStack(this.game.board(), node.id, {
+          x:
+            node.x +
+            (event.key === 'ArrowRight' ? amount : event.key === 'ArrowLeft' ? -amount : 0),
+          y: node.y + (event.key === 'ArrowDown' ? amount : event.key === 'ArrowUp' ? -amount : 0),
+        }),
+      );
     }
   }
 }

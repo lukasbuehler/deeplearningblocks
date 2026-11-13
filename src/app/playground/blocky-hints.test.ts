@@ -22,7 +22,7 @@ test('clues follow missing pieces and connection gaps', () => {
   assert.equal(blockyHint(freshBoard(), 0, 'journey').id, 'flatten');
   const board = chain();
   board.edges = board.edges.filter((e) => e.from !== 'd');
-  assert.deepEqual(blockyHint(board, 0, 'journey').target, { kind: 'node', id: 'd' });
+  assert.equal(blockyHint(board, 0, 'journey'), null);
   assert.equal(blockyHint(chain(), 0, 'journey').id, 'ready');
 });
 test('nonlinear chapter points at the wire to unplug; loose activations do not satisfy it', () => {
@@ -57,7 +57,7 @@ test('rejected connections explain the actual error and tolerate a deleted targe
   assert.equal(hint.id, 'connection');
   assert.deepEqual(hint.target, { kind: 'node', id: 'd' });
   assert.match(hint.text, /Flatten/);
-  assert.notEqual(blockyHint(board, 0, 'journey', { from: 'i', to: 'deleted' }).id, 'connection');
+  assert.notEqual(blockyHint(board, 0, 'journey', { from: 'i', to: 'deleted' })?.id, 'connection');
 });
 
 test('stacked Dense layers get a tip once activations exist, never a first-lesson warning', () => {

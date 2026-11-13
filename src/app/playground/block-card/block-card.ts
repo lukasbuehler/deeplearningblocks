@@ -1,3 +1,4 @@
+import { CdkDrag, CdkDragEnd, CdkDragMove } from '@angular/cdk/drag-drop';
 import { MatIcon } from '@angular/material/icon';
 import { Dataset, DATASETS } from '../../learning/datasets';
 import {
@@ -14,11 +15,19 @@ import { PercentPipe } from '@angular/common';
 import { DigitPreview } from '../../learning/digit-preview/digit-preview';
 import { BlockIcon } from '../block-icon/block-icon';
 import { blockName } from '../block-catalog';
+import {
+  blockOutline,
+  recipeWellOutline,
+  connectorLabels,
+  connectorEdgePath,
+  nodeConnectors,
+} from '../block-connectors';
 import { ACTIVATIONS, Activation } from '../../learning/curriculum';
 import {
   BLOCKS,
   BlockNode,
   FRAME,
+  customLayout,
   MAX_DENSE_INPUTS,
   MAX_DENSE_UNITS,
   MAX_NAME_LENGTH,
@@ -29,8 +38,6 @@ import {
   validDenseInputs,
   validDenseUnits,
 } from '../graph';
-/** Pixels between the edges of stacked copies of a repeated custom block. */
-export const STACK_STEP = 5;
 @Component({
   selector: 'app-block-card',
   host: {
@@ -39,7 +46,7 @@ export const STACK_STEP = 5;
     '(document:keydown.escape)': 'helpOpen.set(false)',
     '[class.help-open]': 'helpOpen()',
   },
-  imports: [MatIcon, PercentPipe, DigitPreview, BlockIcon],
+  imports: [CdkDrag, MatIcon, PercentPipe, DigitPreview, BlockIcon],
   templateUrl: './block-card.html',
   styleUrl: './block-card.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +54,32 @@ export const STACK_STEP = 5;
 export class BlockCard {
   readonly dataset = input<Dataset>(DATASETS.mnist);
   readonly node = input.required<BlockNode>();
+  readonly zoom = input(1);
+  readonly inputFeedback = input<'valid' | 'invalid' | null>(null);
+  readonly outputFeedback = input<'valid' | 'invalid' | null>(null);
+  readonly recipeFeedback = input<'valid' | 'invalid' | null>(null);
+  readonly innerMove = output<{ id: string; point: { x: number; y: number } }>();
+  previewInnerDrag(event: CdkDragMove, id: string): void {
+    this.innerMove.emit({ id, point: event.pointerPosition });
+  }
+  readonly inputEdge = computed(() =>
+    connectorEdgePath(this.connectors().input, this.size().width, 0),
+  );
+  readonly outputEdge = computed(() =>
+    connectorEdgePath(this.connectors().output, this.size().width, this.size().height),
+  );
+  readonly innerDrop = output<{
+    id: string;
+    point: { x: number; y: number };
+    drop: { x: number; y: number };
+  }>();
+  finishInnerDrag(event: CdkDragEnd, id: string): void {
+    const rect = event.source.element.nativeElement.getBoundingClientRect();
+    this.innerDrop.emit({ id, point: { x: rect.left, y: rect.top }, drop: event.dropPoint });
+    event.source.setFreeDragPosition({ x: 0, y: 0 });
+  }
+  readonly layout = computed(() => customLayout(this.node()));
+  readonly connectorShape = input<ReturnType<typeof nodeConnectors>>();
   readonly inputSize = input<number>();
   /** True when a wire feeds this block, so the wire dictates the input size. */
   readonly inputWired = input(false);
@@ -74,10 +107,22 @@ export class BlockCard {
   /** The recipe as full blocks with the vector sizes flowing between them. */
   readonly innerCards = computed(() => {
     let width = this.inputSize();
-    return (this.node().blocks ?? []).map((inner) => {
+    let incoming = this.connectors().input;
+    return expandCustom(this.node()).map((inner, index) => {
       const input = width;
       width = inner.kind === 'dense' ? inner.units : width;
-      return { node: { ...inner, x: 0, y: 0 } as BlockNode, input, output: width };
+      const node = { ...inner, x: 0, y: 0 } as BlockNode;
+      const connectors = nodeConnectors(node, input, width, incoming, true);
+      incoming = connectors.output;
+      return {
+        node,
+        input,
+        output: width,
+        connectors,
+        key: `${index}-${inner.id}`,
+        copy: Math.floor(index / this.node().blocks!.length) + 1,
+        firstInCopy: index % this.node().blocks!.length === 0,
+      };
     });
   });
   readonly prediction = computed(() =>
@@ -99,19 +144,60 @@ export class BlockCard {
     if (this.helpOpen() && !this.host.nativeElement.contains(event.target as Node))
       this.helpOpen.set(false);
   }
-  /**
-   * Repeated custom blocks look like a stack with one card edge per copy.
-   * Each copy adds an orange edge with its own black outline, offset a little further.
-   */
-  readonly stackShadow = computed(() => {
-    const copies = this.node().kind === 'custom' ? this.repeat() : 1;
-    const layers = ['6px 6px 0 #171717'];
-    for (let i = 1; i < copies; i++) {
-      const offset = 6 + i * STACK_STEP;
-      layers.push(`${offset}px ${offset}px 0 -3px #ffb86b`, `${offset}px ${offset}px 0 0 #171717`);
-    }
-    return layers.join(', ');
+  readonly connectors = computed(
+    () =>
+      this.connectorShape() ??
+      nodeConnectors(
+        this.node(),
+        this.inputSize(),
+        this.outputSize(),
+        undefined,
+        this.inputWired(),
+      ),
+  );
+  readonly outline = computed(() =>
+    blockOutline(
+      this.size().width,
+      this.size().height,
+      this.connectors().input,
+      this.connectors().output,
+    ),
+  );
+  readonly connectorLabels = computed(() => [
+    ...connectorLabels(this.connectors().input, this.size().width, 0),
+    ...connectorLabels(this.connectors().output, this.size().width, this.size().height),
+  ]);
+  readonly editableCards = computed(() => this.innerCards().filter((c) => c.copy === 1));
+  readonly copyGroups = computed(() =>
+    this.expanded()
+      ? Array.from({ length: this.repeat() - 1 }, (_, i) => ({
+          number: i + 2,
+          top: this.layout().copiesTop + i * this.layout().copyHeight,
+          cards: this.innerCards().filter((c) => c.copy === i + 2),
+        }))
+      : [],
+  );
+  readonly wells = computed(() => {
+    const groups = [
+      { top: FRAME.head - FRAME.neck, cards: this.editableCards() },
+      ...this.copyGroups().map((g) => ({ top: g.top + 24, cards: g.cards })),
+    ];
+    return groups.map((g) => ({
+      top: g.top,
+      path: recipeWellOutline(
+        330 + 2 * FRAME.inset,
+        this.layout().recipeHeight + 2 * FRAME.neck,
+        FRAME.inset,
+        FRAME.neck,
+        g.cards[0]?.connectors.input ?? this.connectors().input,
+        g.cards.at(-1)?.connectors.output ?? this.connectors().input,
+      ),
+    }));
   });
+  updateRepeat(event: Event): void {
+    const repeat = (event.target as HTMLInputElement).valueAsNumber;
+    if (Number.isInteger(repeat) && repeat >= 1 && repeat <= MAX_REPEAT) this.setRepeat(repeat);
+  }
   readonly activationDetail = computed(
     () =>
       ({
@@ -153,6 +239,12 @@ export class BlockCard {
       blocks: blocks.map((b) => (b.id === change.id ? { ...b, units: change.units } : b)),
     });
   }
+  changeRepeat(event: Event): void {
+    const field = event.target as HTMLInputElement;
+    const repeat = field.valueAsNumber;
+    if (Number.isInteger(repeat) && repeat >= 1 && repeat <= MAX_REPEAT) this.setRepeat(repeat);
+    else field.value = String(this.repeat());
+  }
   setRepeat(repeat: number): void {
     if (repeat >= 1 && repeat <= MAX_REPEAT) this.configure.emit({ id: this.node().id, repeat });
   }
@@ -166,22 +258,18 @@ export class BlockCard {
     if (name !== customBlockName(this.node().name))
       this.configure.emit({ id: this.node().id, name: name || undefined });
   }
-  changeInnerUnits(event: Event, index: number): void {
-    const field = event.target as HTMLInputElement;
-    const units = field.valueAsNumber;
-    const blocks = this.node().blocks ?? [];
-    if (!validDenseUnits(units)) {
-      field.value = String(blocks[index]?.units ?? '');
-      return;
-    }
-    if (units === blocks[index]?.units) return;
-    this.configure.emit({
-      id: this.node().id,
-      blocks: blocks.map((b, i) => (i === index ? { ...b, units } : b)),
-    });
-  }
   stopControls(event: Event): void {
     if ((event.target as HTMLElement).closest('button,select,input')) event.stopPropagation();
+  }
+  updateInputs(event: Event): void {
+    const inputs = (event.target as HTMLInputElement).valueAsNumber;
+    if (!this.inputWired() && validDenseInputs(inputs) && inputs !== this.node().inputs)
+      this.configure.emit({ id: this.node().id, inputs });
+  }
+  updateUnits(event: Event): void {
+    const units = (event.target as HTMLInputElement).valueAsNumber;
+    if (validDenseUnits(units) && units !== this.node().units)
+      this.configure.emit({ id: this.node().id, units });
   }
   changeInputs(event: Event): void {
     if (this.inputWired()) return;

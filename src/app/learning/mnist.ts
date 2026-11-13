@@ -22,6 +22,8 @@ export async function loadDigits(
 ): Promise<DigitSet> {
   const response = await fetch(`/data/${dataset}-${split}.bin.gz`, {
     signal: AbortSignal.timeout(20000),
+    // Decoded datasets are cached by TrainingService; retries need fresh transport bytes.
+    cache: 'no-store',
   });
   if (!response.ok)
     throw new Error(`Could not load ${DATASETS[dataset].name}. Check your connection and retry.`);

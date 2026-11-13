@@ -27,7 +27,6 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 236px;
   cursor: grab;
   touch-action: none;
 }
@@ -38,9 +37,6 @@
   outline: 3px dashed #171717;
   outline-offset: 10px;
   border-radius: 12px;
-}
-.snap-ready {
-  filter: drop-shadow(0 0 8px #16ad6a);
 }
 .wires {
   position: absolute;
@@ -85,98 +81,6 @@
   stroke: #171717;
   stroke-width: 3;
   stroke-dasharray: 8 8;
-}
-.port {
-  position: absolute;
-  width: 54px;
-  height: 30px;
-  left: calc(50% - 27px);
-  border: 0;
-  background: transparent;
-  padding: 0;
-  z-index: 2;
-  cursor: crosshair;
-  touch-action: none;
-}
-// Keep connector hit targets usable when the paper is zoomed out.
-.port::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: max(54px, calc(44px / var(--zoom)));
-  height: max(30px, calc(44px / var(--zoom)));
-}
-.output::before {
-  top: 15px;
-}
-.input::before {
-  bottom: 15px;
-}
-.input {
-  top: -15px;
-}
-.output {
-  bottom: -15px;
-}
-.port-shape {
-  display: block;
-  margin: auto;
-  width: 37px;
-  height: 24px;
-  background: #fffdf1;
-  border: 3px solid #171717;
-  border-radius: 6px;
-  box-shadow:
-    inset 6px 0 0 #fffdf1,
-    inset 8px 0 0 #171717,
-    inset -6px 0 0 #fffdf1,
-    inset -8px 0 0 #171717;
-}
-.output .port-shape {
-  background: #171717;
-  box-shadow:
-    inset 6px 0 0 #171717,
-    inset 8px 0 0 #fffdf1,
-    inset -6px 0 0 #171717,
-    inset -8px 0 0 #fffdf1;
-}
-.image-port .port-shape {
-  border-radius: 2px;
-  width: 26px;
-  box-shadow: inset 0 0 0 3px #ffe14a;
-  background: #171717;
-}
-.input.image-port .port-shape {
-  background: #ffe14a;
-  box-shadow: none;
-}
-.port-label {
-  position: absolute;
-  left: 58px;
-  white-space: nowrap;
-  top: 5px;
-  font-size: 9px;
-  font-weight: 800;
-  background: #fffdf1;
-  border: 1px solid #171717;
-  padding: 2px 5px;
-  border-radius: 3px;
-  pointer-events: none;
-}
-.input .port-label {
-  left: auto;
-  right: 58px;
-}
-.compatible .port-shape {
-  background: #60f094;
-  box-shadow: 0 0 0 5px #60f09480;
-}
-.active .port-shape {
-  outline: 4px solid #ff5b59;
-}
-.port:disabled {
-  cursor: not-allowed;
 }
 .first-prompt {
   position: absolute;
@@ -302,7 +206,7 @@
   right: 24px;
   bottom: 89px;
   z-index: 5;
-  width: min(520px, calc(100% - 32px));
+  width: min(660px, calc(100% - 32px));
   max-height: calc(100% - 130px);
   overflow: auto;
   padding: 22px;
@@ -341,65 +245,111 @@
 }
 .tiles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px 16px;
+  padding-block: 8px 16px;
 }
 .tile {
-  padding: 10px 6px;
+  position: relative;
+  isolation: isolate;
+  padding: 30px 14px 28px;
   text-align: left;
-  border: 2px solid #171717;
-  border-radius: 7px;
-  box-shadow: 3px 3px 0 #171717;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   touch-action: none;
   cursor: grab;
-  min-height: 117px;
+  min-height: 146px;
 }
-.tile > span {
-  font-size: 27px;
-  display: block;
-  margin-bottom: 6px;
-  line-height: 1;
+.tile-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  z-index: -1;
+  pointer-events: none;
+}
+.tile-outline path {
+  fill: var(--tile-color);
+  stroke: #171717;
+  stroke-width: 2.5;
+}
+.tile-outline text {
+  fill: #171717;
+  font: 900 12px var(--font, sans-serif);
 }
 .tile > b {
   display: block;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 900;
 }
 .tile > small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.4;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 .image {
   background: #ffe14a;
 }
+.tile.image {
+  background: transparent;
+  --tile-color: #ffe14a;
+}
 .flatten {
   background: #74a6ff;
+}
+.tile.flatten {
+  background: transparent;
+  --tile-color: #74a6ff;
 }
 .dense {
   background: #ff7770;
 }
+.tile.dense {
+  background: transparent;
+  --tile-color: #ff7770;
+}
 .softmax {
   background: #ffacdf;
+}
+.tile.softmax {
+  background: transparent;
+  --tile-color: #ffacdf;
 }
 .activation {
   background: #75e4a0;
 }
+.tile.activation {
+  background: transparent;
+  --tile-color: #75e4a0;
+}
 .classifier {
   background: #bc9aff;
+}
+.tile.classifier {
+  background: transparent;
+  --tile-color: #bc9aff;
 }
 .custom {
   background: #ffb86b;
 }
+.tile.custom {
+  background: transparent;
+  --tile-color: #ffb86b;
+}
 .tile:disabled {
-  box-shadow: 1px 1px 0 #171717;
+  box-shadow: none;
   cursor: not-allowed;
 }
 .tile.locked {
-  background: #e8e5d8;
+  --tile-color: #e8e5d8;
   color: #696456;
-  border-style: dashed;
+  background: transparent;
+  .tile-outline path {
+    stroke-dasharray: 5 4;
+  }
 }
 .tile:not(.locked):disabled {
   opacity: 0.5;
@@ -442,7 +392,7 @@
   border-radius: 4px;
 }
 .first-prompt {
-  z-index: 0;
+  z-index: 2;
 }
 .node.picked::after {
   content: '';
@@ -560,18 +510,18 @@ button:disabled {
     padding: 16px;
   }
   .tiles {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 7px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 12px;
   }
   .tile {
-    padding: 8px 4px;
-    min-height: 106px;
+    padding: 28px 12px;
+    min-height: 146px;
   }
   .tile > b {
-    font-size: 11px;
+    font-size: 15px;
   }
   .tile > small {
-    font-size: 8px;
+    font-size: 12px;
   }
   .canvas-tools {
     left: 12px;
@@ -653,11 +603,6 @@ button:disabled {
   opacity: 0.65;
 }
 
-.probability-port .port-shape {
-  border-radius: 50%;
-  background: #ffacdf;
-}
-
 .blocky-pointer.toolbar-pointer {
   position: fixed;
   width: 100vw;
@@ -668,7 +613,7 @@ button:disabled {
 .wire-badge {
   position: absolute;
   z-index: 5;
-  transform: translateX(-50%);
+  transform: translate(-100%, -50%);
   pointer-events: none;
   padding: 3px 8px;
   border: 2px solid #171717;
@@ -679,29 +624,12 @@ button:disabled {
   font-size: 12px;
   white-space: nowrap;
 }
-:is(.active, .compatible, .incompatible) .port-label {
-  outline: 3px solid #171717;
-}
-.active .port-label {
-  background: #ffe14a;
-}
-.compatible .port-label {
-  background: #75e4a0;
-}
-.incompatible .port-label {
-  outline-style: dashed;
-  background: #ffe4df;
-}
-
 /* An open "?" bubble sits above neighbouring cards. */
 .node:has(> app-block-card.help-open) {
   z-index: 20 !important;
 }
 
 /* Click! Both studs pop, a ring bursts from the socket and the card is pressed down. */
-.port.clicked .port-shape {
-  animation: stud-pop 0.42s cubic-bezier(0.3, 1.6, 0.5, 1);
-}
 .port.clicked::after {
   content: '';
   position: absolute;
@@ -759,7 +687,6 @@ button:disabled {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .port.clicked .port-shape,
   .port.clicked::after,
   .node.clicked-in app-block-card,
   .node.fresh app-block-card,
@@ -784,4 +711,8 @@ button:disabled {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.node:has(.inner-card.cdk-drag-dragging) {
+  z-index: 30 !important;
 }

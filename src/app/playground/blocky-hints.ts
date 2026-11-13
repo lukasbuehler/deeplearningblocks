@@ -1,7 +1,13 @@
 import { Dataset, DATASETS } from '../learning/datasets';
-import { Board, Edge, compileBoard, newConnectionError, hasHiddenActivation } from './graph';
+import {
+  Board,
+  Edge,
+  compileBoard,
+  newConnectionError,
+  hasHiddenActivation,
+  networkParts,
+} from './graph';
 import { experimentHint } from './experiment-hints';
-import { blockName } from './block-catalog';
 
 export type HintTarget =
   | { kind: 'node'; id: string }
@@ -26,7 +32,7 @@ export function blockyHint(
   accuracy?: number,
   completed = false,
   dataset: Dataset = DATASETS.mnist,
-): BlockyHint {
+): BlockyHint | null {
   const nodeTarget = (id: string): HintTarget => ({ kind: 'node', id });
   if (rejected && board.nodes.some((n) => n.id === rejected.to)) {
     const error = newConnectionError(board, rejected.from, rejected.to);
@@ -34,7 +40,7 @@ export function blockyHint(
       return {
         id: 'connection',
         text: error,
-        why: 'Connector labels show the required shape. Each socket accepts one matching bundle. Disconnect occupied sockets first; loops are not allowed.',
+        why: 'Connector labels show the required shape. Each socket accepts one matching bundle. Detach occupied sockets first; loops are not allowed.',
         target: nodeTarget(rejected.to),
       };
   }
@@ -53,7 +59,13 @@ export function blockyHint(
       why: 'Flatten turns 28 × 28 × 1 pixels into 784 numbers. You only need it where a picture becomes a vector.',
       target: nodeTarget(image.id),
     };
-  if (mode === 'journey' && !board.nodes.some((n) => n.kind === 'dense'))
+  if (
+    mode === 'journey' &&
+    !networkParts(
+      board,
+      board.nodes.map((n) => n.id),
+    ).some(({ node }) => node.kind === 'dense')
+  )
     return {
       id: 'dense',
       text: 'Add a Dense block. Its little connections can learn from the pixels.',
@@ -73,7 +85,7 @@ export function blockyHint(
       tail = next;
     }
     const issue = compilation.issues.find(
-      (i) => i.nodeId && board.nodes.find((n) => n.id === i.nodeId)?.kind === 'softmax',
+      (i) => i.nodeId && board.nodes.find((n) => n.id === i.nodeId)?.kind === 'classifier',
     );
     if (issue)
       return {
@@ -89,25 +101,18 @@ export function blockyHint(
         why: 'Scores can be negative and do not add to 100%. Softmax converts them into probabilities.',
         target: nodeTarget(tail.id),
       };
-    return {
-      id: 'gap',
-      text: `Follow the numbers from ${blockName(tail, dataset)}. Can you connect them all the way to ${dataset.outputTitle}?`,
-      why:
-        compilation.issues[0]?.message ??
-        'Tap a bottom stud, then a matching top socket. Blocks on the paper only join the network when you connect them.',
-      target: nodeTarget(tail.id),
-    };
+    return null;
   }
   const network = compilation.network;
   if (accuracy !== undefined) return experimentHint(board, network, era, accuracy);
-  const dense = network.nodeIds
-    .map((id) => board.nodes.find((n) => n.id === id)!)
-    .find((n) => n.kind === 'dense');
+  const dense = networkParts(board, network.nodeIds).find(
+    ({ node }) => node.kind === 'dense',
+  )?.owner;
   if (mode === 'journey' && !dense)
     return {
       id: 'connect-dense',
       text: 'Put a Dense block in the connected path. Loose blocks do not run.',
-      why: `Follow the wire from Flatten through Dense to ${dataset.outputTitle}.`,
+      why: `Follow the stack from Flatten through Dense to ${dataset.outputTitle}.`,
       target: { kind: 'tray' },
     };
   const edge = dense && board.edges.find((e) => e.from === dense.id);
@@ -123,7 +128,7 @@ export function blockyHint(
       text:
         network.steps.filter((s) => s.kind === 'dense').length === 1
           ? 'Add a hidden Dense, then Sigmoid or Tanh, before the 10-neuron Dense.'
-          : 'Give these numbers a bend. Disconnect this wire and put Sigmoid or Tanh between Dense layers.',
+          : 'Give these numbers a bend. Pull the lower Dense off this stack and put Sigmoid or Tanh between the Dense layers.',
       why: 'Nonlinear activations let stacked layers describe patterns that a chain of only linear layers cannot. You do not need an activation after every Dense.',
       target:
         network.steps.filter((s) => s.kind === 'dense').length === 1
@@ -158,7 +163,7 @@ export function blockyHint(
         ? completed
           ? 'Discovery saved! Try training, or choose Next level in your guide.'
           : 'Your build is ready! Press the yellow Check build button at the top right.'
-        : 'A complete path! Follow a wire and see how its shape changes.',
+        : 'A complete stack! Follow the studs and see how their shape changes.',
     why: 'Only the connected path runs. Loose blocks can stay on your paper. You can train when you want to try real image predictions.',
     target:
       mode === 'journey' && !completed
@@ -174,24 +179,17 @@ export function blockyHint(
  */
 export function stackedDense(board: Board, path: string[]): HintTarget | null {
   let lastDense: string | null = null;
-  for (const id of path) {
-    const node = board.nodes.find((n) => n.id === id);
-    if (!node) continue;
-    const parts =
-      node.kind === 'custom'
-        ? Array.from({ length: node.repeat ?? 1 }, () => node.blocks ?? []).flat()
-        : [node];
-    for (const part of parts) {
-      if (part.kind === 'dense') {
-        if (lastDense === id) return { kind: 'node', id };
-        if (lastDense) {
-          const edge = board.edges.find((e) => e.to === id);
-          return edge ? { kind: 'edge', from: edge.from, to: edge.to } : { kind: 'node', id };
-        }
-        lastDense = id;
-      } else if (part.kind === 'activation' && part.activation !== 'linear') lastDense = null;
-      else if (part.kind !== 'activation') lastDense = null;
-    }
+  for (const { node: part, owner } of networkParts(board, path)) {
+    const id = owner.id;
+    if (part.kind === 'dense') {
+      if (lastDense === id) return { kind: 'node', id };
+      if (lastDense) {
+        const edge = board.edges.find((e) => e.to === id);
+        return edge ? { kind: 'edge', from: edge.from, to: edge.to } : { kind: 'node', id };
+      }
+      lastDense = id;
+    } else if (part.kind === 'activation' && part.activation !== 'linear') lastDense = null;
+    else if (part.kind !== 'activation') lastDense = null;
   }
   return null;
 }
