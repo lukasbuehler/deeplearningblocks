@@ -10,5 +10,6 @@
 
 - [ ] `npm run format:check`, `npm run test:core`, `npm test` and `npm run build` pass
 - [ ] New game logic has tests
+- [ ] No new dependencies, or each one is named and explained here
 - [ ] Saved boards still load (validated in `storage.ts` if block fields changed)
 - [ ] ROADMAP.md or README.md updated if behavior or plans changed

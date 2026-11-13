@@ -1,20 +1,29 @@
 name: Checks
 on:
+  # Never use pull_request_target here: it would run untrusted pull request code with write access.
   pull_request:
   push:
     branches: [main, development]
 permissions:
   contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Actions are pinned to full commit SHAs so a moved tag cannot change what runs.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      # No dependency install scripts: worms such as Shai-Hulud spread through them.
+      - run: npm ci --ignore-scripts
       - run: npm run format:check
       - run: npm run test:config
       - run: npm run test:core
