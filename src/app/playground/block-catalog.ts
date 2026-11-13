@@ -14,17 +14,10 @@ export const TILES: Tile[] = [
   {
     kind: 'dense',
     name: 'Dense',
-    description: 'Neurons that learn connections',
+    description: 'Choose how many neurons',
     era: 0,
   },
-  { kind: 'softmax', name: 'Softmax', description: '10 scores → 10 probabilities', era: 0 },
-  {
-    kind: 'activation',
-    activation: 'linear',
-    name: 'Linear',
-    description: 'Let the numbers pass through',
-    era: 0,
-  },
+  { kind: 'softmax', name: 'Softmax', description: 'Scores → probabilities', era: 0 },
   {
     kind: 'activation',
     activation: 'sigmoid',

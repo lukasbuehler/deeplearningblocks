@@ -11,6 +11,7 @@ export const LEVELS = ERAS.map((era, index) => ({
   era: index,
   dataset: (index === 0 ? 'mnist' : 'fashion-mnist') as DatasetId,
   datasetLabel: index === 0 ? DATASETS.mnist.subject : DATASETS['fashion-mnist'].subject,
+  buildLabel: ['One score layer', 'Hidden layer + Sigmoid/Tanh', 'Two hidden layers + ReLU'][index],
   task: ['Read a digit', 'Sort the wardrobe', 'Same clothes, more layers'][index],
   challenge: [
     'Connect Image → Flatten → Dense (10 neurons) → Softmax → Digit guess. Check your build above. Training is optional.',

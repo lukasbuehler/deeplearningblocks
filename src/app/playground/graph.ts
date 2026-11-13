@@ -42,8 +42,6 @@ export interface Board {
 }
 export interface BlockDefinition {
   title: string;
-  subtitle: string;
-  icon: string;
   input?: PortType;
   output?: PortType;
   height: number;
@@ -82,27 +80,34 @@ export function expandCustom(node: BlockNode): InnerBlock[] {
   return Array.from({ length: node.repeat ?? 1 }, () => node.blocks ?? []).flat();
 }
 
-export const BLOCK_WIDTH = 236;
+/** Inspect the executed layers while retaining the visible block that owns each layer. */
+export function networkParts(board: Board, path: string[]) {
+  const nodes = new Map(board.nodes.map((node) => [node.id, node]));
+  return path.flatMap((id) => {
+    const owner = nodes.get(id);
+    return owner
+      ? (owner.kind === 'custom' ? expandCustom(owner) : [owner]).map((node) => ({ node, owner }))
+      : [];
+  });
+}
+
+export const BLOCK_WIDTH = 330;
 export const BLOCKS: Record<BlockKind, BlockDefinition> = {
   image: {
-    inferWidth: () => undefined,
+    inferWidth: () => 784,
     operation: () => null,
     title: 'Handwritten digit',
-    subtitle: 'THE STARTING POINT',
-    icon: '▦',
     output: 'image',
     height: 190,
     help: 'A tiny grayscale picture. Each pixel is a number between 0 and 1. Connect it to Flatten to make a list of numbers.',
   },
   flatten: {
-    inferWidth: () => 784,
+    inferWidth: (_, input) => input,
     operation: () => ({ kind: 'flatten' }),
     title: 'Flatten',
-    subtitle: 'UNROLL THE PICTURE',
-    icon: '↳',
     input: 'image',
     output: 'vector',
-    height: 148,
+    height: 120,
     help: 'Turn 28 × 28 pixels into one list of 784 numbers. Nothing is learned or thrown away here. Only the shape changes. Use it once where the picture becomes a vector. Dense layers already produce vectors.',
   },
   dense: {
@@ -110,11 +115,9 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     inferWidth: (node) => node.units,
     operation: (node) => ({ kind: 'dense', units: node.units! }),
     title: 'Dense layer',
-    subtitle: 'MAKE CONNECTIONS',
-    icon: '✳',
     input: 'vector',
     output: 'vector',
-    height: 170,
+    height: 142,
     help: 'Every input connects to every neuron. Training adjusts the weights and biases. The input size comes from the block before this one.',
   },
   activation: {
@@ -122,23 +125,19 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     inferWidth: (_, input) => input,
     operation: (node) => ({ kind: 'activation', activation: node.activation! }),
     title: 'Activation',
-    subtitle: 'GIVE IT A LITTLE TWIST',
-    icon: '∿',
     input: 'vector',
     output: 'vector',
-    height: 172,
+    height: 146,
     help: 'Change each number without changing the length of the list. Nonlinear activations help stacked layers learn more than a single linear transformation.',
   },
   softmax: {
     inferWidth: (_, input) => input,
     operation: () => ({ kind: 'softmax' }),
     title: 'Softmax',
-    subtitle: 'SCORES TO PROBABILITIES',
-    icon: '%',
     input: 'vector',
     output: 'probabilities',
-    height: 160,
-    help: 'Turn 10 class scores into probabilities that add to 100%. Softmax learns no weights. Connect a Dense layer with 10 neurons before it.',
+    height: 140,
+    help: 'Turn any list of scores into the same number of probabilities that add to 100%. Softmax learns no weights. The output display decides how many classes are needed.',
   },
   custom: {
     config: 'custom',
@@ -149,21 +148,17 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
       ),
     operation: () => null,
     title: 'Custom block',
-    subtitle: 'BLOCKS INSIDE A BLOCK',
-    icon: '▤',
     input: 'vector',
     output: 'vector',
-    height: 236,
+    height: 206,
     help: 'A named chain of smaller blocks. Repeat stacks copies of the whole chain, and each copy learns its own weights. Take it apart to get the ordinary blocks back.',
   },
   classifier: {
     inferWidth: () => 10,
     operation: () => null,
     title: 'Digit guess',
-    subtitle: 'DISPLAY THE 10 DIGITS',
-    icon: '?',
     input: 'probabilities',
-    height: 236,
+    height: 210,
     help: 'A display for 10 probabilities, one per class. It learns nothing and adds no layers. Connect Softmax to see the network’s guess. A confident guess can still be wrong.',
   },
 };
@@ -195,26 +190,33 @@ export const freshBoard = (): Board => ({
   edges: [],
   viewport: { x: 0, y: 0, zoom: 1 },
 });
-/** Layout of an expanded custom block: a frame around full-size inner cards. */
-export const FRAME = { pad: 22, head: 146, gap: 40, foot: 52 } as const;
-
-/** The space a block takes on the paper. Expanded custom blocks grow around their inner cards. */
-export function nodeSize(node: BlockNode): { width: number; height: number } {
-  if (node.kind !== 'custom' || !node.expanded || !node.blocks?.length)
-    return { width: BLOCK_WIDTH, height: BLOCKS[node.kind].height };
-  const inner = node.blocks.reduce((sum, b) => sum + BLOCKS[b.kind].height, 0);
+/** The first recipe stays editable; only its additional copies collapse. */
+export const FRAME = { pad: 40, head: 104, gap: 0, foot: 48, inset: 18, neck: 20 } as const;
+export function customLayout(node: BlockNode) {
+  const recipeHeight = Math.max(
+    130,
+    (node.blocks ?? []).reduce((sum, b) => sum + BLOCKS[b.kind].height, 0),
+  );
+  const controlsTop = FRAME.head + recipeHeight + FRAME.neck + 16;
+  const copiesTop = controlsTop + 68;
+  const copyHeight = recipeHeight + 72;
+  const shown = node.expanded ? Math.max(0, (node.repeat ?? 1) - 1) : 0;
   return {
-    width: BLOCK_WIDTH + 2 * FRAME.pad,
-    height: FRAME.head + inner + FRAME.gap * (node.blocks.length - 1) + FRAME.foot,
+    recipeHeight,
+    controlsTop,
+    copiesTop,
+    copyHeight,
+    height: (shown ? copiesTop + shown * copyHeight : controlsTop + 44) + FRAME.foot,
   };
 }
-
+export function nodeSize(node: BlockNode): { width: number; height: number } {
+  return node.kind === 'custom'
+    ? { width: BLOCK_WIDTH + 2 * FRAME.pad, height: customLayout(node).height }
+    : { width: BLOCK_WIDTH, height: BLOCKS[node.kind].height };
+}
 export function portPosition(node: BlockNode, side: 'input' | 'output'): Point {
   const size = nodeSize(node);
-  return {
-    x: node.x + size.width / 2,
-    y: node.y + (side === 'output' ? size.height : 0),
-  };
+  return { x: node.x + size.width / 2, y: node.y + (side === 'output' ? size.height : 0) };
 }
 export function connectionError(board: Board, from: string, to: string): string | null {
   const source = board.nodes.find((n) => n.id === from),
@@ -293,9 +295,9 @@ export function newConnectionError(
   if (
     width !== undefined &&
     width !== 10 &&
-    board.nodes.find((n) => n.id === to)?.kind === 'softmax'
+    board.nodes.find((n) => n.id === to)?.kind === 'classifier'
   )
-    return `Softmax needs Vector · 10. This output is Vector · ${width}. Set the last Dense layer to 10 neurons.`;
+    return `The output display needs 10 probabilities. This output has ${width}. Set the last Dense layer before Softmax to 10 neurons.`;
   return null;
 }
 export function compileBoard(board: Board): Compilation {
@@ -359,14 +361,14 @@ export function compileBoard(board: Board): Compilation {
     } else if (block.kind === 'activation') {
       if (!ACTIVATION_VALUES.includes(block.activation!))
         return { network: null, issues: [{ nodeId: block.id, message: 'Choose an activation.' }] };
-    } else if (block.kind === 'softmax' && width !== 10) {
+    } else if (block.kind === 'classifier' && width !== 10) {
       return {
         network: null,
         issues: [
           {
             nodeId: block.id,
             port: 'input',
-            message: `Softmax needs 10 class scores, but gets ${width}. Set the last Dense layer to 10 neurons.`,
+            message: `The output display needs 10 probabilities, but gets ${width}. Set the last Dense layer before Softmax to 10 neurons.`,
           },
         ],
       };
@@ -398,9 +400,9 @@ const ACTIVATION_VALUES = ['linear', 'sigmoid', 'tanh', 'relu'];
 export const MAX_DENSE_LAYERS = 7;
 
 /** Why a custom block cannot compile, or null when its recipe and repeat count are usable. */
-export function customBlockIssue(node: BlockNode): string | null {
+export function customBlockIssue(node: BlockNode, allowEmpty = false): string | null {
   const blocks = node.blocks ?? [];
-  if (!blocks.length || blocks.length > MAX_INNER_BLOCKS)
+  if ((!allowEmpty && !blocks.length) || blocks.length > MAX_INNER_BLOCKS)
     return `A custom block holds 1 to ${MAX_INNER_BLOCKS} blocks.`;
   if (!Number.isInteger(node.repeat ?? 1) || (node.repeat ?? 1) < 1 || node.repeat! > MAX_REPEAT)
     return `Repeat a custom block 1 to ${MAX_REPEAT} times.`;

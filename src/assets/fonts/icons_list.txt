@@ -34,3 +34,7 @@ unfold_more
 view_stream
 close_fullscreen
 open_in_full
+question_mark
+delete_forever
+volume_up
+volume_off
