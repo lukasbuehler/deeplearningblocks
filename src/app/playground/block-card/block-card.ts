@@ -1,6 +1,15 @@
 import { MatIcon } from '@angular/material/icon';
 import { Dataset, DATASETS } from '../../learning/datasets';
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { PercentPipe } from '@angular/common';
 import { DigitPreview } from '../../learning/digit-preview/digit-preview';
 import { BlockIcon } from '../block-icon/block-icon';
@@ -20,9 +29,16 @@ import {
   validDenseInputs,
   validDenseUnits,
 } from '../graph';
+/** Pixels between the edges of stacked copies of a repeated custom block. */
+export const STACK_STEP = 5;
 @Component({
   selector: 'app-block-card',
-  host: { '[style.width.px]': 'size().width' },
+  host: {
+    '[style.width.px]': 'size().width',
+    '(document:pointerdown)': 'closeHelp($event)',
+    '(document:keydown.escape)': 'helpOpen.set(false)',
+    '[class.help-open]': 'helpOpen()',
+  },
   imports: [MatIcon, PercentPipe, DigitPreview, BlockIcon],
   templateUrl: './block-card.html',
   styleUrl: './block-card.scss',
@@ -51,10 +67,8 @@ export class BlockCard {
   readonly draw = output<void>();
   readonly probabilities = input<number[]>([]);
   readonly choose = output<MouseEvent>();
-  readonly remove = output<void>();
   readonly nextDigit = output<void>();
   readonly configure = output<Partial<BlockNode> & { id: string }>();
-  readonly definition = computed(() => BLOCKS[this.node().kind]);
   readonly size = computed(() => nodeSize(this.node()));
   readonly expanded = computed(() => this.node().kind === 'custom' && !!this.node().expanded);
   /** The recipe as full blocks with the vector sizes flowing between them. */
@@ -72,6 +86,32 @@ export class BlockCard {
       : null,
   );
   readonly name = computed(() => blockName(this.node(), this.dataset()));
+  /** The "?" bubble: what this block does, in plain words. */
+  readonly helpOpen = signal(false);
+  readonly help = computed(() =>
+    this.node().kind === 'activation'
+      ? (ACTIVATIONS.find((a) => a.value === this.node().activation)?.explanation ??
+        BLOCKS.activation.help)
+      : BLOCKS[this.node().kind].help,
+  );
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  closeHelp(event: PointerEvent): void {
+    if (this.helpOpen() && !this.host.nativeElement.contains(event.target as Node))
+      this.helpOpen.set(false);
+  }
+  /**
+   * Repeated custom blocks look like a stack with one card edge per copy.
+   * Each copy adds an orange edge with its own black outline, offset a little further.
+   */
+  readonly stackShadow = computed(() => {
+    const copies = this.node().kind === 'custom' ? this.repeat() : 1;
+    const layers = ['6px 6px 0 #171717'];
+    for (let i = 1; i < copies; i++) {
+      const offset = 6 + i * STACK_STEP;
+      layers.push(`${offset}px ${offset}px 0 -3px #ffb86b`, `${offset}px ${offset}px 0 0 #171717`);
+    }
+    return layers.join(', ');
+  });
   readonly activationDetail = computed(
     () =>
       ({

@@ -42,8 +42,6 @@ export interface Board {
 }
 export interface BlockDefinition {
   title: string;
-  subtitle: string;
-  icon: string;
   input?: PortType;
   output?: PortType;
   height: number;
@@ -88,8 +86,6 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     inferWidth: () => undefined,
     operation: () => null,
     title: 'Handwritten digit',
-    subtitle: 'THE STARTING POINT',
-    icon: '▦',
     output: 'image',
     height: 190,
     help: 'A tiny grayscale picture. Each pixel is a number between 0 and 1. Connect it to Flatten to make a list of numbers.',
@@ -98,11 +94,9 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     inferWidth: () => 784,
     operation: () => ({ kind: 'flatten' }),
     title: 'Flatten',
-    subtitle: 'UNROLL THE PICTURE',
-    icon: '↳',
     input: 'image',
     output: 'vector',
-    height: 148,
+    height: 120,
     help: 'Turn 28 × 28 pixels into one list of 784 numbers. Nothing is learned or thrown away here. Only the shape changes. Use it once where the picture becomes a vector. Dense layers already produce vectors.',
   },
   dense: {
@@ -110,11 +104,9 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     inferWidth: (node) => node.units,
     operation: (node) => ({ kind: 'dense', units: node.units! }),
     title: 'Dense layer',
-    subtitle: 'MAKE CONNECTIONS',
-    icon: '✳',
     input: 'vector',
     output: 'vector',
-    height: 170,
+    height: 142,
     help: 'Every input connects to every neuron. Training adjusts the weights and biases. The input size comes from the block before this one.',
   },
   activation: {
@@ -122,22 +114,18 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
     inferWidth: (_, input) => input,
     operation: (node) => ({ kind: 'activation', activation: node.activation! }),
     title: 'Activation',
-    subtitle: 'GIVE IT A LITTLE TWIST',
-    icon: '∿',
     input: 'vector',
     output: 'vector',
-    height: 172,
+    height: 146,
     help: 'Change each number without changing the length of the list. Nonlinear activations help stacked layers learn more than a single linear transformation.',
   },
   softmax: {
     inferWidth: (_, input) => input,
     operation: () => ({ kind: 'softmax' }),
     title: 'Softmax',
-    subtitle: 'SCORES TO PROBABILITIES',
-    icon: '%',
     input: 'vector',
     output: 'probabilities',
-    height: 160,
+    height: 140,
     help: 'Turn 10 class scores into probabilities that add to 100%. Softmax learns no weights. Connect a Dense layer with 10 neurons before it.',
   },
   custom: {
@@ -149,21 +137,17 @@ export const BLOCKS: Record<BlockKind, BlockDefinition> = {
       ),
     operation: () => null,
     title: 'Custom block',
-    subtitle: 'BLOCKS INSIDE A BLOCK',
-    icon: '▤',
     input: 'vector',
     output: 'vector',
-    height: 236,
+    height: 206,
     help: 'A named chain of smaller blocks. Repeat stacks copies of the whole chain, and each copy learns its own weights. Take it apart to get the ordinary blocks back.',
   },
   classifier: {
     inferWidth: () => 10,
     operation: () => null,
     title: 'Digit guess',
-    subtitle: 'DISPLAY THE 10 DIGITS',
-    icon: '?',
     input: 'probabilities',
-    height: 236,
+    height: 210,
     help: 'A display for 10 probabilities, one per class. It learns nothing and adds no layers. Connect Softmax to see the network’s guess. A confident guess can still be wrong.',
   },
 };
@@ -196,7 +180,7 @@ export const freshBoard = (): Board => ({
   viewport: { x: 0, y: 0, zoom: 1 },
 });
 /** Layout of an expanded custom block: a frame around full-size inner cards. */
-export const FRAME = { pad: 22, head: 146, gap: 40, foot: 52 } as const;
+export const FRAME = { pad: 22, head: 112, gap: 40, foot: 52 } as const;
 
 /** The space a block takes on the paper. Expanded custom blocks grow around their inner cards. */
 export function nodeSize(node: BlockNode): { width: number; height: number } {

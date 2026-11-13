@@ -64,6 +64,24 @@ export class PaperCanvas {
   readonly selectedEdge = signal<Edge | null>(null);
   readonly pointer = signal<Point | null>(null);
   readonly draft = signal<BlockNode | null>(null);
+  readonly trash = viewChild<ElementRef<HTMLButtonElement>>('trash');
+  readonly selectedBlockName = computed(() => {
+    const node = this.game.selectedNode();
+    return node ? this.blockName(node) : null;
+  });
+  /** True while a dragged block hovers over the trashcan, so letting go deletes it. */
+  readonly overTrash = signal(false);
+  private inTrash(point: { x: number; y: number }): boolean {
+    const r = this.trash()?.nativeElement.getBoundingClientRect();
+    // A little slack around the can makes it an easy target for fingers.
+    return (
+      !!r &&
+      point.x > r.left - 16 &&
+      point.x < r.right + 16 &&
+      point.y > r.top - 16 &&
+      point.y < r.bottom + 16
+    );
+  }
   readonly trayGhost = signal<{ tile: Tile; point: Point } | null>(null);
   readonly panning = signal(false);
   /** Blocks picked to become one custom block, in the order they were picked. */
@@ -81,18 +99,28 @@ export class PaperCanvas {
   readonly visualNodes = computed(() =>
     this.game.board().nodes.map((n) => (n.id === this.draft()?.id ? this.draft()! : n)),
   );
-  readonly wires = computed(() =>
-    this.game.board().edges.map((edge) => {
+  /** Last drawn route per wire, so a dragged card does not make near-tied wires flip sides. */
+  private readonly lastRoutes = new Map<string, Point[]>();
+  readonly wires = computed(() => {
+    const routes = new Map<string, Point[]>();
+    const wires = this.game.board().edges.map((edge) => {
       const from = this.visualNodes().find((n) => n.id === edge.from)!,
         to = this.visualNodes().find((n) => n.id === edge.to)!;
+      const key = `${edge.from}>${edge.to}`;
+      const points = routeWire(from, to, this.visualNodes(), this.lastRoutes.get(key));
+      routes.set(key, points);
       return {
         ...edge,
-        path: roundedWire(routeWire(from, to, this.visualNodes())),
+        points,
+        path: roundedWire(points),
         label: `${this.blockName(from)} to ${this.blockName(to)}`,
         type: BLOCKS[from.kind].output,
       };
-    }),
-  );
+    });
+    this.lastRoutes.clear();
+    for (const [key, points] of routes) this.lastRoutes.set(key, points);
+    return wires;
+  });
   readonly wireSource = computed(() => this.visualNodes().find((n) => n.id === this.pending()));
   readonly wireBadge = computed(() => {
     const source = this.wireSource();
@@ -164,7 +192,9 @@ export class PaperCanvas {
     const from = nodes.find((n) => n.id === t.from),
       to = nodes.find((n) => n.id === t.to);
     if (!from || !to) return null;
-    const points = routeWire(from, to, nodes),
+    const points =
+        this.wires().find((w) => w.from === t.from && w.to === t.to)?.points ??
+        routeWire(from, to, nodes),
       i = Math.floor((points.length - 1) / 2);
     return { x: (points[i].x + points[i + 1].x) / 2, y: (points[i].y + points[i + 1].y) / 2 };
   });
@@ -337,6 +367,7 @@ export class PaperCanvas {
     this.draft.set({ ...node });
   }
   moveDrag(event: CdkDragMove, node: BlockNode): void {
+    this.overTrash.set(this.inTrash(event.pointerPosition));
     const p = event.source.getFreeDragPosition();
     this.draft.set({
       ...node,
@@ -345,6 +376,13 @@ export class PaperCanvas {
     });
   }
   endDrag(event: CdkDragEnd, node: BlockNode): void {
+    this.overTrash.set(false);
+    if (this.inTrash(event.dropPoint) && !this.game.trainer.busy()) {
+      this.draft.set(null);
+      this.deleteNode(node.id);
+      setTimeout(() => (this.dragged = false), 0);
+      return;
+    }
     const position = event.source.getFreeDragPosition();
     const moved = {
         ...node,
@@ -509,6 +547,11 @@ export class PaperCanvas {
       edges: this.game.board().edges.filter((e) => e.from !== edge.from || e.to !== edge.to),
     });
     this.selectedEdge.set(null);
+  }
+  /** Tapping the trashcan deletes the selected block, for anyone who cannot drag. */
+  deleteSelected(): void {
+    const id = this.game.selected();
+    if (id && this.game.board().nodes.some((n) => n.id === id)) this.deleteNode(id);
   }
   deleteNode(id: string): void {
     if (this.game.trainer.busy()) return;

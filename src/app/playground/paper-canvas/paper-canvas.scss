@@ -228,6 +228,44 @@
   text-align: center;
   font-weight: 800;
 }
+.trash {
+  position: absolute;
+  left: 24px;
+  bottom: 78px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 3px solid #171717;
+  border-radius: 12px;
+  background: #fffdf1;
+  box-shadow: 3px 3px 0 #171717;
+  color: #171717;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+.trash mat-icon.mat-icon {
+  width: 30px;
+  height: 30px;
+  font-size: 30px;
+}
+.trash:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+/* While a block is dragged the can grows into an obvious target; it turns red underneath one. */
+.trash.armed {
+  opacity: 1;
+  transform: scale(1.3);
+  transform-origin: bottom left;
+}
+.trash.hot {
+  background: #ff7770;
+  transform: scale(1.5) rotate(-6deg);
+}
 .canvas-hint {
   position: absolute;
   bottom: 36px;
@@ -474,6 +512,44 @@ button:disabled {
   z-index: 1;
 }
 @media (max-width: 1000px) {
+  .trash {
+    position: absolute;
+    left: 24px;
+    bottom: 78px;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: 3px solid #171717;
+    border-radius: 12px;
+    background: #fffdf1;
+    box-shadow: 3px 3px 0 #171717;
+    color: #171717;
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease;
+  }
+  .trash mat-icon.mat-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 30px;
+  }
+  .trash:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  /* While a block is dragged the can grows into an obvious target; it turns red underneath one. */
+  .trash.armed {
+    opacity: 1;
+    transform: scale(1.3);
+    transform-origin: bottom left;
+  }
+  .trash.hot {
+    background: #ff7770;
+    transform: scale(1.5) rotate(-6deg);
+  }
   .canvas-hint {
     display: none;
   }
@@ -625,4 +701,9 @@ button:disabled {
 .incompatible .port-label {
   outline-style: dashed;
   background: #ffe4df;
+}
+
+/* An open "?" bubble sits above neighbouring cards. */
+.node:has(> app-block-card.help-open) {
+  z-index: 20 !important;
 }

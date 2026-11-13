@@ -4,58 +4,51 @@
   [class.expanded]="expanded()"
   [class.selected]="selected()"
   [style.height.px]="size().height"
+  [style.box-shadow]="stackShadow()"
   (click)="choose.emit($event)"
   (mousedown)="stopControls($event)"
   (touchstart)="stopControls($event)"
 >
   <header>
-    <app-block-icon [kind]="node().kind" [activation]="node().activation" /><span class="eyebrow">{{
-      node().kind === 'classifier' ? 'TEN CLASSES. ONE GUESS.' : definition().subtitle
-    }}</span>
     @if (node().kind === 'custom') {
-      <button
-        class="delete"
-        [attr.aria-label]="expanded() ? 'Minimize ' + name() : 'Expand ' + name()"
-        [attr.title]="expanded() ? 'Minimize' : 'Show the blocks inside'"
-        [attr.aria-expanded]="expanded()"
-        (click)="$event.stopPropagation(); toggleExpanded()"
-      >
-        <mat-icon>{{ expanded() ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
-      </button>
+      <h2 class="custom-title">
+        <span class="name-fit">
+          <span class="name-mirror" aria-hidden="true">{{
+            typedName() ?? (baseName() || 'Custom')
+          }}</span>
+          <input
+            class="name-input"
+            type="text"
+            [maxLength]="maxNameLength"
+            [value]="baseName()"
+            placeholder="Custom"
+            aria-label="Name this block, such as Transformer"
+            title="Name this block"
+            [disabled]="busy()"
+            (blur)="rename($event)"
+            (keydown.enter)="rename($event)"
+            (input)="typedName.set($any($event.target).value || 'Custom')" /></span
+        ><span>block</span>
+      </h2>
+    } @else {
+      <h2>{{ name() }}</h2>
     }
-    @if (!nested()) {
-      <button
-        class="delete"
-        [disabled]="busy()"
-        (click)="$event.stopPropagation(); remove.emit()"
-        [attr.aria-label]="'Delete ' + name()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
-    }
+    <button
+      class="icon-button help"
+      type="button"
+      [class.open]="helpOpen()"
+      [attr.aria-label]="'What does ' + name() + ' do?'"
+      [attr.aria-expanded]="helpOpen()"
+      title="What does this block do?"
+      (click)="$event.stopPropagation(); helpOpen.set(!helpOpen())"
+    >
+      <mat-icon>question_mark</mat-icon>
+    </button>
   </header>
-  @if (node().kind === 'custom') {
-    <h2 class="custom-title">
-      <span class="name-fit">
-        <span class="name-mirror" aria-hidden="true">{{
-          typedName() ?? (baseName() || 'Custom')
-        }}</span>
-        <input
-          class="name-input"
-          type="text"
-          [maxLength]="maxNameLength"
-          [value]="baseName()"
-          placeholder="Custom"
-          aria-label="Name this block, such as Transformer"
-          title="Name this block"
-          [disabled]="busy()"
-          (blur)="rename($event)"
-          (keydown.enter)="rename($event)"
-          (input)="typedName.set($any($event.target).value || 'Custom')" /></span
-      ><span>block</span>
-    </h2>
-  } @else {
-    <h2>{{ name() }}</h2>
+  @if (helpOpen()) {
+    <p class="help-bubble" role="note" (click)="$event.stopPropagation(); helpOpen.set(false)">
+      {{ help() }}
+    </p>
   }
   @switch (node().kind) {
     @case ('image') {
@@ -208,6 +201,16 @@
             <mat-icon>add</mat-icon>
           </button>
         </span>
+        <button
+          class="inspect"
+          type="button"
+          [attr.aria-label]="expanded() ? 'Minimize ' + name() : 'Show the blocks inside ' + name()"
+          [attr.title]="expanded() ? 'Minimize' : 'Show the blocks inside'"
+          [attr.aria-expanded]="expanded()"
+          (click)="$event.stopPropagation(); toggleExpanded()"
+        >
+          <mat-icon>{{ expanded() ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
+        </button>
         <button
           class="inspect"
           type="button"

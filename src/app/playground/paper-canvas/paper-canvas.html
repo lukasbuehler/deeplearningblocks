@@ -117,7 +117,6 @@
           [actual]="game.trainer.test()?.labels?.[game.sample()] ?? undefined"
           [probabilities]="game.probabilities()"
           (choose)="selectNode(node.id, $event)"
-          (remove)="deleteNode(node.id)"
           (configure)="game.configure($event)"
           (takeApart)="takeApartNode(node.id)"
           (nextDigit)="game.nextSample()"
@@ -217,6 +216,25 @@
     ><button aria-label="Zoom in" (click)="zoom(1.2)"><mat-icon>add</mat-icon></button
     ><button class="fit" (click)="fit()">Fit all <mat-icon>fit_screen</mat-icon></button>
   </div>
+  <button
+    #trash
+    class="trash"
+    type="button"
+    [class.armed]="!!draft()"
+    [class.hot]="overTrash()"
+    [disabled]="game.trainer.busy() || (!draft() && !selectedBlockName())"
+    [attr.aria-label]="
+      selectedBlockName() ? 'Throw away ' + selectedBlockName() : 'Trashcan: drag a block here'
+    "
+    [attr.title]="
+      selectedBlockName()
+        ? 'Throw away ' + selectedBlockName()
+        : 'Drag a block here to throw it away'
+    "
+    (click)="deleteSelected()"
+  >
+    <mat-icon>{{ overTrash() ? 'delete_forever' : 'delete' }}</mat-icon>
+  </button>
   <span class="canvas-hint">Drag paper to pan · Scroll to zoom</span>
   <button
     class="fab"

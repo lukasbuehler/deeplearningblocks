@@ -38,3 +38,37 @@ test('snapped blocks retain their shared port without a loop', () => {
     b: BlockNode = { id: 'b', kind: 'dense', units: 32, x: 30, y: 188 };
   assert.deepEqual(routeWire(a, b, [a, b]), [portPosition(a, 'output'), portPosition(b, 'input')]);
 });
+test('a dragged card does not make a near-tied wire flip back and forth', () => {
+  const flatten: BlockNode = { id: 'f', kind: 'flatten', x: 380, y: 100 };
+  const dense: BlockNode = { id: 'd', kind: 'dense', units: 32, x: 520, y: 330 };
+  const side = (route: { x: number }[], image: BlockNode) =>
+    route[2].x < image.x + BLOCK_WIDTH / 2 ? 'left' : 'right';
+  // Sweep the image card right and back; count how often its wire changes side.
+  let previous: ReturnType<typeof routeWire> | undefined;
+  let last = '',
+    flips = 0;
+  const positions = [
+    ...Array.from({ length: 300 }, (_, i) => 100 + i),
+    ...Array.from({ length: 300 }, (_, i) => 399 - i),
+  ];
+  for (const x of positions) {
+    const image: BlockNode = { id: 'i', kind: 'image', x, y: 300 };
+    previous = routeWire(image, flatten, [image, flatten, dense], previous);
+    const now = side(previous, image);
+    if (last && now !== last) flips++;
+    last = now;
+  }
+  // Exactly one switch each way; a tie would flicker many times around the crossover.
+  assert.ok(flips <= 2, `flipped ${flips} times`);
+});
+test('routes never contain jogs of only a few pixels', () => {
+  const flatten: BlockNode = { id: 'f', kind: 'flatten', x: 380, y: 100 };
+  for (let x = 0; x < 400; x++) {
+    const image: BlockNode = { id: 'i', kind: 'image', x, y: 280 };
+    const route = routeWire(image, flatten, [image, flatten]);
+    for (let i = 2; i < route.length - 1; i++) {
+      const length = Math.abs(route[i].x - route[i - 1].x) + Math.abs(route[i].y - route[i - 1].y);
+      assert.ok(length >= 14, `jog of ${length}px at x=${x}: ${JSON.stringify(route)}`);
+    }
+  }
+});
