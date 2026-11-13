@@ -23,10 +23,17 @@ export async function loadDigits(
   const response = await fetch(`/data/${dataset}-${split}.bin.gz`, {
     signal: AbortSignal.timeout(20000),
   });
-  if (!response.ok || !response.body)
+  if (!response.ok)
     throw new Error(`Could not load ${DATASETS[dataset].name}. Check your connection and retry.`);
-  const buffer = await new Response(
-    response.body.pipeThrough(new DecompressionStream('gzip')),
-  ).arrayBuffer();
+  // Some servers (such as the Angular dev server) send .gz files with Content-Encoding: gzip, so
+  // the browser has already unzipped them. Only gunzip bytes that still start with the gzip magic.
+  const raw = await response.arrayBuffer();
+  const head = new Uint8Array(raw, 0, Math.min(2, raw.byteLength));
+  const buffer =
+    head[0] === 0x1f && head[1] === 0x8b
+      ? await new Response(
+          new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip')),
+        ).arrayBuffer()
+      : raw;
   return decodeDigits(buffer, split === 'train' ? 3000 : 500);
 }
