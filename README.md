@@ -25,6 +25,7 @@ Open the localhost URL printed by Wrangler (normally http://localhost:8787). The
 2. The top-right button becomes yellow **Check build** when the level objective is met. Blocky points to it. Check to save your discovery and unlock Sigmoid and Tanh. Training is optional.
 3. Choose **Next level** to start a separate canvas for the 1986 clothing challenge (Fashion-MNIST). Build a hidden Dense with Sigmoid or Tanh before Dense (10 neurons). Check that build to unlock ReLU and the 2010 level. Earlier canvases remain accessible in the guide.
 4. Keep Fashion-MNIST for a comparison: try two hidden Dense layers with ReLU before Dense (10 neurons) and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
+5. Checking the 2010 build unlocks the 2017 level, **Attention is all you need**. On text paper, build a tiny transformer that writes like Shakespeare: Shakespeare text → Letter embedding → Position, then Layer norm → Self-attention → Add and Layer norm → Dense → ReLU → Dense → Add, each Add fed by a shortcut wire around its part, and finally Layer norm → Dense (65) → Softmax → Shakespeare writer. Train to watch the writer improve after each round, then type your own start and press **Write**.
 
 Drag the paper to pan, scroll to zoom, or use the zoom and Fit all controls. Compatible nearby studs snap together within 24 screen pixels. Blocks stay connected when moved apart. Select a block to read its explanation in the optional guide. Delete removes its incident wires; Undo and Redo recover complete edits, including an entire drag.
 
@@ -52,7 +53,7 @@ Each Journey level has a stable ID and its own positioned blocks, wires, viewpor
 - `src/app/playground/block-card/` and `experiment-notebook/`: accessible HTML controls, predictions and results.
 - `src/app/playground/model-builder.ts`: explicit TensorFlow Flatten, Dense, Activation and softmax layers.
 - `src/app/learning/`: historical source notes, model lifecycle, cancellation, inference and validated dataset loading. `progress.ts` remains the legacy reader.
-- `public/data/`: deterministic, locally served MNIST subset (about 570 KB compressed).
+- `public/data/`: deterministic, locally served MNIST and Fashion-MNIST subsets, and Tiny Shakespeare (434 KB compressed).
 
 The old canvas prototype and Amplify scaffolding are preserved in Git history. This app needs no AWS resources, server-side rendering, accounts, database, or remote training service.
 
@@ -130,7 +131,17 @@ Dataset metadata lives in `src/app/learning/datasets.ts`, with level assignments
 
 Existing boards, completions and notebooks remain intact. Notebook rows without a dataset field are historical MNIST results, even on a level that now uses Fashion-MNIST. They keep that label and are excluded from the clothing level's latest score. New rows save their dataset ID. The v4 storage shape stays compatible.
 
-See [dataset attribution and reproduction](public/data/README.md). Both current datasets use 28 × 28 grayscale input and ten classes. Color, sequence and other input shapes require separate graph/runtime work; the registry does not imply those are already supported.
+See [dataset attribution and reproduction](public/data/README.md). Both current datasets use 28 × 28 grayscale input and ten classes. Color and other image shapes still require separate graph/runtime work.
+
+## Text level (2017)
+
+The attention level is an end-to-end slice of the transformer path. The levels that would come before it (letters and tokens, embeddings, attention games) are still to come. Its board has `world: 'text'`. In that world, Dense, activations, custom blocks and Softmax act on a **sequence**: one row of numbers per letter, shown as `32 letters × 48`. Sequence studs may feed several sockets, and **Add** has a second, orange shortcut socket, so residual connections are ordinary wires drawn by the existing router. Picture boards keep one wire per stud.
+
+`compileBoard` turns a text board into steps that name the step they read from (`from`, plus `skip` for Add), keeping only blocks on a wired path from the text to the writer. The level is checked by structure, not exact layout: Letter embedding, Position, a Layer norm, Softmax, and two shortcuts, one around Self-attention and one around a Dense–ReLU part. Blocky explains each missing piece.
+
+The model (`src/app/learning/text-model.ts`) uses TensorFlow.js core operations: embedding lookup, learned positions, layer norm, causal multi-head self-attention, position-wise Dense layers and the shortcut additions. One experiment is 600 Adam steps (learning rate 0.01) of 32 windows of 32 letters, in six rounds. Each round checks loss and next-letter accuracy on held-out text and writes a short sample. The reference build (width 48, 4 heads, one transformer block) has 26,897 parameters. On the CPU backend it reaches a held-out loss near 2.2 after 300 steps. WebGL is used when available. Generation feeds back the last 32 letters, picks each letter with a temperature, and streams into the writer. PyTorch export writes a matching `nn.Module` whose `forward` follows the wires, with the same data split, recipe and a `write()` function.
+
+See [dataset attribution and reproduction](public/data/README.md) for Tiny Shakespeare.
 
 ## Material icons
 
