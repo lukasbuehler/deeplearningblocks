@@ -80,6 +80,8 @@
         (cdkDragMoved)="moveDrag($event, node)"
         (cdkDragEnded)="endDrag($event, node)"
         [class.snap-ready]="snap()?.from === node.id || snap()?.to === node.id"
+        [class.fresh]="fresh() === node.id"
+        [class.clicked-in]="clicked()?.to === node.id"
       >
         @if (definitions[node.kind].input) {
           <button
@@ -89,6 +91,7 @@
             [class.probability-port]="definitions[node.kind].input === 'probabilities'"
             [class.image-port]="definitions[node.kind].input === 'image'"
             [class.compatible]="compatible(node.id)"
+            [class.clicked]="clicked()?.to === node.id"
             [class.incompatible]="pending() && !compatible(node.id)"
             [attr.title]="wireError(node.id)"
             [attr.data-input]="node.id"
@@ -129,6 +132,7 @@
             [class.probability-port]="definitions[node.kind].output === 'probabilities'"
             [class.image-port]="definitions[node.kind].output === 'image'"
             [class.active]="pending() === node.id"
+            [class.clicked]="clicked()?.from === node.id"
             [disabled]="game.trainer.busy()"
             [attr.aria-label]="
               'Output of ' + blockName(node) + ' ' + (i + 1) + ': ' + portLabel(node, 'output')
@@ -178,14 +182,6 @@
       Connect the studs!
     </div>
   }
-  @if (pending()) {
-    <div class="connection-prompt" role="status">
-      Pick a glowing socket
-      <button (click)="cancelWire()" aria-label="Cancel connection">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-  }
   @if (picked().length && !selectedEdge() && !pending() && !game.trainer.busy()) {
     <div class="pick-actions" role="status">
       <span>
@@ -214,7 +210,16 @@
     <button aria-label="Zoom out" (click)="zoom(1 / 1.2)"><mat-icon>remove</mat-icon></button
     ><span>{{ (game.board().viewport.zoom * 100).toFixed(0) }}%</span
     ><button aria-label="Zoom in" (click)="zoom(1.2)"><mat-icon>add</mat-icon></button
-    ><button class="fit" (click)="fit()">Fit all <mat-icon>fit_screen</mat-icon></button>
+    ><button class="fit" (click)="fit()">Fit all <mat-icon>fit_screen</mat-icon></button
+    ><button
+      class="sound"
+      [attr.aria-label]="sound.muted() ? 'Turn sounds on' : 'Turn sounds off'"
+      [attr.aria-pressed]="!sound.muted()"
+      [attr.title]="sound.muted() ? 'Sounds off' : 'Sounds on'"
+      (click)="sound.toggleMute()"
+    >
+      <mat-icon>{{ sound.muted() ? 'volume_off' : 'volume_up' }}</mat-icon>
+    </button>
   </div>
   <button
     #trash
@@ -222,6 +227,7 @@
     type="button"
     [class.armed]="!!draft()"
     [class.hot]="overTrash()"
+    [class.gulp]="gulping()"
     [disabled]="game.trainer.busy() || (!draft() && !selectedBlockName())"
     [attr.aria-label]="
       selectedBlockName() ? 'Throw away ' + selectedBlockName() : 'Trashcan: drag a block here'
@@ -235,6 +241,7 @@
   >
     <mat-icon>{{ overTrash() ? 'delete_forever' : 'delete' }}</mat-icon>
   </button>
+  <span class="visually-hidden" aria-live="polite">{{ announcement() }}</span>
   <span class="canvas-hint">Drag paper to pan · Scroll to zoom</span>
   <button
     class="fab"

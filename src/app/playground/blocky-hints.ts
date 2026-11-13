@@ -143,18 +143,14 @@ export function blockyHint(
       why: 'More layers add capacity, but do not guarantee better guesses. Build first; training is an optional experiment.',
       target,
     };
-  if (
-    mode === 'sandbox' &&
-    network.steps.filter((s) => s.kind === 'dense').length > 1 &&
-    !network.steps.some((s) => s.kind === 'activation' && s.activation !== 'linear')
-  ) {
+  const stacked = era >= 1 ? stackedDense(board, network.nodeIds) : null;
+  if (stacked)
     return {
       id: 'linear-stack',
-      text: 'Want to try a bend between these Dense layers?',
-      why: 'Stacking linear layers still gives a linear transformation. A nonlinear activation between layers can express different patterns. Your current design is valid too.',
-      target,
+      text: 'Two Dense layers in a row work like just one. Put an activation like ReLU or Tanh between them!',
+      why: 'Dense multiplies and adds. Doing that twice is still just multiplying and adding, so two Dense layers in a row can only learn what one Dense layer could. An activation bends the numbers in between, and that bend lets the second layer learn new patterns. A Linear activation does not bend anything.',
+      target: stacked,
     };
-  }
   return {
     id: completed ? 'complete' : 'ready',
     text:
@@ -169,4 +165,33 @@ export function blockyHint(
         ? { kind: 'check' }
         : nodeTarget(board.nodes.find((n) => n.kind === 'classifier')!.id),
   };
+}
+
+/**
+ * Finds a Dense that feeds another Dense with nothing nonlinear in between, including inside and
+ * across custom blocks. Linear activations do not count, since they change nothing.
+ * Returns where to point: the wire between the two blocks, or the custom block that holds both.
+ */
+export function stackedDense(board: Board, path: string[]): HintTarget | null {
+  let lastDense: string | null = null;
+  for (const id of path) {
+    const node = board.nodes.find((n) => n.id === id);
+    if (!node) continue;
+    const parts =
+      node.kind === 'custom'
+        ? Array.from({ length: node.repeat ?? 1 }, () => node.blocks ?? []).flat()
+        : [node];
+    for (const part of parts) {
+      if (part.kind === 'dense') {
+        if (lastDense === id) return { kind: 'node', id };
+        if (lastDense) {
+          const edge = board.edges.find((e) => e.to === id);
+          return edge ? { kind: 'edge', from: edge.from, to: edge.to } : { kind: 'node', id };
+        }
+        lastDense = id;
+      } else if (part.kind === 'activation' && part.activation !== 'linear') lastDense = null;
+      else if (part.kind !== 'activation') lastDense = null;
+    }
+  }
+  return null;
 }

@@ -33,6 +33,7 @@ import { MIN_ZOOM, toWorld, wirePath, zoomAt, snapTarget, closestPointOnRect } f
 import { GameService } from '../game.service';
 import { BlockCard } from '../block-card/block-card';
 import { routeWire, roundedWire } from '../wire-router';
+import { SoundService } from '../sound';
 import { tilesFor, Tile, blockName } from '../block-catalog';
 import { BlockIcon } from '../block-icon/block-icon';
 import { Blocky } from '../blocky/blocky';
@@ -64,6 +65,28 @@ export class PaperCanvas {
   readonly selectedEdge = signal<Edge | null>(null);
   readonly pointer = signal<Point | null>(null);
   readonly draft = signal<BlockNode | null>(null);
+  readonly sound = inject(SoundService);
+  /** The wire that just clicked into place, for its little pop animation. */
+  readonly clicked = signal<{ from: string; to: string } | null>(null);
+  /** The block that just landed from the toy box, and whether the trashcan is gulping. */
+  readonly fresh = signal<string | null>(null);
+  readonly gulping = signal(false);
+  /** Read out by screen readers instead of a visible snackbar. */
+  readonly announcement = signal('');
+  private flash<T>(target: { set(value: T): void }, value: T, reset: T, ms = 520): void {
+    target.set(value);
+    setTimeout(() => target.set(reset), ms);
+  }
+  private celebrateConnection(from: string, to: string): void {
+    this.game.message.set('');
+    this.sound.play('click');
+    this.flash(this.clicked, { from, to }, null);
+    const name = (id: string) => {
+      const node = this.game.board().nodes.find((n) => n.id === id);
+      return node ? this.blockName(node) : 'block';
+    };
+    this.announcement.set(`Click! ${name(from)} connected to ${name(to)}.`);
+  }
   readonly trash = viewChild<ElementRef<HTMLButtonElement>>('trash');
   readonly selectedBlockName = computed(() => {
     const node = this.game.selectedNode();
@@ -397,6 +420,7 @@ export class PaperCanvas {
     };
     if (snap) board = connect(board, snap.from, snap.to);
     this.game.edit(board);
+    if (snap) this.celebrateConnection(snap.from, snap.to);
     event.source.setFreeDragPosition({
       x: finalNode.x * this.game.board().viewport.zoom,
       y: finalNode.y * this.game.board().viewport.zoom,
@@ -506,8 +530,8 @@ export class PaperCanvas {
       return;
     }
     this.game.edit(connect(this.game.board(), from, id));
-    this.game.message.set('Click! Your blocks are connected.');
     this.cancelWire();
+    this.celebrateConnection(from, id);
   }
   portLabel(node: BlockNode, side: 'input' | 'output'): string {
     const type = BLOCKS[node.kind][side];
@@ -558,7 +582,9 @@ export class PaperCanvas {
     this.game.edit(removeNode(this.game.board(), id));
     this.picked.update((ids) => ids.filter((other) => other !== id));
     this.cancelWire();
-    this.game.message.set('Block removed. Undo can bring it back.');
+    this.sound.play('trash');
+    this.flash(this.gulping, true, false);
+    this.announcement.set('Block thrown away. Undo can bring it back.');
   }
   locked(tile: Tile): boolean {
     return tile.era > this.game.unlockedEra();
@@ -644,7 +670,9 @@ export class PaperCanvas {
     this.game.edit({ ...this.game.board(), nodes: [...this.game.board().nodes, node] });
     this.game.selected.set(node.id);
     this.tray.set(false);
-    this.game.message.set(`${tile.name} is on the paper. Connect its studs!`);
+    this.sound.play('drop');
+    this.flash(this.fresh, node.id, null);
+    this.announcement.set(`${tile.name} is on the paper.`);
   }
   clearSelection(): void {
     this.game.selected.set(null);

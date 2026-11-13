@@ -414,7 +414,6 @@
   font-weight: 900;
   pointer-events: none;
 }
-.connection-prompt,
 .wire-actions {
   position: absolute;
   bottom: 83px;
@@ -428,12 +427,6 @@
   font-size: 12px;
   z-index: 4;
   white-space: nowrap;
-}
-.connection-prompt button {
-  border: 0;
-  background: none;
-  font-size: 20px;
-  margin-left: 15px;
 }
 .wire-actions {
   background: #fff;
@@ -614,9 +607,6 @@ button:disabled {
     gap: 6px;
     font-size: 10px;
   }
-  .connection-prompt {
-    font-size: 11px;
-  }
   .tray-heading h2 {
     font-size: 18px;
   }
@@ -706,4 +696,92 @@ button:disabled {
 /* An open "?" bubble sits above neighbouring cards. */
 .node:has(> app-block-card.help-open) {
   z-index: 20 !important;
+}
+
+/* Click! Both studs pop, a ring bursts from the socket and the card is pressed down. */
+.port.clicked .port-shape {
+  animation: stud-pop 0.42s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.port.clicked::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border: 3px solid #171717;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: click-ring 0.5s ease-out forwards;
+}
+.node.clicked-in app-block-card {
+  animation: press-in 0.32s ease-out;
+}
+.node.fresh app-block-card {
+  animation: land 0.4s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.trash.gulp mat-icon.mat-icon {
+  animation: gulp 0.5s ease-out;
+}
+@keyframes stud-pop {
+  40% {
+    transform: scale(1.35);
+  }
+}
+@keyframes click-ring {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes press-in {
+  35% {
+    transform: translateY(4px);
+  }
+}
+@keyframes land {
+  from {
+    transform: scale(0.85);
+    opacity: 0.4;
+  }
+}
+@keyframes gulp {
+  30% {
+    transform: scale(1.3) rotate(-12deg);
+  }
+  60% {
+    transform: scale(0.9) rotate(8deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .port.clicked .port-shape,
+  .port.clicked::after,
+  .node.clicked-in app-block-card,
+  .node.fresh app-block-card,
+  .trash.gulp mat-icon.mat-icon {
+    animation: none;
+  }
+}
+.canvas-tools .sound {
+  display: grid;
+  place-items: center;
+  border-left: 2px solid #171717;
+}
+.canvas-tools .sound mat-icon.mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
