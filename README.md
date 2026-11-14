@@ -24,7 +24,8 @@ Open the localhost URL printed by Wrangler (normally http://localhost:8787). The
 1. Open **+ Blocks**, add Flatten, Dense and Softmax, then connect Image → Flatten → Dense (10 neurons) → Softmax → Digit guess. You can also tap a tile to add it and tap an output followed by an input to connect.
 2. The top-right button becomes yellow **Check build** when the level objective is met. Blocky points to it. Check to save your discovery and unlock Sigmoid and Tanh. Training is optional.
 3. Choose **Next level** to start a separate canvas for the 1986 clothing challenge (Fashion-MNIST). Build a hidden Dense with Sigmoid or Tanh before Dense (10 neurons). Check that build to unlock ReLU and the 2010 level. Earlier canvases remain accessible in the guide.
-4. Keep Fashion-MNIST for a comparison: try two hidden Dense layers with ReLU before Dense (10 neurons) and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
+4. Keep Fashion-MNIST for a comparison: try two hidden Dense layers with ReLU before Dense (10 neurons) and check the final build. Optionally train for five passes, compare experiments in the Training panel, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
+5. Checking the 2010 build unlocks the 2017 level, **Attention is all you need**. On text paper, build a tiny transformer that writes like Shakespeare: Shakespeare text → Letter embedding → Position, then Layer norm → Self-attention → Add and Layer norm → Dense → ReLU → Dense → Add, each Add fed by a shortcut wire around its part, and finally Layer norm → Dense (65) → Softmax → Shakespeare writer. Train to watch the writer improve after each round, then type your own start and press **Write**.
 
 Drag the paper to pan, scroll to zoom, or use the zoom and Fit all controls. Compatible nearby studs snap together within 24 screen pixels. Blocks stay connected when moved apart. Select a block to read its explanation in the optional guide. Delete removes its incident wires; Undo and Redo recover complete edits, including an entire drag.
 
@@ -34,11 +35,23 @@ Keyboard: Tab to a block or port. Enter selects ports; arrows move a focused blo
 
 The dates refer to influential papers, not exclusive invention claims. The lab consistently uses modern Adam optimization and softmax classification; it is not a historical implementation of the perceptron. Source links are embedded in each chapter. MNIST supplies the first level and Sandbox; Fashion-MNIST supplies levels 2 and 3. CIFAR-10 is reserved for a later CNN level.
 
+## Look inside a block
+
+Click **?** on Dense, an activation, or Softmax to open its inspector. Dense lets you select a neuron and inspect its actual incoming weights, bias, and input contributions. The heatmap uses the input pixel positions when the layer reads 784 pixels. Activations show an interactive function graph and optional mathematical notation. Softmax shows its formula and the current input scores and output probabilities.
+
+A complete connected network is required for runtime values. Opening an inspector initializes the real model before training; training uses those same initialized weights. Open an inspector during training to see periodic updates, or afterward to inspect learned weights. Each repeated custom-block copy has its own weights. Stopping keeps the latest weights available for inspection. Changing the network or workspace resets its runtime, and model weights are not saved across reloads. Starting another experiment after completed training initializes a fresh model.
+
+## Training panel
+
+Open **Training** on the right on desktop, or at the bottom on phones. The desktop panel uses the full canvas height; the phone view opens as an overlay bottom sheet. It shows the actual optimizer, learning rate, batch size, training budget, loss, and data split alongside the learning curve and experiment history. Expand **What do these settings mean?** for explanations and Adam's momentum settings. Training settings are currently fixed rather than editable.
+
+Both recipes use Adam with beta1 = 0.9 and beta2 = 0.999. Images use learning rate 0.003, batches of 64 and 5 epochs on 3,000 training images, then evaluate on 500 separate test images. Text uses learning rate 0.01, batches of 32 sequences, a 32-character context, and 600 steps grouped into 6 rounds. The first 90% of Shakespeare is training text and the final 10% is held out.
+
 ## What actually runs
 
-TensorFlow.js loads only when training starts. It compiles the connected image-to-classifier path into a fresh model and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from the selected dataset’s official test split. No model or image data is uploaded. On configured HTTPS deployments, PostHog receives limited usage events such as level completion and training outcomes; see [the event contract](DEPLOYMENT.md#event-contract). WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
+TensorFlow.js loads when training or model inspection first needs it. It compiles the connected image-to-classifier path into a model and trains for five epochs on 3,000 images, then evaluates on 500 images drawn separately from the selected dataset’s official test split. No model or image data is uploaded. On configured HTTPS deployments, PostHog receives limited usage events such as level completion and training outcomes; see [the event contract](DEPLOYMENT.md#event-contract). WebGL runs when available, with TensorFlow’s CPU fallback. Training speed depends on the device.
 
-Input pixels are normalized to [0, 1], Each Dense block is one layer with 1 to 128 neurons. Its input width comes from the connected block, or from the player's pick while nothing is wired in. Activations and Softmax are separate blocks. A custom block groups a wired chain of Dense and activation blocks; Repeat stacks copies that each learn their own weights, and the block can be expanded to show its parts at full size. The final score vector must contain 10 values for the separate Softmax block. The purple output block displays class probabilities and adds no trainable parameters. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
+Input pixels are normalized to [0, 1], Each Dense block is one layer with 1 to 128 neurons. Its input width comes from the connected block, or from the player's pick while nothing is wired in. Activations and Softmax are separate blocks. A custom block groups a wired chain of Dense and activation blocks; Repeat stacks copies that each learn their own weights, and the block can be expanded to show its parts at full size. Softmax preserves the number of scores; the image output display requires 10 probabilities. The purple output block displays class probabilities and adds no trainable parameters. Adam uses a learning rate of 0.003 with batches of 64 and categorical cross-entropy. Initial weights use fixed seeds; shuffled training order still produces variation. The small test set is for exploration, not a benchmark. Repeatedly tuning against it can overfit the evaluation.
 
 Each Journey level has a stable ID and its own positioned blocks, wires, viewport, completion badge and last eight experiments. Sandbox has a separate workspace. Saves use `dlb-playground-v4` localStorage. V3 migration preserves the existing shared canvas in the previously active era, distributes notebook entries by their recorded era, and preserves earned unlocks. Earlier canvases cannot be reconstructed from the old single-board save, so those start with loose endpoints and retain their badges. The old `dlb-playground-v3` key remains untouched for recovery. V2 and `dlb-lab-v1` migration are also supported. Undo histories are separate per level for the current session. Fresh paper clears only the selected canvas and notebook; earned discoveries remain. Trained weights stay in memory, so switching workspaces or reloading requires retraining. Moving, zooming, and editing unused blocks preserves predictions. Level and mode switching are disabled during training. Storage failures do not block play.
 
@@ -52,7 +65,7 @@ Each Journey level has a stable ID and its own positioned blocks, wires, viewpor
 - `src/app/playground/block-card/` and `experiment-notebook/`: accessible HTML controls, predictions and results.
 - `src/app/playground/model-builder.ts`: explicit TensorFlow Flatten, Dense, Activation and softmax layers.
 - `src/app/learning/`: historical source notes, model lifecycle, cancellation, inference and validated dataset loading. `progress.ts` remains the legacy reader.
-- `public/data/`: deterministic, locally served MNIST subset (about 570 KB compressed).
+- `public/data/`: deterministic, locally served MNIST and Fashion-MNIST subsets, and Tiny Shakespeare (434 KB compressed).
 
 The old canvas prototype and Amplify scaffolding are preserved in Git history. This app needs no AWS resources, server-side rendering, accounts, database, or remote training service.
 
@@ -130,7 +143,17 @@ Dataset metadata lives in `src/app/learning/datasets.ts`, with level assignments
 
 Existing boards, completions and notebooks remain intact. Notebook rows without a dataset field are historical MNIST results, even on a level that now uses Fashion-MNIST. They keep that label and are excluded from the clothing level's latest score. New rows save their dataset ID. The v4 storage shape stays compatible.
 
-See [dataset attribution and reproduction](public/data/README.md). Both current datasets use 28 × 28 grayscale input and ten classes. Color, sequence and other input shapes require separate graph/runtime work; the registry does not imply those are already supported.
+See [dataset attribution and reproduction](public/data/README.md). Both current datasets use 28 × 28 grayscale input and ten classes. Color and other image shapes still require separate graph/runtime work.
+
+## Text level (2017)
+
+The attention level is an end-to-end slice of the transformer path. The levels that would come before it (letters and tokens, embeddings, attention games) are still to come. Its board has `world: 'text'`. In that world, Dense, activations, custom blocks and Softmax act on a **sequence**: one row of numbers per letter, shown as `32 letters × 48`. Sequence studs may feed several sockets, and **Add** has a second, orange shortcut socket, so residual connections are ordinary wires drawn by the existing router. Picture boards keep one wire per stud.
+
+`compileBoard` turns a text board into steps that name the step they read from (`from`, plus `skip` for Add), keeping only blocks on a wired path from the text to the writer. The level is checked by structure, not exact layout: Letter embedding, Position, a Layer norm, Softmax, and two shortcuts, one around Self-attention and one around a Dense–ReLU part. Blocky explains each missing piece.
+
+The model (`src/app/learning/text-model.ts`) uses TensorFlow.js core operations: embedding lookup, learned positions, layer norm, causal multi-head self-attention, position-wise Dense layers and the shortcut additions. One experiment is 600 Adam steps (learning rate 0.01) of 32 windows of 32 letters, in six rounds. Each round checks loss and next-letter accuracy on held-out text and writes a short sample. The reference build (width 48, 4 heads, one transformer block) has 26,897 parameters. On the CPU backend it reaches a held-out loss near 2.2 after 300 steps. WebGL is used when available. Generation feeds back the last 32 letters, picks each letter with a temperature, and streams into the writer. PyTorch export writes a matching `nn.Module` whose `forward` follows the wires, with the same data split, recipe and a `write()` function.
+
+See [dataset attribution and reproduction](public/data/README.md) for Tiny Shakespeare.
 
 ## Material icons
 

@@ -87,11 +87,17 @@ app-brand {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 285px minmax(0, 1fr);
+  grid-template-columns: 285px minmax(0, 1fr) 56px;
   position: relative;
 }
 .workspace.guide-closed {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 56px;
+}
+.workspace.training-open {
+  grid-template-columns: 285px minmax(0, 1fr) clamp(320px, 28vw, 400px);
+}
+.workspace.guide-closed.training-open {
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 400px);
 }
 .guide {
   background: #f4f0e2;
@@ -502,7 +508,10 @@ button:disabled {
     display: none;
   }
   .workspace {
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr) 56px;
+  }
+  .workspace.training-open:not(.guide-closed) {
+    grid-template-columns: 260px minmax(0, 1fr) 320px;
   }
   .guide {
     padding: 20px 17px;
@@ -513,8 +522,13 @@ button:disabled {
   }
 }
 @media (max-width: 899px) {
-  .workspace {
+  .workspace,
+  .workspace.guide-closed,
+  .workspace.training-open,
+  .workspace.guide-closed.training-open,
+  .workspace.training-open:not(.guide-closed) {
     grid-template-columns: minmax(0, 1fr);
+    padding-bottom: 52px;
   }
   .guide {
     position: absolute;
