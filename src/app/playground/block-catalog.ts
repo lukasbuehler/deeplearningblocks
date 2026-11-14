@@ -92,7 +92,7 @@ export const TILES: Tile[] = [
   {
     kind: 'custom',
     name: 'Custom block',
-    description: 'Dense → activation. Repeat it ×N',
+    description: 'Your empty recipe. Repeat it ×N',
     era: 1,
   },
   {

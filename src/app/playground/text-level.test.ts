@@ -116,3 +116,19 @@ test('custom blocks keep shortcut sockets and refuse a branch in the middle', ()
   branched.nodes.find((n) => n.id === 'down')!.units = 96;
   assert.match(pickedChain(branched, ['up', 'relu']) as string, /branches off/);
 });
+
+test('Blocky distinguishes a working language model from the requested attention build', () => {
+  const board = transformerBoard();
+  // A valid shortcut-free embedding-to-writer model, with all transformer pieces loose.
+  board.edges = [
+    { from: 'text', to: 'embed' },
+    { from: 'embed', to: 'scores' },
+    { from: 'scores', to: 'softmax' },
+    { from: 'softmax', to: 'writer' },
+  ];
+  assert.ok(compileBoard(board).network);
+  const hint = blockyHint(board, 3, 'journey');
+  assert.equal(hint.id, 'text-connect-attention');
+  assert.match(hint.text, /attention is not on its road/);
+  assert.deepEqual(hint.target, { kind: 'node', id: 'attn' });
+});

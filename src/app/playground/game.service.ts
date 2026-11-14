@@ -2,7 +2,7 @@ import { Analytics } from '../analytics/analytics';
 import type { LearningEventProperties } from '../analytics/analytics-policy';
 import { DATASETS } from '../learning/datasets';
 import { LAST_ERA, LEVELS, LevelId, meetsLevel } from './levels';
-import { CONTEXT, decode, encode } from '../learning/shakespeare';
+import { CLASSIC_LINES, CLASSIC_PROMPT, encode, guessingQuestion } from '../learning/shakespeare';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { TrainingService } from '../learning/training.service';
 import { ACTIVATIONS } from '../learning/curriculum';
@@ -70,18 +70,12 @@ export class GameService {
       this.trainer.test()?.pixels.slice(this.sample() * 784, (this.sample() + 1) * 784),
   );
   /** The writer's starting words and how adventurous its letter picks are. */
-  readonly prompt = signal('ROMEO:\n');
+  readonly prompt = signal(CLASSIC_PROMPT);
   readonly temperature = signal(0.8);
-  /** One practice question from held-out text: 32 letters and the letter that follows. */
-  readonly snippet = computed(() => {
-    const region = this.trainer.text()?.validation;
-    if (!region) return null;
-    const start = (this.sample() * 7919) % (region.length - CONTEXT - 1);
-    return {
-      letters: decode(region.subarray(start, start + CONTEXT)),
-      next: decode(region.subarray(start + CONTEXT, start + CONTEXT + 1)),
-    };
-  });
+  /** A famous line with its next letter hidden: the guessing game the model practices. */
+  readonly snippet = computed(() =>
+    guessingQuestion(CLASSIC_LINES[this.sample() % CLASSIC_LINES.length]),
+  );
   readonly historyVersion = signal(0);
   private readonly histories = new Map<string, BoardHistory>();
   private get history(): BoardHistory {

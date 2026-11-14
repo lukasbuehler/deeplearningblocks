@@ -1,5 +1,6 @@
 import {
   CONTEXT,
+  CLASSIC_PROMPT,
   SHAKESPEARE_ALPHABET,
   SHAKESPEARE_SOURCE,
   TEXT_TRAINING,
@@ -179,7 +180,7 @@ for step in range(${TEXT_TRAINING.steps}):
 `;
 
 const writingCode = `@torch.no_grad()
-def write(prompt="ROMEO:\\n", letters=300, temperature=0.8):
+def write(prompt=${JSON.stringify(CLASSIC_PROMPT)}, letters=300, temperature=0.8):
     """Pick one letter at a time. Lower temperature plays safe; higher takes chances."""
     model.eval()
     ids = [to_id[letter] for letter in prompt if letter in to_id] or [0]

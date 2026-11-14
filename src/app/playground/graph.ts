@@ -67,7 +67,18 @@ export interface Board {
   viewport: Viewport;
   /** Missing on every picture board, including all saves made before text levels existed. */
   world?: 'text';
+  /**
+   * Shortcut wires whose plug plate is parked on the paper instead of in an Add. They show the
+   * shape a shortcut carries and do not run. `x, y` is the bottom middle of the plate.
+   */
+  parked?: ParkedShortcut[];
 }
+export interface ParkedShortcut {
+  from: string;
+  x: number;
+  y: number;
+}
+export const MAX_PARKED = 20;
 export const worldOf = (board: Pick<Board, 'world'>): World =>
   board.world === 'text' ? 'text' : 'images';
 /** The one starting block and one output display each world needs. */
@@ -357,18 +368,32 @@ export function customLayout(node: BlockNode) {
 export function nodeSize(node: BlockNode): { width: number; height: number } {
   return node.kind === 'custom'
     ? { width: BLOCK_WIDTH + 2 * FRAME.pad, height: customLayout(node).height }
-    : { width: BLOCK_WIDTH, height: BLOCKS[node.kind].height };
+    : node.kind === 'add'
+      ? { width: BLOCK_WIDTH + SHORTCUT_LANE, height: BLOCKS.add.height }
+      : { width: BLOCK_WIDTH, height: BLOCKS[node.kind].height };
 }
-/** A side socket keeps Add's shortcut clear of the main stack connector. */
-export const SKIP_PORT_OFFSET = BLOCK_WIDTH / 2;
+/**
+ * Add is two blocks wide: the main part stacks in the column like any block, and the shortcut
+ * lane to its right has its own socket on top, where a shortcut's plug plate clicks in.
+ */
+export const SHORTCUT_LANE = BLOCK_WIDTH;
+/** The thin plate at the end of a shortcut wire. Its studs match the socket it fits. */
+export const PLATE_HEIGHT = 16;
+/** The part of a block that stacks in the column. Only Add is wider than that. */
+export const mainWidth = (node: BlockNode) =>
+  node.kind === 'add' ? BLOCK_WIDTH : nodeSize(node).width;
 export function portPosition(node: BlockNode, side: 'input' | 'output', port?: InputPort): Point {
   const size = nodeSize(node);
+  if (side === 'input' && port === 'skip')
+    return { x: node.x + BLOCK_WIDTH + SHORTCUT_LANE / 2, y: node.y };
   return {
-    x: node.x + size.width / 2 + (side === 'input' && port === 'skip' ? SKIP_PORT_OFFSET : 0),
-    y:
-      node.y +
-      (side === 'input' && port === 'skip' ? size.height / 2 : side === 'output' ? size.height : 0),
+    x: node.x + mainWidth(node) / 2,
+    y: node.y + (side === 'output' ? size.height : 0),
   };
+}
+/** Where a shortcut leaves a block: its visible bottom-right corner. */
+export function shortcutStart(node: BlockNode): Point {
+  return { x: node.x + nodeSize(node).width, y: node.y + nodeSize(node).height - 18 };
 }
 const samePort = (edge: Edge, port?: InputPort) => (edge.port ?? null) === (port ?? null);
 /** Text mistakes get text-specific advice. */
@@ -457,10 +482,12 @@ export function connect(board: Board, from: string, to: string, port?: InputPort
     : { ...board, edges: [...board.edges, port ? { from, to, port } : { from, to }] };
 }
 export function removeNode(board: Board, id: string): Board {
+  const parked = board.parked?.filter((p) => p.from !== id);
   return {
     ...board,
     nodes: board.nodes.filter((n) => n.id !== id),
     edges: board.edges.filter((e) => e.from !== id && e.to !== id),
+    ...(parked ? { parked } : {}),
   };
 }
 export function inferShapes(board: Board): Map<string, { input?: number; output?: number }> {

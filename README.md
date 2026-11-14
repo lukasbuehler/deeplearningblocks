@@ -147,7 +147,13 @@ See [dataset attribution and reproduction](public/data/README.md). Both current 
 
 ## Text level (2017)
 
-The attention level is an end-to-end slice of the transformer path. The levels that would come before it (letters and tokens, embeddings, attention games) are still to come. Its board has `world: 'text'`. In that world, Dense, activations, custom blocks and Softmax act on a **sequence**: one row of numbers per letter, shown as `32 letters × 48`. Sequence studs may feed several sockets, and **Add** has a second, orange shortcut socket, so residual connections are ordinary wires drawn by the existing router. Picture boards keep one wire per stud.
+The attention level is an end-to-end slice of the transformer path. The levels that would come before it (letters and tokens, embeddings, attention games) are still to come. Its board has `world: 'text'`. In that world, Dense, activations, custom blocks and Softmax act on a **sequence**: one row of numbers per letter, shown as `32 letters × 48`. Sequence outputs can feed the main road and shortcut wires. **Add** is two blocks wide: the left input and output stay aligned with the main stack, and the right input takes a shortcut plate. Picture boards keep one wire per stud.
+
+Open **Shakespeare cooking recipe** for an optional step-by-step build. The first starter line and writer prompt begin with “To be or”. The input card rotates recognizable lines instead of arbitrary text fragments. This is an illustration of next-letter prediction; training still uses the bundled corpus.
+
+Drag a block’s orange corner handle to make a shortcut wire with a thin studded plate. Drop the plate in Add’s right socket, or park it on the paper and move it later. Matching sockets glow green; mismatched sizes explain the problem and keep the plate parked. Parked plates save with the board but do not execute. Arrow keys move a focused plate, Enter fits it, Delete removes it, and Escape cancels a drag. Undo restores connections, parked ends and deletions. **Fit all** includes parked ends.
+
+Custom blocks from the toy box start empty. Drop Dense and activation blocks into their editable recipe. Dragging a recipe part to the trash removes it from the recipe, including its repetitions, in one undoable edit.
 
 `compileBoard` turns a text board into steps that name the step they read from (`from`, plus `skip` for Add), keeping only blocks on a wired path from the text to the writer. The level is checked by structure, not exact layout: Letter embedding, Position, a Layer norm, Softmax, and two shortcuts, one around Self-attention and one around a Dense–ReLU part. Blocky explains each missing piece.
 

@@ -21,6 +21,9 @@
     @if (outputFeedback()) {
       <path [class]="'connector-glow ' + outputFeedback()" [attr.d]="outputEdge()" />
     }
+    @if (skipFeedback()) {
+      <path [class]="'connector-glow ' + skipFeedback()" [attr.d]="skipEdge()" />
+    }
     <path [attr.d]="outline()" />
     @for (label of connectorLabels(); track $index) {
       <text [attr.x]="label.x" [attr.y]="label.y" text-anchor="middle">{{ label.text }}</text>
@@ -302,7 +305,7 @@
       </p>
     }
     @case ('text') {
-      <div class="text-window" [attr.aria-label]="'A practice question from ' + dataset().name">
+      <div class="text-window" aria-label="A famous line with its next letter hidden">
         @if (snippet(); as q) {
           <span class="window-letters">{{ visible(q.letters) }}</span
           ><span class="next-letter" [attr.title]="'Next letter: ' + showNext(q.next)">?</span>
@@ -310,13 +313,13 @@
           <span class="window-letters">Loading Shakespeare…</span>
         }
       </div>
-      <p class="detail">{{ context }} letters in · guess the next one</p>
+      <p class="detail">What letter comes next? The model plays this guessing game.</p>
       <button
         class="next-snippet"
         (click)="$event.stopPropagation(); nextDigit.emit()"
         [disabled]="!snippet() || busy()"
       >
-        Next lines <mat-icon>refresh</mat-icon>
+        Another line <mat-icon>refresh</mat-icon>
       </button>
     }
     @case ('embedding') {
@@ -386,7 +389,7 @@
       </p>
     }
     @case ('add') {
-      <div class="flatten-picture"><b>main</b><span>+</span><b>shortcut</b></div>
+      <div class="flatten-picture"><b>Main road</b><span>+</span><b>Shortcut plate</b></div>
       <p class="detail">Number by number · no weights</p>
     }
     @case ('writer') {

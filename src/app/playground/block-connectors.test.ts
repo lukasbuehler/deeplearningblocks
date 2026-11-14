@@ -130,3 +130,11 @@ test('text connectors retain sequence shapes and ignore shortcuts when inferring
   assert.ok(connectorTeeth(shapes.get('up')!.output!, 330).some((t) => t.label === '32×96'));
   assert.ok(connectorTeeth(shapes.get('text')!.output!, 330).some((t) => t.label === '32 letters'));
 });
+
+test('Add preview lanes do not overlap their teeth, and sequence connectors keep both dimensions', () => {
+  const small = connectorTeeth({ type: 'sequence', size: 48 }, 90);
+  assert.equal(small.length, 1);
+  assert.ok(small[0].x >= 0 && small[0].x + small[0].width <= 90);
+  assert.equal(small[0].label, '32×48');
+  assert.ok(connectorTeeth({ type: 'sequence', size: 4 }, 330).some((t) => t.label === '32×4'));
+});

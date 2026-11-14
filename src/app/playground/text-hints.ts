@@ -1,5 +1,13 @@
 import { VOCAB_SIZE } from '../learning/shakespeare';
-import { BLOCKS, BlockKind, Board, compileBoard, hasTransformerBlock, skippedKinds } from './graph';
+import {
+  BLOCKS,
+  BlockKind,
+  Board,
+  compileBoard,
+  hasTransformerBlock,
+  skippedKinds,
+  networkParts,
+} from './graph';
 import type { BlockyHint, HintTarget } from './blocky-hints';
 
 /** What the text level needs at least, in the order a player builds it. */
@@ -41,7 +49,7 @@ const RECIPE: { kind: BlockKind; count: number; id: string; text: string; why: s
   },
   {
     kind: 'dense',
-    count: 2,
+    count: 3,
     id: 'text-dense',
     text: `Add Dense blocks: a feed-forward part (for example 96, then 48 neurons) and one with ${VOCAB_SIZE} neurons for the letter scores.`,
     why: 'After attention gathers clues, Dense layers think about each letter on its own. The last Dense gives one score per letter in the alphabet.',
@@ -83,7 +91,11 @@ export function textHint(
   const done = !!network && hasTransformerBlock(network);
   if (!done) {
     const missing = RECIPE.find(
-      (r) => board.nodes.filter((n) => n.kind === r.kind).length < r.count,
+      (r) =>
+        networkParts(
+          board,
+          board.nodes.map((n) => n.id),
+        ).filter(({ node }) => node.kind === r.kind).length < r.count,
     );
     if (missing)
       return { id: missing.id, text: missing.text, why: missing.why, target: { kind: 'tray' } };
@@ -94,8 +106,8 @@ export function textHint(
     if (at?.kind === 'add' && /two wires/.test(issue.message))
       return {
         id: 'text-shortcut',
-        text: 'Now the shortcut! Drag a wire from the block before this part into Add’s orange socket.',
-        why: 'A striped stud can feed two sockets. One wire goes through the part, the shortcut goes around it, and Add joins them.',
+        text: 'Now the shortcut! Drag the orange corner handle on the block before this part to Add’s right-hand socket.',
+        why: 'The main road goes into the left socket. A wire carries a thin plate around the part into the right socket. You can park that plate on the paper first.',
         target: node(at.id),
       };
     return {
@@ -108,6 +120,15 @@ export function textHint(
     };
   }
   if (!done) {
+    if (!network.steps.some((s) => s.kind === 'attention')) {
+      const attention = board.nodes.find((n) => n.kind === 'attention');
+      return {
+        id: 'text-connect-attention',
+        text: 'This path can guess letters, but attention is not on its road yet. Put Layer norm → Self-attention → Add after Position.',
+        why: 'Only connected blocks run. A straight path to the writer is a valid language model, but this level teaches attention and two shortcuts. Open the cooking recipe for the whole plan.',
+        target: attention ? node(attention.id) : { kind: 'tray' },
+      };
+    }
     const steps = network.steps;
     const blockOf = (kind: BlockKind) =>
       network.nodeIds
@@ -150,7 +171,7 @@ export function textHint(
       mode === 'journey' && !completed
         ? 'Your transformer is ready! Press the yellow Check build button at the top right.'
         : 'A transformer! Press Train and watch the writer learn, round by round.',
-    why: 'Training takes about a minute here in your browser. You can stop at any time.',
+    why: 'Training speed depends on your device. Open the cooking recipe if you want a step-by-step guide. You can stop training at any time.',
     target: mode === 'journey' && !completed ? { kind: 'check' } : node(writer.id),
   };
 }

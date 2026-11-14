@@ -54,10 +54,45 @@
           (keydown.space)="$event.preventDefault(); chooseEdge(wire)"
         />
       }
+      @for (shortcut of shortcutPlates(); track shortcut.key) {
+        <path class="wire-outline" [attr.d]="shortcut.path" />
+        <path class="wire shortcut-wire" [attr.d]="shortcut.path" />
+      }
       @if (ghostPath()) {
         <path class="ghost-wire" [attr.d]="ghostPath()" />
       }
     </svg>
+    @for (shortcut of shortcutPlates(); track shortcut.key) {
+      <button
+        class="shortcut-plate"
+        [class.carried]="shortcut.carried"
+        [class.new-plate]="shortcut.key === 'carried'"
+        [style.left.px]="shortcut.plate.x - shortcutLane / 2"
+        [style.top.px]="shortcut.plate.y - plateHeight"
+        [style.width.px]="shortcutLane"
+        [style.height.px]="plateHeight"
+        [disabled]="game.trainer.busy()"
+        [attr.aria-label]="
+          'Shortcut plate from ' +
+          shortcut.from +
+          '. Drag or use arrows to move; Enter to fit; Delete to remove.'
+        "
+        (mousedown)="$event.stopPropagation()"
+        (touchstart)="$event.stopPropagation()"
+        (pointerdown)="startShortcut($event, shortcut.from, shortcut)"
+        (pointermove)="moveShortcut($event)"
+        (pointerup)="endShortcut($event)"
+        (pointercancel)="cancelShortcut()"
+        (keydown)="plateKey($event, shortcut)"
+      >
+        <svg [attr.viewBox]="'0 0 ' + shortcutLane + ' ' + plateHeight" aria-hidden="true">
+          <path [attr.d]="shortcut.outline" />
+          @for (label of shortcut.labels; track $index) {
+            <text [attr.x]="label.x" [attr.y]="label.y" text-anchor="middle">{{ label.text }}</text>
+          }
+        </svg>
+      </button>
+    }
     @for (node of game.board().nodes; track node.id; let i = $index) {
       <div
         class="node"
@@ -86,6 +121,7 @@
         @if (boardWorld() === 'text' && definitions[node.kind].input) {
           <button
             class="port input"
+            [style.width.px]="mainWidth(node)"
             (mousedown)="$event.stopPropagation()"
             (touchstart)="$event.stopPropagation()"
             [class.probability-port]="portType(node, 'input') === 'probabilities'"
@@ -110,6 +146,8 @@
         @if (definitions[node.kind].skip) {
           <button
             class="port input skip-port sequence-port"
+            [style.left.px]="mainWidth(node)"
+            [style.width.px]="shortcutLane"
             (mousedown)="$event.stopPropagation()"
             (touchstart)="$event.stopPropagation()"
             [class.compatible]="compatible(node.id, 'skip')"
@@ -133,10 +171,38 @@
             ><span class="port-label">{{ portLabel(node, 'input', 'skip') }}</span>
           </button>
         }
+        @if (branches(node)) {
+          <button
+            class="shortcut-knob"
+            [style.left.px]="size(node).width - 16"
+            [style.top.px]="size(node).height - 34"
+            [disabled]="game.trainer.busy()"
+            [attr.aria-label]="'Drag shortcut from ' + blockName(node)"
+            title="Drag a shortcut plate from here. You can park it on the paper."
+            (mousedown)="$event.stopPropagation()"
+            (touchstart)="$event.stopPropagation()"
+            (pointerdown)="startShortcut($event, node.id)"
+            (pointermove)="moveShortcut($event)"
+            (pointerup)="endShortcut($event)"
+            (pointercancel)="cancelShortcut()"
+            (keydown.enter)="$event.preventDefault(); parkShortcut(node.id)"
+            (keydown.space)="$event.preventDefault(); parkShortcut(node.id)"
+          >
+            ↗
+          </button>
+        }
         <app-block-card
           [dataset]="game.dataset()"
           [node]="node"
           [connectorShape]="connectorShapes().get(node.id)"
+          [skipShape]="skipShapes().get(node.id)"
+          [skipFeedback]="
+            shortcutCandidate()?.to === node.id
+              ? shortcutCandidate()?.error
+                ? 'invalid'
+                : 'valid'
+              : null
+          "
           [zoom]="game.board().viewport.zoom"
           [inputFeedback]="edgeFeedback().get(node.id + ':input') ?? null"
           [outputFeedback]="edgeFeedback().get(node.id + ':output') ?? null"
@@ -174,6 +240,7 @@
         @if (boardWorld() === 'text' && definitions[node.kind].output) {
           <button
             class="port output"
+            [style.width.px]="mainWidth(node)"
             (mousedown)="$event.stopPropagation()"
             (touchstart)="$event.stopPropagation()"
             [class.probability-port]="portType(node, 'output') === 'probabilities'"
@@ -222,7 +289,46 @@
     (highlight)="helperVisible.set($event)"
     (show)="showClueTarget()"
   />
-  @if (game.board().edges.length === 0 && game.board().nodes.length === 2) {
+  @if (boardWorld() === 'text') {
+    <details class="text-recipe">
+      <summary>Shakespeare cooking recipe</summary>
+      <p>
+        A guide you can follow. Build the main road by stacking; use orange corner handles for
+        shortcuts.
+      </p>
+      <ol>
+        <li>
+          <b>Give letters numbers and seats.</b><br />Shakespeare text → Letter embedding (48) →
+          Position.
+        </li>
+        <li><b>Let letters look back.</b><br />Layer norm → Self-attention (4 heads) → Add.</li>
+        <li>
+          <b>Fit the first shortcut.</b><br />Drag Position’s orange corner handle to the right
+          socket of that Add. The main road goes in its left socket.
+        </li>
+        <li>
+          <b>Think about each letter.</b><br />Continue from Add: Layer norm → Dense (96) → ReLU →
+          Dense (48) → another Add. Run a shortcut from the first Add into the second Add’s right
+          socket.
+        </li>
+        <li>
+          <b>Choose the next letter.</b><br />Layer norm → Dense (65) → Softmax → Shakespeare
+          writer.
+        </li>
+        <li>
+          <b>Try your story.</b><br />Check build, then Train. The writer continues “To be or ”. You
+          can change its start after training.
+        </li>
+      </ol>
+      <p>
+        A shortcut plate can wait on the paper. Drag it again when you have a matching Add socket.
+        Both Add inputs need the same number of values per letter.
+      </p>
+    </details>
+  }
+  @if (
+    boardWorld() !== 'text' && game.board().edges.length === 0 && game.board().nodes.length === 2
+  ) {
     <div class="first-prompt">
       <span>1.</span> Open the toy box.<br /><span>2.</span>
       {{
@@ -286,10 +392,13 @@
     #trash
     class="trash"
     type="button"
-    [class.armed]="!!draft()"
+    [class.armed]="!!draft() || !!dragIntent()?.inner || !!shortcutDrag()"
     [class.hot]="overTrash()"
     [class.gulp]="gulping()"
-    [disabled]="game.trainer.busy() || (!draft() && !selectedBlockName())"
+    [disabled]="
+      game.trainer.busy() ||
+      (!draft() && !dragIntent()?.inner && !shortcutDrag() && !selectedBlockName())
+    "
     [attr.aria-label]="
       selectedBlockName() ? 'Throw away ' + selectedBlockName() : 'Trashcan: drag a block here'
     "

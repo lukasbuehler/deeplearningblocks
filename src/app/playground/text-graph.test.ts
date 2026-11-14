@@ -150,5 +150,5 @@ test('fresh text paper and the shortcut socket position', () => {
   assert.equal(freshBoard().world, undefined);
   const add: BlockNode = { id: 'a', kind: 'add', x: 0, y: 100 };
   assert.ok(portPosition(add, 'input', 'skip').x > portPosition(add, 'input').x);
-  assert.equal(portPosition(add, 'input', 'skip').y, 100 + nodeSize(add).height / 2);
+  assert.equal(portPosition(add, 'input', 'skip').y, 100);
 });

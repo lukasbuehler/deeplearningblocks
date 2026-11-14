@@ -9,9 +9,11 @@ import {
   BlockNode,
   Board,
   MAX_NAME_LENGTH,
+  MAX_PARKED,
   connectionError,
   customBlockIssue,
   freshBoard,
+  portType,
   validDenseInputs,
   validDenseUnits,
   validHeads,
@@ -110,6 +112,21 @@ function validBoard(value: unknown, era: number): value is Board {
   )
     return false;
   if (new Set(b.nodes.map((n) => n.id)).size !== b.nodes.length) return false;
+  if (
+    b.parked !== undefined &&
+    (b.world !== 'text' ||
+      !Array.isArray(b.parked) ||
+      b.parked.length > MAX_PARKED ||
+      !b.parked.every(
+        (p) =>
+          p &&
+          b.nodes.some(
+            (n) => n.id === p.from && portType(n.kind, 'output', 'text') === 'sequence',
+          ) &&
+          [p.x, p.y].every((v) => Number.isFinite(v) && Math.abs(v) < 100000),
+      ))
+  )
+    return false;
   if (
     ['image', 'classifier', 'text', 'writer'].some(
       (kind) => b.nodes.filter((n) => n.kind === kind).length > 1,

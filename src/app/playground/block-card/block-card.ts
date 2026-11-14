@@ -17,6 +17,7 @@ import { DigitPreview } from '../../learning/digit-preview/digit-preview';
 import { BlockIcon } from '../block-icon/block-icon';
 import { blockName } from '../block-catalog';
 import {
+  Connector,
   blockOutline,
   recipeWellOutline,
   connectorLabels,
@@ -30,6 +31,8 @@ import {
   BlockNode,
   FRAME,
   HEAD_CHOICES,
+  mainWidth,
+  SHORTCUT_LANE,
   customLayout,
   MAX_DENSE_INPUTS,
   MAX_DENSE_UNITS,
@@ -65,11 +68,22 @@ export class BlockCard {
   previewInnerDrag(event: CdkDragMove, id: string): void {
     this.innerMove.emit({ id, point: event.pointerPosition });
   }
+  /** Add only: the shortcut socket's glow while a plate is carried near it. */
+  readonly skipFeedback = input<'valid' | 'invalid' | null>(null);
+  /** Add only: the socket matches the plate that fits it, or the main socket until wired. */
+  readonly skipShape = input<Connector>();
+  readonly mainWidth = computed(() => mainWidth(this.node()));
+  readonly skipConnector = computed(() =>
+    this.node().kind === 'add' ? (this.skipShape() ?? this.connectors().input) : undefined,
+  );
   readonly inputEdge = computed(() =>
-    connectorEdgePath(this.connectors().input, this.size().width, 0),
+    connectorEdgePath(this.connectors().input, this.mainWidth(), 0),
   );
   readonly outputEdge = computed(() =>
-    connectorEdgePath(this.connectors().output, this.size().width, this.size().height),
+    connectorEdgePath(this.connectors().output, this.mainWidth(), this.size().height),
+  );
+  readonly skipEdge = computed(() =>
+    connectorEdgePath(this.skipConnector(), SHORTCUT_LANE, 0, this.mainWidth()),
   );
   readonly innerDrop = output<{
     id: string;
@@ -92,7 +106,7 @@ export class BlockCard {
   readonly pixels = input<Float32Array>();
   readonly actual = input<number>();
   readonly custom = input(false);
-  /** Drawn inside an expanded custom block: no delete button, edits go to the parent. */
+  /** Drawn inside a custom block: edits go to the parent recipe. */
   readonly nested = input(false);
   /** Text level: one practice question, and what the writer has written so far. */
   readonly snippet = input<{ letters: string; next: string } | null>(null);
@@ -209,11 +223,13 @@ export class BlockCard {
       this.size().height,
       this.connectors().input,
       this.connectors().output,
+      { mainWidth: this.mainWidth(), skip: this.skipConnector() },
     ),
   );
   readonly connectorLabels = computed(() => [
-    ...connectorLabels(this.connectors().input, this.size().width, 0),
-    ...connectorLabels(this.connectors().output, this.size().width, this.size().height),
+    ...connectorLabels(this.connectors().input, this.mainWidth(), 0),
+    ...connectorLabels(this.skipConnector(), SHORTCUT_LANE, 0, this.mainWidth()),
+    ...connectorLabels(this.connectors().output, this.mainWidth(), this.size().height),
   ]);
   readonly editableCards = computed(() => this.innerCards().filter((c) => c.copy === 1));
   readonly copyGroups = computed(() =>

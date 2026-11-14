@@ -1,4 +1,3 @@
-import { Activation } from '../learning/curriculum';
 import {
   BLOCKS,
   BlockNode,
@@ -34,7 +33,10 @@ export function pickedChain(board: Board, ids: string[]): string[] | string {
   const chain = [starts[0].id];
   for (let id = next.get(chain[0]); id && picked.has(id); id = next.get(id)) chain.push(id);
   if (chain.length !== picked.size) return 'Pick blocks attached together in one stack.';
-  if (board.edges.some((e) => chain.slice(0, -1).includes(e.from) && !picked.has(e.to)))
+  if (
+    board.edges.some((e) => chain.slice(0, -1).includes(e.from) && !picked.has(e.to)) ||
+    board.parked?.some((p) => chain.slice(0, -1).includes(p.from))
+  )
     return 'A wire branches off in the middle of these blocks. Pick blocks without a branch inside.';
   if (chain.length > MAX_INNER_BLOCKS)
     return `A custom block holds up to ${MAX_INNER_BLOCKS} blocks.`;
@@ -83,6 +85,9 @@ export function makeCustomBlock(
   return {
     ...board,
     nodes: [...board.nodes.filter((n) => !inside.has(n.id)), custom],
+    ...(board.parked
+      ? { parked: board.parked.map((p) => (inside.has(p.from) ? { ...p, from: id } : p)) }
+      : {}),
     edges: board.edges
       .filter((e) => !(inside.has(e.from) && inside.has(e.to)))
       .map((e) => ({
@@ -99,7 +104,7 @@ export function makeCustomBlock(
  */
 export function takeApart(board: Board, id: string, newId: () => string): Board {
   const custom = board.nodes.find((n) => n.id === id);
-  if (!custom || custom.kind !== 'custom') return board;
+  if (!custom || custom.kind !== 'custom' || !custom.blocks?.length) return board;
   const used = new Set(board.nodes.map((n) => n.id));
   // An expanded block already shows its parts: leave the first copy exactly where it is drawn.
   const x = custom.x + FRAME.pad;
@@ -117,6 +122,9 @@ export function takeApart(board: Board, id: string, newId: () => string): Board 
   return {
     ...board,
     nodes: [...board.nodes.filter((n) => n.id !== id), ...parts],
+    ...(board.parked
+      ? { parked: board.parked.map((p) => (p.from === id ? { ...p, from: parts.at(-1)!.id } : p)) }
+      : {}),
     edges: [
       ...board.edges.map((e) => ({
         ...e,
@@ -126,14 +134,6 @@ export function takeApart(board: Board, id: string, newId: () => string): Board 
       ...chainEdges,
     ],
   };
-}
-
-/** The toy-box custom block: one hidden layer and the strongest activation unlocked so far. */
-export function starterRecipe(activation: Activation, newId: () => string): InnerBlock[] {
-  return [
-    { id: newId(), kind: 'dense', units: 32 },
-    { id: newId(), kind: 'activation', activation },
-  ];
 }
 
 /** Move a loose chain into the shared recipe, preserving order and block configuration. */
@@ -151,6 +151,11 @@ export function insertIntoRecipe(
     moving.some((n) => !n || !INNER_KINDS.includes(n.kind))
   )
     return 'Only Dense and activation blocks go inside a custom block.';
+  if (
+    board.edges.some((e) => e.port && ids.includes(e.from)) ||
+    board.parked?.some((p) => ids.includes(p.from))
+  )
+    return 'Detach this block’s shortcut before putting it inside a recipe.';
   const blocks = [...(parent.blocks ?? [])];
   if (blocks.length + moving.length > MAX_INNER_BLOCKS)
     return `A recipe holds up to ${MAX_INNER_BLOCKS} blocks.`;

@@ -65,3 +65,15 @@ test('low temperature picks the favourite letter and high temperature spreads ou
   );
   assert.equal(wild.size, 3);
 });
+
+test('famous starter lines begin with a recognizable prefix and remain inside the alphabet', async () => {
+  const { CLASSIC_LINES, CLASSIC_PROMPT, guessingQuestion } = await import('./shakespeare');
+  assert.equal(CLASSIC_PROMPT, 'To be or ');
+  assert.deepEqual(guessingQuestion(CLASSIC_LINES[0]), { letters: CLASSIC_PROMPT, next: 'n' });
+  for (const line of CLASSIC_LINES) {
+    assert.equal(encode(line).dropped, 0);
+    const question = guessingQuestion(line);
+    assert.ok(question.letters.length <= CONTEXT);
+    assert.match(question.next, /[A-Za-z]/);
+  }
+});

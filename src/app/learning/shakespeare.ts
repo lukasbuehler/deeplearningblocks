@@ -21,6 +21,33 @@ export const TEXT_TRAINING = { steps: 600, rounds: 6, batch: 32, learningRate: 0
 export const SHAKESPEARE_SOURCE =
   'https://raw.githubusercontent.com/karpathy/char-rnn/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/data/tinyshakespeare/input.txt';
 
+/**
+ * Famous lines for the guessing game and the writer's first start. Hamlet is not part of Tiny
+ * Shakespeare, so the model never practiced the first one; the others appear in the text.
+ */
+export const CLASSIC_LINES = [
+  'To be or not to be, that is the question',
+  'Now is the winter of our discontent',
+  'But, soft! what light through yonder window breaks?',
+  'O Romeo, Romeo! wherefore art thou Romeo?',
+  'A horse! a horse! my kingdom for a horse!',
+] as const;
+/** The writer starts here until the player types something else. */
+export const CLASSIC_PROMPT = 'To be or ';
+/**
+ * Cut a line just before a word, so the hidden next letter is a real letter worth guessing,
+ * keeping at most CONTEXT letters in view.
+ */
+export function guessingQuestion(line: string): { letters: string; next: string } {
+  let cut = 1;
+  for (let i = 1; i < line.length && i <= CONTEXT; i++)
+    if (i >= 8 && line[i - 1] === ' ' && /[A-Za-z]/.test(line[i])) {
+      cut = i;
+      break;
+    }
+  return { letters: line.slice(0, cut), next: line[cut] };
+}
+
 const INDEX = new Map([...SHAKESPEARE_ALPHABET].map((letter, id) => [letter, id]));
 
 /** Letters outside the alphabet are left out and counted, so the player can be told. */
