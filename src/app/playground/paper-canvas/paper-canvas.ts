@@ -1,3 +1,5 @@
+import { BlockInspector } from '../block-inspector/block-inspector';
+import { InspectionTarget } from '../../learning/model-inspection';
 import { MatIcon } from '@angular/material/icon';
 import {
   ChangeDetectionStrategy,
@@ -68,12 +70,13 @@ import {
 } from '../custom-blocks';
 @Component({
   selector: 'app-paper-canvas',
-  imports: [MatIcon, CdkDrag, BlockCard, BlockIcon, Blocky],
+  imports: [MatIcon, CdkDrag, BlockCard, BlockIcon, Blocky, BlockInspector],
   templateUrl: './paper-canvas.html',
   styleUrl: './paper-canvas.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PaperCanvas {
+  readonly inspecting = signal<InspectionTarget | null>(null);
   readonly checkButton = input<HTMLButtonElement>();
   readonly game = inject(GameService);
   readonly paper = viewChild.required<ElementRef<HTMLDivElement>>('paper');

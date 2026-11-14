@@ -1,3 +1,4 @@
+import { InspectionTarget } from '../../learning/model-inspection';
 import { CdkDrag, CdkDragEnd, CdkDragMove } from '@angular/cdk/drag-drop';
 import { MatIcon } from '@angular/material/icon';
 import { Dataset, DATASETS } from '../../learning/datasets';
@@ -170,6 +171,14 @@ export class BlockCard {
   );
   readonly name = computed(() => blockName(this.node(), this.dataset()));
   /** The "?" bubble: what this block does, in plain words. */
+  readonly inspect = output<InspectionTarget>();
+  readonly inspectable = computed(() =>
+    ['dense', 'activation', 'softmax'].includes(this.node().kind),
+  );
+  openHelp(): void {
+    if (this.inspectable()) this.inspect.emit({ id: this.node().id });
+    else this.helpOpen.update((open) => !open);
+  }
   readonly helpOpen = signal(false);
   readonly help = computed(() =>
     this.node().kind === 'activation'

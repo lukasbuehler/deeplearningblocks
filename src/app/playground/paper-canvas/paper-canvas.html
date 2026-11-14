@@ -167,6 +167,7 @@
           (temperatureChange)="game.temperature.set($event)"
           (choose)="selectNode(node.id, $event)"
           (configure)="game.configure($event)"
+          (inspect)="inspecting.set($event)"
           (takeApart)="takeApartNode(node.id)"
           (nextDigit)="game.nextSample()"
         />
@@ -377,3 +378,9 @@
     </div>
   }
 </div>
+
+@defer (when inspecting()) {
+  @if (inspecting(); as target) {
+    <app-block-inspector [target]="target" (close)="inspecting.set(null)" />
+  }
+}

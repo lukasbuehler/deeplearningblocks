@@ -69,9 +69,10 @@
       type="button"
       [class.open]="helpOpen()"
       [attr.aria-label]="'What does ' + name() + ' do?'"
-      [attr.aria-expanded]="helpOpen()"
+      [attr.aria-expanded]="inspectable() ? null : helpOpen()"
+      [attr.aria-haspopup]="inspectable() ? 'dialog' : null"
       title="What does this block do?"
-      (click)="$event.stopPropagation(); helpOpen.set(!helpOpen())"
+      (click)="$event.stopPropagation(); openHelp()"
     >
       <mat-icon>question_mark</mat-icon>
     </button>
@@ -218,6 +219,8 @@
           >
             <app-block-card
               [node]="card.node"
+              [dataset]="dataset()"
+              (inspect)="inspect.emit({ id: node().id, innerId: card.node.id, copy: card.copy })"
               [connectorShape]="card.connectors"
               [nested]="true"
               [inputSize]="card.input"
@@ -278,6 +281,10 @@
               <li>
                 <app-block-card
                   [node]="card.node"
+                  [dataset]="dataset()"
+                  (inspect)="
+                    inspect.emit({ id: node().id, innerId: card.node.id, copy: card.copy })
+                  "
                   [connectorShape]="card.connectors"
                   [nested]="true"
                   [inputSize]="card.input"

@@ -1,4 +1,5 @@
 import type * as TF from './tensorflow';
+import { OperationSnapshot, tensorRow } from './model-inspection';
 import type { NetworkSpec } from '../playground/graph';
 import { CONTEXT, VOCAB_SIZE, sampleBatch, sampleLetter } from './shakespeare';
 
@@ -12,6 +13,7 @@ export interface TextModel {
   logits(ids: TF.Tensor2D): TF.Tensor3D;
   /** Average cross-entropy of the next-letter guesses. Softmax happens inside the loss. */
   loss(ids: TF.Tensor2D, targets: TF.Tensor2D): TF.Scalar;
+  inspect(step: number, ids: TF.Tensor2D): OperationSnapshot;
   countParams(): number;
   dispose(): void;
 }
@@ -36,7 +38,7 @@ export function buildTextModel(tf: typeof TF, network: NetworkSpec, seed = 2017)
   const linear = (inputs: number, units: number) => {
     const w = uniform([inputs, units], inputs),
       b = uniform([units], inputs);
-    return (x: TF.Tensor) => {
+    const apply = (x: TF.Tensor) => {
       const [batch, letters] = x.shape;
       return tf.reshape(tf.add(tf.matMul(tf.reshape(x, [-1, inputs]), w), b), [
         batch,
@@ -44,7 +46,9 @@ export function buildTextModel(tf: typeof TF, network: NetworkSpec, seed = 2017)
         units,
       ]);
     };
+    return Object.assign(apply, { weights: w, biases: b });
   };
+  const denseWeights = new Map<number, { weights: TF.Variable; biases: TF.Variable }>();
   const widths: number[] = [];
   const width = (from: number) => (from < 0 ? 0 : widths[from]);
   const layers: Forward[] = [];
@@ -109,6 +113,7 @@ export function buildTextModel(tf: typeof TF, network: NetworkSpec, seed = 2017)
       }
       case 'dense': {
         const layer = linear(inputWidth, step.units);
+        denseWeights.set(i, layer);
         layers.push((outputs, ids) => layer(read(outputs, ids)));
         widths.push(step.units);
         return;
@@ -135,7 +140,7 @@ export function buildTextModel(tf: typeof TF, network: NetworkSpec, seed = 2017)
       case 'softmax':
         // Training and sampling use the scores before softmax. The writer applies it.
         logitsFrom = from;
-        layers.push((outputs, ids) => read(outputs, ids));
+        layers.push((outputs, ids) => tf.softmax(read(outputs, ids)));
         break;
       default:
         throw new Error(`${step.kind} belongs in a picture network.`);
@@ -147,12 +152,29 @@ export function buildTextModel(tf: typeof TF, network: NetworkSpec, seed = 2017)
   const logits = (ids: TF.Tensor2D) =>
     tf.tidy(() => {
       const outputs: TF.Tensor[] = [];
-      for (const layer of layers) outputs.push(layer(outputs, ids));
+      for (const layer of layers.slice(0, logitsFrom + 1)) outputs.push(layer(outputs, ids));
       return outputs[logitsFrom] as TF.Tensor3D;
     });
   return {
     variables,
     logits,
+    inspect: (step, ids) =>
+      tf.tidy(() => {
+        const outputs: TF.Tensor[] = [];
+        for (const layer of layers.slice(0, step + 1)) outputs.push(layer(outputs, ids));
+        const from = network.steps[step].from ?? step - 1;
+        const kernel = denseWeights.get(step);
+        return {
+          inputs: tensorRow(tf, from < 0 ? ids : outputs[from]),
+          outputs: tensorRow(tf, outputs[step]),
+          ...(kernel
+            ? {
+                weights: Array.from(kernel.weights.dataSync()),
+                biases: Array.from(kernel.biases.dataSync()),
+              }
+            : {}),
+        };
+      }),
     loss: (ids, targets) =>
       tf.tidy(() =>
         tf.losses.softmaxCrossEntropy(

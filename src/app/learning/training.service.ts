@@ -14,6 +14,7 @@ import {
   sampleBatch,
   seededRandom,
 } from './shakespeare';
+import { OperationSnapshot, inspectImageModel } from './model-inspection';
 import { TextModel, buildTextModel, evaluateText, generateText } from './text-model';
 
 export interface EpochResult {
@@ -43,6 +44,51 @@ export class TrainingService {
   private previewDataset?: DatasetId;
   private modelDataset?: DatasetId;
   private cancelled = false;
+  readonly modelRevision = signal(0);
+  readonly hasUpdates = signal(false);
+  private runtimeKey?: string;
+  private generation = 0;
+  private preparation?: { key: string; promise: Promise<boolean> };
+
+  /** Inspection initializes the same model that the next training run will optimize. */
+  async prepare(network: NetworkSpec, dataset: DatasetId): Promise<boolean> {
+    const key = `${dataset}/${network.signature}`;
+    if (this.runtimeKey === key && (this.model || this.textModel)) return true;
+    if (this.preparation?.key === key) return this.preparation.promise;
+    this.invalidate();
+    const generation = this.generation;
+    const promise = (async () => {
+      const tf = (this.tf ??= await import('./tensorflow'));
+      await tf.ready();
+      if (generation !== this.generation) return false;
+      if (network.world === 'text') this.textModel = buildTextModel(tf, network);
+      else this.model = buildModel(tf, network);
+      this.runtimeKey = key;
+      this.modelRevision.update((n) => n + 1);
+      return true;
+    })().finally(() => {
+      if (generation === this.generation) this.preparation = undefined;
+    });
+    this.preparation = { key, promise };
+    return promise;
+  }
+  inspect(step: number, pixels?: Float32Array, letters?: string): OperationSnapshot | null {
+    const tf = this.tf;
+    if (!tf || step < 0) return null;
+    if (this.textModel) {
+      const ids = encode(letters ?? '').ids.slice(-CONTEXT);
+      if (!ids.length) return null;
+      const tensor = tf.tensor2d(ids, [1, ids.length], 'int32');
+      try {
+        return this.textModel.inspect(step, tensor);
+      } finally {
+        tensor.dispose();
+      }
+    }
+    return this.model
+      ? inspectImageModel(tf, this.model, step, pixels ?? new Float32Array(784))
+      : null;
+  }
 
   private load(split: 'train' | 'test', dataset: DatasetId): Promise<DigitSet> {
     const key = `${dataset}/${split}`;
@@ -68,7 +114,9 @@ export class TrainingService {
     if (dataset !== this.previewDataset) {
       this.previewDataset = dataset;
       this.test.set(null);
-      this.invalidate();
+      const prefix = `${dataset}/`;
+      if (!this.runtimeKey?.startsWith(prefix) && !this.preparation?.key.startsWith(prefix))
+        this.invalidate();
     }
     if (DATASETS[dataset].kind === 'text') {
       const corpus = await this.loadText();
@@ -80,6 +128,11 @@ export class TrainingService {
     if (this.previewDataset === dataset) this.test.set(data);
   }
   invalidate(): void {
+    this.generation++;
+    this.hasUpdates.set(false);
+    this.preparation = undefined;
+    this.runtimeKey = undefined;
+    this.modelRevision.update((n) => n + 1);
     this.trained.set(false);
     this.modelDataset = undefined;
     this.stopWriting = true;
@@ -93,7 +146,6 @@ export class TrainingService {
   }
   stop(): void {
     this.cancelled = true;
-    if (this.model) this.model.stopTraining = true;
     this.status.set('Stopping…');
   }
   /**
@@ -107,8 +159,8 @@ export class TrainingService {
     if (this.busy()) return null;
     this.busy.set(true);
     this.cancelled = false;
+    if (this.trained()) this.invalidate();
     this.epochs.set([]);
-    this.invalidate();
     const { steps, rounds, batch, learningRate } = TEXT_TRAINING;
     try {
       this.status.set('Preparing your learning lab…');
@@ -118,7 +170,9 @@ export class TrainingService {
       const corpus = await this.loadText();
       this.text.set(corpus);
       if (this.cancelled) return null;
-      const model = (this.textModel = buildTextModel(tf, network));
+      if (!(await this.prepare(network, 'tiny-shakespeare'))) return null;
+      const model = this.textModel!;
+      this.optimizer?.dispose();
       const optimizer = (this.optimizer = tf.train.adam(learningRate));
       const random = seededRandom(2017);
       await this.sample(model, prompt, 'Before practice: random letters');
@@ -130,7 +184,9 @@ export class TrainingService {
             answers = tf.tensor2d(targets, [batch, CONTEXT], 'int32');
           tf.dispose([optimizer.minimize(() => model.loss(ids, answers), true, model.variables)!]);
           tf.dispose([ids, answers]);
+          this.hasUpdates.set(true);
           // Let the page breathe and the Stop button work.
+          if (step % 20 === 19) this.modelRevision.update((n) => n + 1);
           if (step % 4 === 3) await tf.nextFrame();
         }
         if (this.cancelled) break;
@@ -152,14 +208,12 @@ export class TrainingService {
       this.status.set('Could not finish this experiment');
       throw error;
     } finally {
-      if (!this.trained()) {
-        // Keep the last live sample visible after Stop; it shows how far practice got.
-        const written = this.written();
+      if (!this.trained() && !this.cancelled) {
         this.invalidate();
-        if (this.cancelled) this.written.set(written);
       }
       if (this.cancelled) this.status.set('Stopped. You can change your blocks and try again.');
       this.busy.set(false);
+      this.modelRevision.update((n) => n + 1);
     }
   }
   private async sample(model: TextModel, prompt: string, caption: string): Promise<void> {
@@ -204,8 +258,8 @@ export class TrainingService {
     if (this.busy()) return null;
     this.busy.set(true);
     this.cancelled = false;
+    if (this.trained()) this.invalidate();
     this.epochs.set([]);
-    this.invalidate();
     const tensors: TF.Tensor[] = [];
     try {
       this.status.set('Preparing your learning lab…');
@@ -223,7 +277,9 @@ export class TrainingService {
       };
       const [x, y] = makeTensors(train),
         [testX, testY] = makeTensors(test);
-      const model = (this.model = buildModel(tf, network));
+      if (!(await this.prepare(network, dataset))) return null;
+      const model = this.model!;
+      this.optimizer?.dispose();
       this.optimizer = tf.train.adam(0.003);
       model.compile({
         optimizer: this.optimizer,
@@ -245,7 +301,9 @@ export class TrainingService {
               { epoch: epoch + 1, loss: logs!['loss'], accuracy: logs!['acc'] },
             ]);
           },
-          onBatchEnd: () => {
+          onBatchEnd: (batch) => {
+            this.hasUpdates.set(true);
+            if (batch % 10 === 0) this.modelRevision.update((n) => n + 1);
             if (this.cancelled) model.stopTraining = true;
           },
         },
@@ -269,9 +327,10 @@ export class TrainingService {
       throw error;
     } finally {
       tensors.forEach((tensor) => tensor.dispose());
-      if (!this.trained()) this.invalidate();
+      if (!this.trained() && !this.cancelled) this.invalidate();
       if (this.cancelled) this.status.set('Stopped. You can change your blocks and try again.');
       this.busy.set(false);
+      this.modelRevision.update((n) => n + 1);
     }
   }
   predict(index: number): number[] {

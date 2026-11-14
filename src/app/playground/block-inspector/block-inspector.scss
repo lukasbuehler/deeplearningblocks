@@ -1,0 +1,227 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  color: #171717;
+}
+* {
+  box-sizing: border-box;
+}
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: #17171788;
+}
+section {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(760px, calc(100% - 24px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 28px;
+  background: #fffdf1;
+  border: 3px solid #171717;
+  border-radius: 16px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+}
+h2 {
+  margin: 5px 0 12px;
+  font-size: 30px;
+}
+h3 {
+  font-size: 20px;
+  margin-top: 24px;
+}
+p {
+  font-size: 17px;
+  line-height: 1.5;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+button {
+  border: 2px solid #171717;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #ffe14a;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+input {
+  font: inherit;
+  accent-color: #171717;
+}
+input[type='number'] {
+  width: 80px;
+  padding: 5px;
+  border: 2px solid #171717;
+  border-radius: 6px;
+  background: white;
+}
+.slider,
+.neuron-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 800;
+}
+.slider input {
+  width: min(280px, 100%);
+}
+.activation-graph {
+  display: block;
+  width: min(390px, 100%);
+  margin: auto;
+  background: #f1f5fc;
+  border-radius: 12px;
+}
+.axis {
+  stroke: #8d98ad;
+  stroke-width: 1.5;
+  fill: none;
+}
+.curve {
+  stroke: #225acb;
+  stroke-width: 4;
+  fill: none;
+}
+.guide {
+  stroke: #6f7680;
+  stroke-dasharray: 4 4;
+  fill: none;
+}
+circle {
+  fill: #ffe14a;
+  stroke: #171717;
+  stroke-width: 2;
+}
+text {
+  font-size: 13px;
+  fill: #50545c;
+}
+.calculation {
+  padding: 14px;
+  background: #ffeeb8;
+  border-radius: 8px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.formula {
+  font:
+    22px ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+}
+details {
+  border: 2px solid #ded7c7;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 18px 0;
+}
+summary {
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 17px;
+}
+.snapshot-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 0;
+  margin-top: 18px;
+  border-top: 2px solid #171717;
+}
+.snapshot-label b {
+  font-size: 20px;
+}
+.snapshot-label span,
+.note {
+  font-size: 14px;
+  color: #5a584f;
+}
+.badge {
+  font-weight: 800;
+}
+.heatmap {
+  display: grid;
+  gap: 1px;
+  width: min(360px, 100%);
+  margin: 16px auto;
+  border: 2px solid #171717;
+  background: #dcd8ce;
+}
+.heatmap span {
+  aspect-ratio: 1;
+}
+.positive {
+  color: #174da9;
+}
+.negative {
+  color: #b33d1f;
+}
+.table-scroll {
+  overflow: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+}
+th,
+td {
+  padding: 9px;
+  text-align: right;
+  border-bottom: 1px solid #d8d3c6;
+}
+th:first-child {
+  text-align: left;
+}
+thead {
+  background: #ece7db;
+}
+small {
+  display: block;
+  color: #5a584f;
+}
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.notice {
+  background: #ffeeb8;
+  padding: 14px;
+  border-radius: 8px;
+}
+@media (max-width: 520px) {
+  section {
+    padding: 18px;
+  }
+  h2 {
+    font-size: 25px;
+  }
+  .pagination {
+    font-size: 13px;
+  }
+}
