@@ -109,7 +109,6 @@ p {
 }
 
 .action,
-.illustration,
 .lesson-grid article {
   border: 3px solid var(--ink);
   border-radius: 0.8rem;
@@ -132,20 +131,13 @@ p {
 }
 
 .illustration {
-  position: relative;
   margin: 0;
-  overflow: hidden;
-  aspect-ratio: 475 / 570;
-  background: var(--paper);
 }
 
 .illustration img {
-  position: absolute;
-  right: -5%;
-  top: -5%;
-  width: 253%;
+  display: block;
+  width: 100%;
   height: auto;
-  max-width: none;
 }
 
 #lessons {
@@ -160,7 +152,7 @@ h2 {
 
 .lesson-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
 }
 
@@ -175,6 +167,16 @@ h2 {
 
 .lesson-grid article:nth-child(3) {
   background: var(--purple);
+}
+
+.lesson-grid article:nth-child(4) {
+  background: var(--red);
+}
+
+@media (max-width: 960px) {
+  .lesson-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .lesson-grid h3 {

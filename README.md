@@ -1,6 +1,8 @@
+<p align="center"><img src="docs/artwork/logo.svg" width="470" alt="Deep Learning Blocks, with Blocky"></p>
+
 # Deep Learning Blocks
 
-A small browser-based learning lab. Build a dense neural network, optionally train it on real digits or clothing, and unlock ideas from neural-network history by experimenting.
+A small browser-based learning lab. Snap blocks into a neural network, optionally train it on real digits, clothing or Shakespeare’s plays, and unlock ideas from neural-network history by experimenting.
 
 ## Run locally
 
@@ -179,3 +181,7 @@ After changing either list, run `npm run icons:optimize`. Commit the lists, gene
 ## Favicons
 
 `public/favicon.svg` is Blocky's head on a transparent background. After changing it, run `sh scripts/build-favicons.sh` (needs `rsvg-convert` and ImageMagick) to rebuild `favicon.ico` and the home-screen icons. Those cannot be transparent, so they use the playground's paper colour, `#fffdf1`.
+
+## License
+
+The code is released under the [MIT License](LICENSE). Bundled third-party material keeps its own terms: the datasets in `public/data` (see [their README](public/data/README.md)) and the Material Symbols font (Apache 2.0, [`src/assets/fonts/LICENSE.txt`](src/assets/fonts/LICENSE.txt)).
