@@ -24,7 +24,7 @@ Open the localhost URL printed by Wrangler (normally http://localhost:8787). The
 1. Open **+ Blocks**, add Flatten, Dense and Softmax, then connect Image → Flatten → Dense (10 neurons) → Softmax → Digit guess. You can also tap a tile to add it and tap an output followed by an input to connect.
 2. The top-right button becomes yellow **Check build** when the level objective is met. Blocky points to it. Check to save your discovery and unlock Sigmoid and Tanh. Training is optional.
 3. Choose **Next level** to start a separate canvas for the 1986 clothing challenge (Fashion-MNIST). Build a hidden Dense with Sigmoid or Tanh before Dense (10 neurons). Check that build to unlock ReLU and the 2010 level. Earlier canvases remain accessible in the guide.
-4. Keep Fashion-MNIST for a comparison: try two hidden Dense layers with ReLU before Dense (10 neurons) and check the final build. Optionally train for five passes, compare experiments in the bottom notebook, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
+4. Keep Fashion-MNIST for a comparison: try two hidden Dense layers with ReLU before Dense (10 neurons) and check the final build. Optionally train for five passes, compare experiments in the Training panel, and inspect predictions inside the purple classifier. Up to six hidden Dense layers plus the 10-neuron output layer can be connected.
 5. Checking the 2010 build unlocks the 2017 level, **Attention is all you need**. On text paper, build a tiny transformer that writes like Shakespeare: Shakespeare text → Letter embedding → Position, then Layer norm → Self-attention → Add and Layer norm → Dense → ReLU → Dense → Add, each Add fed by a shortcut wire around its part, and finally Layer norm → Dense (65) → Softmax → Shakespeare writer. Train to watch the writer improve after each round, then type your own start and press **Write**.
 
 Drag the paper to pan, scroll to zoom, or use the zoom and Fit all controls. Compatible nearby studs snap together within 24 screen pixels. Blocks stay connected when moved apart. Select a block to read its explanation in the optional guide. Delete removes its incident wires; Undo and Redo recover complete edits, including an entire drag.
@@ -40,6 +40,12 @@ The dates refer to influential papers, not exclusive invention claims. The lab c
 Click **?** on Dense, an activation, or Softmax to open its inspector. Dense lets you select a neuron and inspect its actual incoming weights, bias, and input contributions. The heatmap uses the input pixel positions when the layer reads 784 pixels. Activations show an interactive function graph and optional mathematical notation. Softmax shows its formula and the current input scores and output probabilities.
 
 A complete connected network is required for runtime values. Opening an inspector initializes the real model before training; training uses those same initialized weights. Open an inspector during training to see periodic updates, or afterward to inspect learned weights. Each repeated custom-block copy has its own weights. Stopping keeps the latest weights available for inspection. Changing the network or workspace resets its runtime, and model weights are not saved across reloads. Starting another experiment after completed training initializes a fresh model.
+
+## Training panel
+
+Open **Training** on the right on desktop, or at the bottom on phones. The desktop panel uses the full canvas height; the phone view opens as an overlay bottom sheet. It shows the actual optimizer, learning rate, batch size, training budget, loss, and data split alongside the learning curve and experiment history. Expand **What do these settings mean?** for explanations and Adam's momentum settings. Training settings are currently fixed rather than editable.
+
+Both recipes use Adam with beta1 = 0.9 and beta2 = 0.999. Images use learning rate 0.003, batches of 64 and 5 epochs on 3,000 training images, then evaluate on 500 separate test images. Text uses learning rate 0.01, batches of 32 sequences, a 32-character context, and 600 steps grouped into 6 rounds. The first 90% of Shakespeare is training text and the final 10% is held out.
 
 ## What actually runs
 

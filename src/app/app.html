@@ -62,7 +62,7 @@
     </button>
   }
 </header>
-<div class="workspace" [class.guide-closed]="!sidebar()">
+<div class="workspace" [class.guide-closed]="!sidebar()" [class.training-open]="notebook()">
   @if (sidebar()) {
     <button
       class="drawer-backdrop"
@@ -317,8 +317,8 @@
       </div>
     }
   </main>
+  <app-experiment-notebook [(expanded)]="notebook" />
 </div>
-<app-experiment-notebook [(expanded)]="notebook" />
 
 @if (game.drawingOpen()) {
   <app-digit-pad (close)="game.drawingOpen.set(false)" />

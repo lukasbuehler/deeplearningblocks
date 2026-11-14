@@ -1,3 +1,4 @@
+import { IMAGE_TRAINING } from './training-config';
 import { readGzipResponse } from './gzip';
 import { DATASETS, DatasetId } from './datasets';
 export interface DigitSet {
@@ -29,5 +30,8 @@ export async function loadDigits(
   if (!response.ok)
     throw new Error(`Could not load ${DATASETS[dataset].name}. Check your connection and retry.`);
   const buffer = await readGzipResponse(response);
-  return decodeDigits(buffer, split === 'train' ? 3000 : 500);
+  return decodeDigits(
+    buffer,
+    split === 'train' ? IMAGE_TRAINING.trainExamples : IMAGE_TRAINING.testExamples,
+  );
 }

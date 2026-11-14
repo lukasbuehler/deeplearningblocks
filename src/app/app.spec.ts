@@ -261,3 +261,44 @@ describe('App', () => {
     else expect(getComputedStyle(banner).animationName).toContain('pop');
   });
 });
+
+describe('Responsive training panel', () => {
+  it('uses a full-height right panel on desktop and an overlay bottom sheet on phones', async () => {
+    TestBed.configureTestingModule({
+      imports: [App],
+      providers: [provideZonelessChangeDetection()],
+    });
+    const fixture = TestBed.createComponent(App);
+    fixture.componentInstance.notebook.set(true);
+    await fixture.whenStable();
+    const styles = [...document.querySelectorAll('style')].map((s) => s.outerHTML).join('');
+    for (const width of [1440, 375]) {
+      const frame = document.createElement('iframe');
+      frame.style.cssText = `position:fixed;left:-10000px;width:${width}px;height:800px;border:0;`;
+      const loaded = new Promise<void>((resolve) => (frame.onload = () => resolve()));
+      frame.srcdoc = `<!doctype html><html><head><style>html,body{margin:0;height:100%}</style>${styles}</head><body>${fixture.nativeElement.outerHTML}</body></html>`;
+      document.body.append(frame);
+      try {
+        await loaded;
+        const doc = frame.contentDocument!;
+        const panel = doc.querySelector('app-experiment-notebook')!.getBoundingClientRect();
+        const paper = doc.querySelector('app-paper-canvas')!.getBoundingClientRect();
+        if (width === 1440) {
+          expect(panel.left).toBeGreaterThanOrEqual(paper.right - 1);
+          expect(panel.width).toBeGreaterThanOrEqual(320);
+          expect(Math.abs(panel.top - paper.top)).toBeLessThan(1);
+          expect(Math.abs(panel.height - paper.height)).toBeLessThan(1);
+        } else {
+          expect(panel.left).toBe(0);
+          expect(Math.abs(panel.width - width)).toBeLessThan(1);
+          expect(Math.abs(panel.bottom - 800)).toBeLessThan(1);
+          expect(panel.height).toBeLessThanOrEqual(800 * 0.72 + 1);
+          expect(paper.height).toBeGreaterThan(600);
+        }
+      } finally {
+        frame.remove();
+      }
+    }
+    fixture.destroy();
+  });
+});

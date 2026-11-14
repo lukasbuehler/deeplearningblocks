@@ -1,3 +1,4 @@
+import { ADAM_CONFIG, IMAGE_TRAINING } from './training-config';
 import { Injectable, signal } from '@angular/core';
 import type * as TF from './tensorflow';
 import { NetworkSpec } from '../playground/graph';
@@ -173,7 +174,11 @@ export class TrainingService {
       if (!(await this.prepare(network, 'tiny-shakespeare'))) return null;
       const model = this.textModel!;
       this.optimizer?.dispose();
-      const optimizer = (this.optimizer = tf.train.adam(learningRate));
+      const optimizer = (this.optimizer = tf.train.adam(
+        learningRate,
+        ADAM_CONFIG.beta1,
+        ADAM_CONFIG.beta2,
+      ));
       const random = seededRandom(2017);
       await this.sample(model, prompt, 'Before practice: random letters');
       for (let round = 1; round <= rounds && !this.cancelled; round++) {
@@ -265,7 +270,9 @@ export class TrainingService {
       this.status.set('Preparing your learning lab…');
       const tf = (this.tf ??= await import('./tensorflow'));
       await tf.ready();
-      this.status.set(`Loading 3,000 ${DATASETS[dataset].name} examples…`);
+      this.status.set(
+        `Loading ${IMAGE_TRAINING.trainExamples.toLocaleString('en-US')} ${DATASETS[dataset].name} examples…`,
+      );
       const [train] = await Promise.all([this.load('train', dataset), this.loadPreview(dataset)]);
       if (this.cancelled) return null;
       const test = this.test()!;
@@ -280,20 +287,24 @@ export class TrainingService {
       if (!(await this.prepare(network, dataset))) return null;
       const model = this.model!;
       this.optimizer?.dispose();
-      this.optimizer = tf.train.adam(0.003);
+      this.optimizer = tf.train.adam(
+        IMAGE_TRAINING.learningRate,
+        ADAM_CONFIG.beta1,
+        ADAM_CONFIG.beta2,
+      );
       model.compile({
         optimizer: this.optimizer,
-        loss: 'categoricalCrossentropy',
+        loss: IMAGE_TRAINING.loss,
         metrics: ['accuracy'],
       });
       await model.fit(x, y, {
-        epochs: 5,
-        batchSize: 64,
-        shuffle: true,
+        epochs: IMAGE_TRAINING.epochs,
+        batchSize: IMAGE_TRAINING.batch,
+        shuffle: IMAGE_TRAINING.shuffle,
         yieldEvery: 'batch',
         callbacks: {
           onEpochBegin: (epoch) => {
-            this.status.set(`Learning · pass ${epoch + 1} of 5`);
+            this.status.set(`Learning · pass ${epoch + 1} of ${IMAGE_TRAINING.epochs}`);
           },
           onEpochEnd: (epoch, logs) => {
             this.epochs.update((rows) => [
@@ -309,7 +320,7 @@ export class TrainingService {
         },
       });
       if (this.cancelled) return null;
-      this.status.set('Checking 500 unseen images…');
+      this.status.set(`Checking ${IMAGE_TRAINING.testExamples} unseen images…`);
       const evaluation = model.evaluate(testX, testY) as TF.Tensor[];
       tensors.push(...evaluation);
       const [loss, accuracy] = await Promise.all(
