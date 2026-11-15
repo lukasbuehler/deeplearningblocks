@@ -72,3 +72,35 @@ test('routes never contain jogs of only a few pixels', () => {
     }
   }
 });
+
+test('shortcut wires leave touching text stacks sideways and reach the side socket', async () => {
+  const { transformerBoard } = await import('./text-fixtures');
+  const { layoutStacks } = await import('./stacks');
+  const { nodeSize } = await import('./graph');
+  const board = layoutStacks(transformerBoard());
+  for (const edge of board.edges.filter((e) => e.port)) {
+    const source = board.nodes.find((n) => n.id === edge.from)!;
+    const target = board.nodes.find((n) => n.id === edge.to)!;
+    const route = routeWire(source, target, board.nodes, undefined, edge.port);
+    assert.deepEqual(route.at(-1), portPosition(target, 'input', 'skip'));
+    for (let i = 1; i < route.length; i++) {
+      const a = route[i - 1],
+        b = route[i];
+      assert.ok(a.x === b.x || a.y === b.y);
+      for (const node of board.nodes) {
+        const size = nodeSize(node);
+        const crosses =
+          a.x === b.x
+            ? a.x > node.x &&
+              a.x < node.x + size.width &&
+              Math.max(a.y, b.y) > node.y &&
+              Math.min(a.y, b.y) < node.y + size.height
+            : a.y > node.y &&
+              a.y < node.y + size.height &&
+              Math.max(a.x, b.x) > node.x &&
+              Math.min(a.x, b.x) < node.x + size.width;
+        assert.equal(crosses, false, `shortcut crosses ${node.id}`);
+      }
+    }
+  }
+});

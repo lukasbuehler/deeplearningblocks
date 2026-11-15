@@ -1,4 +1,3 @@
-import { Activation } from '../learning/curriculum';
 import {
   BLOCKS,
   BlockNode,
@@ -22,7 +21,10 @@ export function pickedChain(board: Board, ids: string[]): string[] | string {
     return 'Custom blocks cannot go inside custom blocks yet. Take it apart first.';
   if (nodes.some((n) => !INNER_KINDS.includes(n.kind)))
     return 'Custom blocks hold Dense and activation blocks for now.';
-  const next = new Map(board.edges.map((e) => [e.from, e.to]));
+  // Text outputs can feed several sockets: follow only the wire that stays inside the picks.
+  const next = new Map(
+    board.edges.filter((e) => picked.has(e.from) && picked.has(e.to)).map((e) => [e.from, e.to]),
+  );
   const hasPickedParent = new Set(
     board.edges.filter((e) => picked.has(e.from) && picked.has(e.to)).map((e) => e.to),
   );
@@ -31,6 +33,11 @@ export function pickedChain(board: Board, ids: string[]): string[] | string {
   const chain = [starts[0].id];
   for (let id = next.get(chain[0]); id && picked.has(id); id = next.get(id)) chain.push(id);
   if (chain.length !== picked.size) return 'Pick blocks attached together in one stack.';
+  if (
+    board.edges.some((e) => chain.slice(0, -1).includes(e.from) && !picked.has(e.to)) ||
+    board.parked?.some((p) => chain.slice(0, -1).includes(p.from))
+  )
+    return 'A wire branches off in the middle of these blocks. Pick blocks without a branch inside.';
   if (chain.length > MAX_INNER_BLOCKS)
     return `A custom block holds up to ${MAX_INNER_BLOCKS} blocks.`;
   return chain;
@@ -40,7 +47,8 @@ export function pickedChain(board: Board, ids: string[]): string[] | string {
 export function nextPickable(board: Board, ids: string[]): string | null {
   const chain = pickedChain(board, ids);
   if (typeof chain === 'string') return null;
-  const after = board.edges.find((e) => e.from === chain.at(-1))?.to;
+  const out = board.edges.filter((e) => e.from === chain.at(-1));
+  const after = out.length === 1 ? out[0].to : undefined;
   const node = board.nodes.find((n) => n.id === after);
   return node && INNER_KINDS.includes(node.kind) && chain.length < MAX_INNER_BLOCKS
     ? node.id
@@ -77,9 +85,13 @@ export function makeCustomBlock(
   return {
     ...board,
     nodes: [...board.nodes.filter((n) => !inside.has(n.id)), custom],
+    ...(board.parked
+      ? { parked: board.parked.map((p) => (inside.has(p.from) ? { ...p, from: id } : p)) }
+      : {}),
     edges: board.edges
       .filter((e) => !(inside.has(e.from) && inside.has(e.to)))
       .map((e) => ({
+        ...e,
         from: inside.has(e.from) ? id : e.from,
         to: inside.has(e.to) ? id : e.to,
       })),
@@ -92,7 +104,7 @@ export function makeCustomBlock(
  */
 export function takeApart(board: Board, id: string, newId: () => string): Board {
   const custom = board.nodes.find((n) => n.id === id);
-  if (!custom || custom.kind !== 'custom') return board;
+  if (!custom || custom.kind !== 'custom' || !custom.blocks?.length) return board;
   const used = new Set(board.nodes.map((n) => n.id));
   // An expanded block already shows its parts: leave the first copy exactly where it is drawn.
   const x = custom.x + FRAME.pad;
@@ -110,22 +122,18 @@ export function takeApart(board: Board, id: string, newId: () => string): Board 
   return {
     ...board,
     nodes: [...board.nodes.filter((n) => n.id !== id), ...parts],
+    ...(board.parked
+      ? { parked: board.parked.map((p) => (p.from === id ? { ...p, from: parts.at(-1)!.id } : p)) }
+      : {}),
     edges: [
       ...board.edges.map((e) => ({
+        ...e,
         from: e.from === id ? parts.at(-1)!.id : e.from,
         to: e.to === id ? parts[0].id : e.to,
       })),
       ...chainEdges,
     ],
   };
-}
-
-/** The toy-box custom block: one hidden layer and the strongest activation unlocked so far. */
-export function starterRecipe(activation: Activation, newId: () => string): InnerBlock[] {
-  return [
-    { id: newId(), kind: 'dense', units: 32 },
-    { id: newId(), kind: 'activation', activation },
-  ];
 }
 
 /** Move a loose chain into the shared recipe, preserving order and block configuration. */
@@ -143,6 +151,11 @@ export function insertIntoRecipe(
     moving.some((n) => !n || !INNER_KINDS.includes(n.kind))
   )
     return 'Only Dense and activation blocks go inside a custom block.';
+  if (
+    board.edges.some((e) => e.port && ids.includes(e.from)) ||
+    board.parked?.some((p) => ids.includes(p.from))
+  )
+    return 'Detach this block’s shortcut before putting it inside a recipe.';
   const blocks = [...(parent.blocks ?? [])];
   if (blocks.length + moving.length > MAX_INNER_BLOCKS)
     return `A recipe holds up to ${MAX_INNER_BLOCKS} blocks.`;

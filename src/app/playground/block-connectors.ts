@@ -1,4 +1,15 @@
-import { BLOCKS, BLOCK_WIDTH, BlockNode, Board, PortType, inferShapes } from './graph';
+import { CONTEXT } from '../learning/shakespeare';
+import {
+  BLOCKS,
+  BLOCK_WIDTH,
+  BlockNode,
+  Board,
+  PortType,
+  inferShapes,
+  portType,
+  World,
+  worldOf,
+} from './graph';
 
 export interface Connector {
   type: PortType;
@@ -13,15 +24,18 @@ export function nodeConnectors(
   outputSize?: number,
   incoming?: Connector,
   attached = false,
+  world: World = 'images',
 ) {
   const definition = BLOCKS[node.kind];
   const knownInput = inputSize ?? (!attached && node.kind === 'dense' ? node.inputs : undefined);
+  const inputType = portType(node.kind, 'input', world);
+  const outputType = portType(node.kind, 'output', world);
   const fixedInput = node.kind === 'classifier';
   const input: Connector | undefined = definition.input
     ? {
-        type: definition.input,
+        type: inputType!,
         size: fixedInput ? 10 : knownInput,
-        ...(!fixedInput && incoming?.type === definition.input && incoming.label
+        ...(!fixedInput && incoming && incoming.type === inputType && incoming.label
           ? { label: incoming.label }
           : {}),
         ...(node.kind === 'flatten'
@@ -37,7 +51,7 @@ export function nodeConnectors(
   const size = outputSize ?? definition.inferWidth(node, knownInput);
   const output: Connector | undefined = definition.output
     ? {
-        type: definition.output,
+        type: outputType!,
         size,
         ...(node.kind === 'flatten' && size === undefined ? { label: 'N·N' } : {}),
         ...(size === undefined &&
@@ -54,7 +68,7 @@ export function inferConnectorShapes(board: Board) {
   const result = new Map<string, ReturnType<typeof nodeConnectors>>();
   const shapes = inferShapes(board);
   const nodes = new Map(board.nodes.map((n) => [n.id, n]));
-  const incoming = new Map(board.edges.map((e) => [e.to, e.from]));
+  const incoming = new Map(board.edges.filter((e) => !e.port).map((e) => [e.to, e.from]));
   const visiting = new Set<string>();
   function visit(id: string): ReturnType<typeof nodeConnectors> | undefined {
     if (result.has(id)) return result.get(id);
@@ -70,6 +84,7 @@ export function inferConnectorShapes(board: Board) {
       numeric?.output,
       connector,
       source !== undefined,
+      worldOf(board),
     );
     result.set(id, ports);
     visiting.delete(id);
@@ -91,20 +106,39 @@ export function connectorTeeth(connector: Connector, width: number): Tooth[] {
   const small = image ? 20 : 14;
   // Expanded frames keep the same connector footprint as ordinary blocks.
   const available = Math.min(width, BLOCK_WIDTH) - 40;
-  const label = connector.label ?? (image ? '28×28' : String(connector.size ?? 'N'));
+  const label =
+    connector.label ??
+    (image
+      ? '28×28'
+      : connector.type === 'tokens'
+        ? `${CONTEXT} letters`
+        : connector.type === 'sequence'
+          ? `${CONTEXT}×${connector.size ?? 'N'}`
+          : String(connector.size ?? 'N'));
   let widths: number[], labels: (string | undefined)[], gap: number;
   const minimumGap = 10;
   const capacity = Math.floor((available + minimumGap) / (small + minimumGap));
-  if (!image && connector.size !== undefined && connector.size <= capacity) {
+  if (
+    !image &&
+    connector.type !== 'sequence' &&
+    connector.size !== undefined &&
+    connector.size <= capacity
+  ) {
     widths = Array.from({ length: connector.size }, () => small);
     labels = widths.map(() => undefined);
     gap = Math.min(40, (available - widths.length * small) / Math.max(1, widths.length - 1));
   } else {
     const big = Math.max(30, 14 + label.length * 7.2) + (image ? 6 : 0);
-    const count = Math.max(1, Math.floor((available - big) / 2 / (small + 5)) - 1);
-    widths = [...Array<number>(count).fill(small), big, ...Array<number>(count).fill(small)];
-    labels = widths.map((_, i) => (i === count ? label : undefined));
-    gap = (available - widths.reduce((sum, w) => sum + w, 0)) / (widths.length - 1);
+    if (big + 2 * small + 10 > available) {
+      widths = [Math.min(big, available)];
+      labels = [label];
+      gap = 0;
+    } else {
+      const count = Math.max(1, Math.floor((available - big) / 2 / (small + 5)) - 1);
+      widths = [...Array<number>(count).fill(small), big, ...Array<number>(count).fill(small)];
+      labels = widths.map((_, i) => (i === count ? label : undefined));
+      gap = (available - widths.reduce((sum, w) => sum + w, 0)) / (widths.length - 1);
+    }
   }
   const total = widths.reduce((sum, w) => sum + w, 0) + gap * (widths.length - 1);
   let x = (width - total) / 2;
@@ -128,26 +162,48 @@ export function toothContour(type: PortType, tooth: Tooth, y: number, reverse = 
   return `v9Q${X(0)},${y + 14} ${X(5)},${y + 14}H${X(w - 5)}Q${X(w)},${y + 14} ${X(w)},${y + 9}V${y}`;
 }
 
-/** A single closed outline keeps every join seamless, including transparent socket cutouts. */
+/** Teeth spread over one part of an edge, starting `offset` from the left of the block. */
+function placedTeeth(connector: Connector, span: number, offset = 0): Tooth[] {
+  return connectorTeeth(connector, span).map((tooth) => ({ ...tooth, x: tooth.x + offset }));
+}
+
+/**
+ * A single closed outline keeps every join seamless, including transparent socket cutouts.
+ * Add passes `mainWidth` and a `skip` connector: its main socket and output use the left part,
+ * and its shortcut socket sits on top of the lane to the right.
+ */
 export function blockOutline(
   width: number,
   height: number,
   input?: Connector,
   output?: Connector,
+  parts: { mainWidth?: number; skip?: Connector } = {},
 ): string {
+  const main = parts.mainWidth ?? width;
   const radius = Math.min(11, height / 2);
+  const top: [Connector, Tooth][] = [
+    ...(input ? placedTeeth(input, main).map((t): [Connector, Tooth] => [input, t]) : []),
+    ...(parts.skip
+      ? placedTeeth(parts.skip, width - main, main).map((t): [Connector, Tooth] => [parts.skip!, t])
+      : []),
+  ];
   let path = `M${radius},0`;
-  for (const tooth of input ? connectorTeeth(input, width) : [])
-    path += `H${tooth.x}${toothContour(input!.type, tooth, 0)}`;
+  for (const [connector, tooth] of top)
+    path += `H${tooth.x}${toothContour(connector.type, tooth, 0)}`;
   path += `H${width - radius}Q${width},0 ${width},${radius}V${height - radius}Q${width},${height} ${width - radius},${height}`;
-  for (const tooth of output ? connectorTeeth(output, width).reverse() : [])
+  for (const tooth of output ? placedTeeth(output, main).reverse() : [])
     path += `H${tooth.x + tooth.width}${toothContour(output!.type, tooth, height, true)}`;
   return path + `H${radius}Q0,${height} 0,${height - radius}V${radius}Q0,0 ${radius},0Z`;
 }
 
-export function connectorLabels(connector: Connector | undefined, width: number, y: number) {
+export function connectorLabels(
+  connector: Connector | undefined,
+  width: number,
+  y: number,
+  offset = 0,
+) {
   return connector
-    ? connectorTeeth(connector, width)
+    ? placedTeeth(connector, width, offset)
         .filter((t) => t.label)
         .map((t) => ({
           x: t.x + t.width / 2,
@@ -162,9 +218,10 @@ export function connectorEdgePath(
   connector: Connector | undefined,
   width: number,
   y: number,
+  offset = 0,
 ): string {
   return connector
-    ? connectorTeeth(connector, width)
+    ? placedTeeth(connector, width, offset)
         .map((tooth) => `M${tooth.x},${y}${toothContour(connector.type, tooth, y)}`)
         .join('')
     : '';

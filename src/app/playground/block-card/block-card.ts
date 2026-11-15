@@ -1,3 +1,4 @@
+import { InspectionTarget } from '../../learning/model-inspection';
 import { CdkDrag, CdkDragEnd, CdkDragMove } from '@angular/cdk/drag-drop';
 import { MatIcon } from '@angular/material/icon';
 import { Dataset, DATASETS } from '../../learning/datasets';
@@ -11,11 +12,12 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { PercentPipe } from '@angular/common';
+import { DecimalPipe, PercentPipe } from '@angular/common';
 import { DigitPreview } from '../../learning/digit-preview/digit-preview';
 import { BlockIcon } from '../block-icon/block-icon';
 import { blockName } from '../block-catalog';
 import {
+  Connector,
   blockOutline,
   recipeWellOutline,
   connectorLabels,
@@ -23,10 +25,14 @@ import {
   nodeConnectors,
 } from '../block-connectors';
 import { ACTIVATIONS, Activation } from '../../learning/curriculum';
+import { CONTEXT, VOCAB_SIZE } from '../../learning/shakespeare';
 import {
   BLOCKS,
   BlockNode,
   FRAME,
+  HEAD_CHOICES,
+  mainWidth,
+  SHORTCUT_LANE,
   customLayout,
   MAX_DENSE_INPUTS,
   MAX_DENSE_UNITS,
@@ -46,7 +52,7 @@ import {
     '(document:keydown.escape)': 'helpOpen.set(false)',
     '[class.help-open]': 'helpOpen()',
   },
-  imports: [CdkDrag, MatIcon, PercentPipe, DigitPreview, BlockIcon],
+  imports: [CdkDrag, MatIcon, PercentPipe, DecimalPipe, DigitPreview, BlockIcon],
   templateUrl: './block-card.html',
   styleUrl: './block-card.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -62,11 +68,22 @@ export class BlockCard {
   previewInnerDrag(event: CdkDragMove, id: string): void {
     this.innerMove.emit({ id, point: event.pointerPosition });
   }
+  /** Add only: the shortcut socket's glow while a plate is carried near it. */
+  readonly skipFeedback = input<'valid' | 'invalid' | null>(null);
+  /** Add only: the socket matches the plate that fits it, or the main socket until wired. */
+  readonly skipShape = input<Connector>();
+  readonly mainWidth = computed(() => mainWidth(this.node()));
+  readonly skipConnector = computed(() =>
+    this.node().kind === 'add' ? (this.skipShape() ?? this.connectors().input) : undefined,
+  );
   readonly inputEdge = computed(() =>
-    connectorEdgePath(this.connectors().input, this.size().width, 0),
+    connectorEdgePath(this.connectors().input, this.mainWidth(), 0),
   );
   readonly outputEdge = computed(() =>
-    connectorEdgePath(this.connectors().output, this.size().width, this.size().height),
+    connectorEdgePath(this.connectors().output, this.mainWidth(), this.size().height),
+  );
+  readonly skipEdge = computed(() =>
+    connectorEdgePath(this.skipConnector(), SHORTCUT_LANE, 0, this.mainWidth()),
   );
   readonly innerDrop = output<{
     id: string;
@@ -89,8 +106,37 @@ export class BlockCard {
   readonly pixels = input<Float32Array>();
   readonly actual = input<number>();
   readonly custom = input(false);
-  /** Drawn inside an expanded custom block: no delete button, edits go to the parent. */
+  /** Drawn inside a custom block: edits go to the parent recipe. */
   readonly nested = input(false);
+  /** Text level: one practice question, and what the writer has written so far. */
+  readonly snippet = input<{ letters: string; next: string } | null>(null);
+  readonly written = input<{ prompt: string; text: string; caption: string } | null>(null);
+  readonly writing = input(false);
+  readonly trained = input(false);
+  readonly prompt = input('');
+  readonly temperature = input(0.8);
+  readonly write = output<void>();
+  readonly stopWrite = output<void>();
+  readonly promptChange = output<string>();
+  readonly temperatureChange = output<number>();
+  readonly context = CONTEXT;
+  readonly vocab = VOCAB_SIZE;
+  readonly headChoices = HEAD_CHOICES;
+  readonly textWorld = computed(() => this.dataset().kind === 'text');
+  /** Newlines and spaces drawn so a player can see them. */
+  readonly visible = (letters: string) => letters.replace(/\n/g, '↵\n');
+  readonly showNext = (letter: string) => (letter === '\n' ? '↵' : letter === ' ' ? '␣' : letter);
+  /** Learnable numbers in this text block, given the width flowing in. */
+  readonly textWeights = computed(() => {
+    const width = this.inputSize(),
+      node = this.node();
+    if (node.kind === 'embedding') return VOCAB_SIZE * (node.units ?? 0);
+    if (width === undefined) return undefined;
+    if (node.kind === 'position') return CONTEXT * width;
+    if (node.kind === 'layernorm') return 2 * width;
+    if (node.kind === 'attention') return 4 * (width * width + width);
+    return 0;
+  });
   readonly frame = FRAME;
   readonly maxDenseUnits = MAX_DENSE_UNITS;
   readonly maxDenseInputs = MAX_DENSE_INPUTS;
@@ -112,7 +158,14 @@ export class BlockCard {
       const input = width;
       width = inner.kind === 'dense' ? inner.units : width;
       const node = { ...inner, x: 0, y: 0 } as BlockNode;
-      const connectors = nodeConnectors(node, input, width, incoming, true);
+      const connectors = nodeConnectors(
+        node,
+        input,
+        width,
+        incoming,
+        true,
+        this.textWorld() ? 'text' : 'images',
+      );
       incoming = connectors.output;
       return {
         node,
@@ -132,6 +185,14 @@ export class BlockCard {
   );
   readonly name = computed(() => blockName(this.node(), this.dataset()));
   /** The "?" bubble: what this block does, in plain words. */
+  readonly inspect = output<InspectionTarget>();
+  readonly inspectable = computed(() =>
+    ['dense', 'activation', 'softmax'].includes(this.node().kind),
+  );
+  openHelp(): void {
+    if (this.inspectable()) this.inspect.emit({ id: this.node().id });
+    else this.helpOpen.update((open) => !open);
+  }
   readonly helpOpen = signal(false);
   readonly help = computed(() =>
     this.node().kind === 'activation'
@@ -153,6 +214,7 @@ export class BlockCard {
         this.outputSize(),
         undefined,
         this.inputWired(),
+        this.textWorld() ? 'text' : 'images',
       ),
   );
   readonly outline = computed(() =>
@@ -161,11 +223,13 @@ export class BlockCard {
       this.size().height,
       this.connectors().input,
       this.connectors().output,
+      { mainWidth: this.mainWidth(), skip: this.skipConnector() },
     ),
   );
   readonly connectorLabels = computed(() => [
-    ...connectorLabels(this.connectors().input, this.size().width, 0),
-    ...connectorLabels(this.connectors().output, this.size().width, this.size().height),
+    ...connectorLabels(this.connectors().input, this.mainWidth(), 0),
+    ...connectorLabels(this.skipConnector(), SHORTCUT_LANE, 0, this.mainWidth()),
+    ...connectorLabels(this.connectors().output, this.mainWidth(), this.size().height),
   ]);
   readonly editableCards = computed(() => this.innerCards().filter((c) => c.copy === 1));
   readonly copyGroups = computed(() =>
@@ -259,7 +323,8 @@ export class BlockCard {
       this.configure.emit({ id: this.node().id, name: name || undefined });
   }
   stopControls(event: Event): void {
-    if ((event.target as HTMLElement).closest('button,select,input')) event.stopPropagation();
+    if ((event.target as HTMLElement).closest('button,select,input,textarea'))
+      event.stopPropagation();
   }
   updateInputs(event: Event): void {
     const inputs = (event.target as HTMLInputElement).valueAsNumber;
@@ -278,6 +343,15 @@ export class BlockCard {
     if (validDenseInputs(inputs)) {
       if (inputs !== this.node().inputs) this.configure.emit({ id: this.node().id, inputs });
     } else field.value = this.node().inputs === undefined ? '' : String(this.node().inputs);
+  }
+  setHeads(heads: number): void {
+    if (heads !== this.node().heads) this.configure.emit({ id: this.node().id, heads });
+  }
+  changePrompt(event: Event): void {
+    this.promptChange.emit((event.target as HTMLTextAreaElement).value);
+  }
+  changeTemperature(event: Event): void {
+    this.temperatureChange.emit((event.target as HTMLInputElement).valueAsNumber);
   }
   changeUnits(event: Event): void {
     const field = event.target as HTMLInputElement;

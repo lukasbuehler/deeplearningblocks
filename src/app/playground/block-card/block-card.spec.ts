@@ -85,3 +85,46 @@ describe('Flexible Softmax', () => {
     fixture.destroy();
   });
 });
+
+describe('Block inspection routing', () => {
+  it('opens an inspector from the question mark instead of the small help bubble', async () => {
+    TestBed.configureTestingModule({
+      imports: [BlockCard],
+      providers: [provideZonelessChangeDetection()],
+    });
+    const fixture = TestBed.createComponent(BlockCard);
+    fixture.componentRef.setInput('node', { id: 'dense', kind: 'dense', units: 10, x: 0, y: 0 });
+    const inspect = jasmine.createSpy();
+    fixture.componentInstance.inspect.subscribe(inspect);
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector('.help').click();
+    expect(inspect).toHaveBeenCalledWith({ id: 'dense' });
+    expect(fixture.componentInstance.helpOpen()).toBeFalse();
+    fixture.destroy();
+  });
+});
+
+describe('Repeated copy inspection', () => {
+  it('routes a repeated Dense question mark to that copy rather than the editable recipe', async () => {
+    TestBed.configureTestingModule({
+      imports: [BlockCard],
+      providers: [provideZonelessChangeDetection()],
+    });
+    const fixture = TestBed.createComponent(BlockCard);
+    fixture.componentRef.setInput('node', {
+      id: 'group',
+      kind: 'custom',
+      repeat: 2,
+      expanded: true,
+      blocks: [{ id: 'dense', kind: 'dense', units: 4 }],
+      x: 0,
+      y: 0,
+    });
+    const inspect = jasmine.createSpy();
+    fixture.componentInstance.inspect.subscribe(inspect);
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector('[aria-label="Repeated copy"] .help').click();
+    expect(inspect).toHaveBeenCalledWith({ id: 'group', innerId: 'dense', copy: 2 });
+    fixture.destroy();
+  });
+});

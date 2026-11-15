@@ -35,6 +35,7 @@
     ]
   },
   "private": true,
+  "license": "MIT",
   "dependencies": {
     "@angular/cdk": "^20.2.8",
     "@angular/common": "^20.3.33",

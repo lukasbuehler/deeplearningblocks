@@ -1,3 +1,14 @@
+import {
+  ShortcutOrigin,
+  ShortcutView,
+  shortcutViews,
+  shortcutPoints,
+  liftShortcut,
+  dropShortcut,
+  shortcutTarget,
+} from '../shortcuts';
+import { BlockInspector } from '../block-inspector/block-inspector';
+import { InspectionTarget } from '../../learning/model-inspection';
 import { MatIcon } from '@angular/material/icon';
 import {
   ChangeDetectionStrategy,
@@ -16,18 +27,28 @@ import { CdkDrag, CdkDragMove, CdkDragEnd, CdkDragStart } from '@angular/cdk/dra
 import {
   BLOCKS,
   BLOCK_WIDTH,
+  SHORTCUT_LANE,
+  PLATE_HEIGHT,
+  mainWidth,
+  shortcutStart,
   BlockKind,
   BlockNode,
   Board,
   INNER_KINDS,
   Edge,
+  InputPort,
   Point,
+  classCount,
+  connect,
   newConnectionError,
   inferShapes,
   nodeSize,
   portPosition,
+  portType,
   removeNode,
+  worldOf,
 } from '../graph';
+import { CONTEXT } from '../../learning/shakespeare';
 import { MIN_ZOOM, toWorld, wirePath, zoomAt, closestPointOnRect } from '../geometry';
 import { GameService } from '../game.service';
 import {
@@ -57,24 +78,37 @@ import {
   makeCustomBlock,
   nextPickable,
   pickedChain,
-  starterRecipe,
   takeApart,
 } from '../custom-blocks';
 @Component({
   selector: 'app-paper-canvas',
-  imports: [MatIcon, CdkDrag, BlockCard, BlockIcon, Blocky],
+  imports: [MatIcon, CdkDrag, BlockCard, BlockIcon, Blocky, BlockInspector],
   templateUrl: './paper-canvas.html',
   styleUrl: './paper-canvas.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PaperCanvas {
+  readonly inspecting = signal<InspectionTarget | null>(null);
   readonly checkButton = input<HTMLButtonElement>();
   readonly game = inject(GameService);
   readonly paper = viewChild.required<ElementRef<HTMLDivElement>>('paper');
   readonly definitions = BLOCKS;
   readonly size = nodeSize;
+  readonly mainWidth = mainWidth;
+  readonly shortcutStart = shortcutStart;
+  readonly shortcutLane = SHORTCUT_LANE;
+  readonly plateHeight = PLATE_HEIGHT;
+  readonly boardWorld = computed(() => worldOf(this.game.board()));
+  readonly portType = (node: BlockNode, side: 'input' | 'output') =>
+    portType(node.kind, side, this.boardWorld());
+  /** A stable name for a wire. Text outputs can feed several sockets, so `from` is not enough. */
+  readonly edgeKey = (edge: Edge) => `${edge.from}>${edge.to}>${edge.port ?? ''}`;
   readonly defaultUnits = computed(() =>
-    this.game.mode() === 'journey' && this.game.era() === 0 ? 10 : 32,
+    this.boardWorld() === 'text'
+      ? 48
+      : this.game.mode() === 'journey' && this.game.era() === 0
+        ? 10
+        : 32,
   );
   readonly tiles = computed(() =>
     tilesFor(this.game.dataset()).map((tile) => {
@@ -84,22 +118,105 @@ export class PaperCanvas {
         units: this.defaultUnits(),
         x: 0,
         y: 0,
-        ...(tile.kind === 'custom' ? { blocks: [{ id: 'dense', kind: 'dense', units: 32 }] } : {}),
+        ...(tile.kind === 'custom' ? { blocks: [] } : {}),
       };
-      const { input, output } = nodeConnectors(node);
+      const { input, output } = nodeConnectors(
+        node,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        this.boardWorld(),
+      );
       if (tile.kind === 'dense' && output) {
         output.size = undefined;
         output.label = 'M';
       }
       return {
         ...tile,
-        outline: blockOutline(180, 118, input, output),
-        labels: [...connectorLabels(input, 180, 0), ...connectorLabels(output, 180, 118)],
+        outline: blockOutline(
+          180,
+          118,
+          input,
+          output,
+          tile.kind === 'add' ? { mainWidth: 90, skip: input } : {},
+        ),
+        labels:
+          tile.kind === 'add'
+            ? [
+                ...connectorLabels(input, 90, 0),
+                ...connectorLabels(input, 90, 0, 90),
+                ...connectorLabels(output, 90, 118),
+              ]
+            : [...connectorLabels(input, 180, 0), ...connectorLabels(output, 180, 118)],
       };
     }),
   );
   readonly blockName = (node: BlockNode) => blockName(node, this.game.dataset());
   readonly tray = signal(false);
+  readonly shortcutDrag = signal<{
+    from: string;
+    key?: string;
+    origin?: ShortcutOrigin;
+    plate: Point;
+    grab: Point;
+  } | null>(null);
+  readonly shortcutCandidate = computed(() => {
+    const drag = this.shortcutDrag();
+    return drag
+      ? shortcutTarget(
+          liftShortcut(this.game.board(), drag.from, drag.origin),
+          drag.from,
+          drag.plate,
+          40 / this.game.board().viewport.zoom,
+        )
+      : null;
+  });
+  readonly shortcutPlates = computed(() => {
+    const board = this.visualBoard(),
+      drag = this.shortcutDrag();
+    const views = shortcutViews(board);
+    if (drag) {
+      const original = views.find((v) => v.key === drag.key);
+      const source = board.nodes.find((n) => n.id === drag.from)!;
+      const view = {
+        key: original?.key ?? 'carried',
+        from: drag.from,
+        origin: drag.origin,
+        plate: drag.plate,
+        points: shortcutPoints(source, drag.plate),
+      };
+      if (original)
+        views.splice(views.indexOf(original), 1, { ...original, ...view, origin: original.origin });
+      else views.push({ ...view, origin: { parked: -1 } });
+    }
+    return views.map((v) => {
+      const shape = this.connectorShapes().get(v.from)?.output;
+      return {
+        ...v,
+        path: roundedWire(v.points),
+        outline: blockOutline(SHORTCUT_LANE, PLATE_HEIGHT, undefined, shape),
+        labels: connectorLabels(shape, SHORTCUT_LANE, PLATE_HEIGHT),
+        carried: !!drag && v.key === (drag.key ?? 'carried'),
+      };
+    });
+  });
+  readonly skipShapes = computed(
+    () =>
+      new Map(
+        this.visualBoard()
+          .nodes.filter((n) => n.kind === 'add')
+          .map((n) => {
+            const source = this.visualBoard().edges.find((e) => e.to === n.id && e.port)?.from;
+            return [
+              n.id,
+              source
+                ? this.connectorShapes().get(source)?.output
+                : this.connectorShapes().get(n.id)?.input,
+            ];
+          }),
+      ),
+  );
   readonly pending = signal<string | null>(null);
   readonly selectedEdge = signal<Edge | null>(null);
   readonly pointer = signal<Point | null>(null);
@@ -128,7 +245,7 @@ export class PaperCanvas {
   }
   readonly trash = viewChild<ElementRef<HTMLButtonElement>>('trash');
   readonly selectedJoint = computed(() =>
-    this.game.board().edges.find((e) => e.to === this.game.selected()),
+    this.game.board().edges.find((e) => !e.port && e.to === this.game.selected()),
   );
   detachSelected(): void {
     const edge = this.selectedJoint();
@@ -160,6 +277,7 @@ export class PaperCanvas {
   } | null>(null);
   previewInner(parent: string, event: { id: string; point: Point }): void {
     this.dragIntent.set({ point: event.point, inner: { parent, id: event.id } });
+    this.overTrash.set(this.inTrash(event.point));
   }
   readonly dropSource = computed(() => {
     const draft = this.draft();
@@ -235,7 +353,14 @@ export class PaperCanvas {
   });
   readonly shapes = computed(() => inferShapes(this.visualBoard()));
   readonly connectorShapes = computed(() => inferConnectorShapes(this.visualBoard()));
-  readonly wiredInputs = computed(() => new Set(this.visualBoard().edges.map((e) => e.to)));
+  readonly wiredInputs = computed(
+    () =>
+      new Set(
+        this.visualBoard()
+          .edges.filter((e) => !e.port)
+          .map((e) => e.to),
+      ),
+  );
   readonly visualNodes = computed(() => this.visualBoard().nodes);
   readonly positions = computed(() => new Map(this.visualNodes().map((n) => [n.id, n])));
   private readonly committedPositions = computed(() => {
@@ -260,24 +385,26 @@ export class PaperCanvas {
     const routes = new Map<string, Point[]>();
     const wires = this.visualBoard()
       .edges.filter((edge) => {
+        if (edge.port) return false;
         const source = this.positions().get(edge.from)!,
           target = this.positions().get(edge.to)!;
         const out = portPosition(source, 'output'),
-          input = portPosition(target, 'input');
+          input = portPosition(target, 'input', edge.port);
         return Math.hypot(out.x - input.x, out.y - input.y) > 0.5;
       })
       .map((edge) => {
         const from = this.visualNodes().find((n) => n.id === edge.from)!,
           to = this.visualNodes().find((n) => n.id === edge.to)!;
-        const key = `${edge.from}>${edge.to}`;
-        const points = routeWire(from, to, this.visualNodes(), this.lastRoutes.get(key));
+        const key = this.edgeKey(edge);
+        const points = routeWire(from, to, this.visualNodes(), this.lastRoutes.get(key), edge.port);
         routes.set(key, points);
         return {
           ...edge,
           points,
+          key,
           path: roundedWire(points),
           label: `${this.blockName(from)} to ${this.blockName(to)}`,
-          type: BLOCKS[from.kind].output,
+          type: this.portType(from, 'output'),
         };
       });
     this.lastRoutes.clear();
@@ -330,7 +457,8 @@ export class PaperCanvas {
     ),
   );
   readonly helperSuppressed = computed(
-    () => !!(this.tray() || this.pending() || this.game.drawingOpen() || this.game.trainer.busy()),
+    () =>
+      !!(this.tray() || this.shortcutDrag() || this.game.drawingOpen() || this.game.trainer.busy()),
   );
   readonly helperTarget = computed(() =>
     this.helperVisible() && !this.helperSuppressed() ? this.helperHint()?.target : null,
@@ -341,7 +469,7 @@ export class PaperCanvas {
   });
   readonly highlightedEdge = computed(() => {
     const t = this.helperTarget();
-    return t?.kind === 'edge' ? t.from : null;
+    return t?.kind === 'edge' ? this.edgeKey(t) : null;
   });
   readonly targetPoint = computed(() => {
     const t = this.helperHint()?.target,
@@ -357,8 +485,8 @@ export class PaperCanvas {
       to = nodes.find((n) => n.id === t.to);
     if (!from || !to) return null;
     const points =
-        this.wires().find((w) => w.from === t.from && w.to === t.to)?.points ??
-        routeWire(from, to, nodes),
+        this.wires().find((w) => w.from === t.from && w.to === t.to && w.port === t.port)?.points ??
+        routeWire(from, to, nodes, undefined, t.port),
       i = Math.floor((points.length - 1) / 2);
     return { x: (points[i].x + points[i + 1].x) / 2, y: (points[i].y + points[i + 1].y) / 2 };
   });
@@ -433,7 +561,7 @@ export class PaperCanvas {
     const selector =
       target.kind === 'node'
         ? `[data-node="${CSS.escape(target.id)}"]`
-        : `[data-edge-from="${CSS.escape(target.from)}"]`;
+        : `[data-edge="${CSS.escape(this.edgeKey(target))}"]`;
     this.paper().nativeElement.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
   }
   private panOrigin?: { point: Point; view: Board['viewport'] };
@@ -465,10 +593,17 @@ export class PaperCanvas {
       return;
     }
     const r = this.paper().nativeElement.getBoundingClientRect();
-    const minX = Math.min(...nodes.map((n) => n.x)),
-      minY = Math.min(...nodes.map((n) => n.y));
-    const width = Math.max(...nodes.map((n) => n.x + nodeSize(n).width)) - minX,
-      height = Math.max(...nodes.map((n) => n.y + nodeSize(n).height)) - minY;
+    const parked = this.game.board().parked ?? [];
+    const minX = Math.min(...nodes.map((n) => n.x), ...parked.map((p) => p.x - SHORTCUT_LANE / 2)),
+      minY = Math.min(...nodes.map((n) => n.y), ...parked.map((p) => p.y - PLATE_HEIGHT));
+    const width =
+        Math.max(
+          ...nodes.map((n) => n.x + nodeSize(n).width),
+          ...parked.map((p) => p.x + SHORTCUT_LANE / 2),
+        ) - minX,
+      height =
+        Math.max(...nodes.map((n) => n.y + nodeSize(n).height), ...parked.map((p) => p.y + 14)) -
+        minY;
     const zoom = Math.max(
       MIN_ZOOM,
       Math.min(1, (r.width - 100) / width, (r.height - 130) / height),
@@ -480,7 +615,7 @@ export class PaperCanvas {
     });
   }
   zoom(factor: number, point?: Point): void {
-    if (this.draft()) return;
+    if (this.draft() || this.shortcutDrag()) return;
     const el = this.paper().nativeElement;
     this.game.setViewport(
       zoomAt(
@@ -491,14 +626,17 @@ export class PaperCanvas {
     );
   }
   wheel(event: WheelEvent): void {
-    if ((event.target as HTMLElement).closest('.tray,.canvas-tools,app-blocky')) return;
+    if ((event.target as HTMLElement).closest('.tray,.canvas-tools,app-blocky,.text-recipe'))
+      return;
     event.preventDefault();
     this.zoom(Math.exp(-event.deltaY * 0.002), this.local(event));
   }
   panStart(event: PointerEvent): void {
     if (
       event.button !== 0 ||
-      (event.target as HTMLElement).closest('.node,button,.tray,.wire-hit,.canvas-tools,app-blocky')
+      (event.target as HTMLElement).closest(
+        '.node,button,.tray,.wire-hit,.canvas-tools,app-blocky,.text-recipe',
+      )
     )
       return;
     this.game.selected.set(null);
@@ -563,6 +701,15 @@ export class PaperCanvas {
       crypto.randomUUID(),
     );
     const moved = board.nodes.at(-1)!;
+    this.overTrash.set(false);
+    // Blocks inside a custom block can go straight into the trashcan, in one undo step.
+    if (this.inTrash(event.drop)) {
+      this.game.edit(removeNode(board, moved.id));
+      this.sound.play('trash');
+      this.flash(this.gulping, true, false);
+      this.announcement.set('Block thrown away. Undo can bring it back.');
+      return;
+    }
     if (target) {
       const inserted = insertIntoRecipe(board, target.id, [moved.id], target.index);
       if (typeof inserted === 'string') this.game.message.set(inserted);
@@ -675,11 +822,127 @@ export class PaperCanvas {
     this.game.selected.set(null);
     this.game.message.set('Taken apart. Same layers, now as separate blocks.');
   }
+  startShortcut(event: PointerEvent, from: string, view?: ShortcutView): void {
+    event.stopPropagation();
+    if (event.button !== 0 || this.game.trainer.busy()) return;
+    const pointer = this.world(event);
+    this.game.selected.set(null);
+    this.selectedEdge.set(null);
+    this.cancelWire();
+    this.shortcutDrag.set({
+      from,
+      key: view?.key,
+      origin: view?.origin,
+      plate: view?.plate ?? pointer,
+      grab: view ? { x: pointer.x - view.plate.x, y: pointer.y - view.plate.y } : { x: 0, y: 0 },
+    });
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  }
+  moveShortcut(event: PointerEvent): void {
+    const drag = this.shortcutDrag();
+    if (!drag) return;
+    const p = this.world(event);
+    this.shortcutDrag.set({ ...drag, plate: { x: p.x - drag.grab.x, y: p.y - drag.grab.y } });
+    this.overTrash.set(this.inTrash(event));
+  }
+  endShortcut(event: PointerEvent): void {
+    const drag = this.shortcutDrag();
+    if (!drag) return;
+    this.moveShortcut(event);
+    const plate = this.shortcutDrag()!.plate;
+    const lifted = liftShortcut(this.game.board(), drag.from, drag.origin);
+    const trashed = this.inTrash(event),
+      candidate = this.shortcutCandidate();
+    const result = trashed
+      ? { board: lifted }
+      : dropShortcut(lifted, drag.from, plate, 40 / lifted.viewport.zoom);
+    this.cancelShortcut();
+    if ('error' in result && result.error && result.board === lifted) {
+      this.game.message.set(result.error);
+      return;
+    }
+    this.game.edit(result.board);
+    if (trashed) {
+      this.sound.play('trash');
+      this.flash(this.gulping, true, false);
+      this.announcement.set('Shortcut removed. Undo can bring it back.');
+      this.game.message.set('Shortcut removed.');
+      return;
+    }
+    if ('error' in result && result.error && candidate)
+      this.rejected.set({
+        edge: { from: drag.from, to: candidate.to, port: 'skip' },
+        context: this.helperContext(),
+      });
+    if ('connected' in result && result.connected)
+      this.celebrateConnection(drag.from, result.connected);
+    else
+      this.game.message.set(
+        'error' in result && result.error
+          ? result.error
+          : 'Shortcut plate parked. Drag its studs to an Add socket when you are ready.',
+      );
+  }
+  cancelShortcut(): void {
+    this.shortcutDrag.set(null);
+    this.overTrash.set(false);
+  }
+  parkShortcut(from: string): void {
+    if (this.game.trainer.busy()) return;
+    const node = this.game.board().nodes.find((n) => n.id === from)!;
+    const start = shortcutStart(node);
+    const result = dropShortcut(
+      this.game.board(),
+      from,
+      { x: start.x + SHORTCUT_LANE / 2 + 40, y: start.y + 90 },
+      0,
+    );
+    if (result.error) {
+      this.game.message.set(result.error);
+      return;
+    }
+    this.game.edit(result.board);
+    this.announcement.set(
+      'Shortcut parked. Use arrow keys to move its plate, Enter to fit it, or Delete to remove it.',
+    );
+  }
+  plateKey(event: KeyboardEvent, view: ShortcutView): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.cancelShortcut();
+      return;
+    }
+    const moves: Record<string, Point> = {
+      ArrowLeft: { x: -10, y: 0 },
+      ArrowRight: { x: 10, y: 0 },
+      ArrowUp: { x: 0, y: -10 },
+      ArrowDown: { x: 0, y: 10 },
+    };
+    if (!moves[event.key] && !['Enter', ' ', 'Delete', 'Backspace'].includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.game.trainer.busy()) return;
+    const lifted = liftShortcut(this.game.board(), view.from, view.origin);
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      this.game.edit(lifted);
+      return;
+    }
+    const delta = moves[event.key] ?? { x: 0, y: 0 };
+    const result = dropShortcut(
+      lifted,
+      view.from,
+      { x: view.plate.x + delta.x, y: view.plate.y + delta.y },
+      moves[event.key] ? 0 : 40 / lifted.viewport.zoom,
+    );
+    if (!result.error || result.board !== lifted) this.game.edit(result.board);
+    if (result.error) this.game.message.set(result.error);
+  }
   outputStart(event: PointerEvent, node: BlockNode): void {
     event.stopPropagation();
     if (this.game.trainer.busy()) return;
     const occupied = this.game.board().edges.find((e) => e.from === node.id);
-    if (occupied) {
+    if (occupied && !this.branches(node)) {
       this.chooseEdge(occupied);
       return;
     }
@@ -702,7 +965,11 @@ export class PaperCanvas {
       const target = document
         .elementFromPoint(event.clientX, event.clientY)
         ?.closest<HTMLElement>('[data-input]');
-      if (target) this.finishConnection(target.dataset['input']!);
+      if (target)
+        this.finishConnection(
+          target.dataset['input']!,
+          target.dataset['port'] as InputPort | undefined,
+        );
       else this.cancelWire();
     }
   }
@@ -710,50 +977,70 @@ export class PaperCanvas {
     event.stopPropagation();
     if (event.detail === 0 && !this.game.trainer.busy()) {
       const occupied = this.game.board().edges.find((e) => e.from === id);
-      if (occupied) this.chooseEdge(occupied);
+      const node = this.game.board().nodes.find((n) => n.id === id);
+      if (occupied && !(node && this.branches(node))) this.chooseEdge(occupied);
       else {
         this.pending.set(id);
         this.pointer.set(null);
       }
     }
   }
-  finishConnection(id: string): void {
+  /** Sequence outputs may feed several sockets, such as a block and a shortcut. */
+  branches(node: BlockNode): boolean {
+    return this.portType(node, 'output') === 'sequence';
+  }
+  finishConnection(id: string, port?: InputPort): void {
     const from = this.pending();
     if (this.game.trainer.busy()) return;
     if (!from) {
-      const occupied = this.game.board().edges.find((e) => e.to === id);
+      const occupied = this.game
+        .board()
+        .edges.find((e) => e.to === id && (e.port ?? null) === (port ?? null));
       if (occupied) this.chooseEdge(occupied);
       return;
     }
-    const error = this.wireError(id);
+    const error = this.wireError(id, port);
     if (error) {
       this.game.message.set(error);
-      this.rejected.set({ edge: { from, to: id }, context: this.helperContext() });
+      this.rejected.set({
+        edge: port ? { from, to: id, port } : { from, to: id },
+        context: this.helperContext(),
+      });
       this.cancelWire();
       return;
     }
-    this.game.edit(attachStacks(this.game.board(), from, id));
+    this.game.edit(
+      port ? connect(this.game.board(), from, id, port) : attachStacks(this.game.board(), from, id),
+    );
     this.cancelWire();
     this.celebrateConnection(from, id);
   }
-  portLabel(node: BlockNode, side: 'input' | 'output'): string {
-    const type = BLOCKS[node.kind][side];
-    if (type === 'image')
-      return node.kind === 'image' || this.shapes().get(node.id)?.input !== undefined
-        ? '28 × 28'
-        : 'N × N';
+  portLabel(node: BlockNode, side: 'input' | 'output', port?: InputPort): string {
+    const type = this.portType(node, side);
+    const classes = classCount(this.boardWorld());
+    if (type === 'image') return '28 × 28 × 1';
+    if (type === 'tokens') return `${CONTEXT} letters`;
     if (node.kind === 'classifier') return '10 probabilities';
-    const width =
-      this.shapes().get(node.id)?.[side] ??
-      (side === 'output' ? BLOCKS[node.kind].inferWidth(node) : undefined);
-    return `${type === 'probabilities' ? 'Probabilities' : 'Vector'} · ${width ?? (node.kind === 'flatten' && side === 'output' ? 'N·N' : 'N')}`;
+    if (node.kind === 'writer') return `${classes} letter chances`;
+    const shortcut = port
+      ? this.game.board().edges.find((e) => e.to === node.id && e.port === port)?.from
+      : undefined;
+    const width = port
+      ? shortcut && this.shapes().get(shortcut)?.output
+      : (this.shapes().get(node.id)?.[side] ??
+        (side === 'output' ? BLOCKS[node.kind].inferWidth(node) : undefined));
+    if (port) return `Shortcut · ${width || 'N'}`;
+    if (type === 'sequence') return `${CONTEXT} letters × ${width ?? 'N'}`;
+    if (type === 'probabilities' && this.boardWorld() === 'text')
+      return `${classes} letter chances`;
+    return `${type === 'probabilities' ? 'Probabilities' : 'Vector'} · ${width ?? 'N'}`;
   }
-  wireError(id: string): string | null {
+  wireError(id: string, port?: InputPort): string | null {
     const from = this.pending();
-    return from ? newConnectionError(this.game.board(), from, id, this.shapes()) : null;
+    return from ? newConnectionError(this.game.board(), from, id, this.shapes(), port) : null;
   }
-  compatible(id: string): boolean {
-    return !!this.pending() && !this.wireError(id);
+  compatible(id: string, port?: InputPort): boolean {
+    return !!this.pending() && !this.wireError(id, port);
   }
   cancelWire(): void {
     this.pending.set(null);
@@ -768,8 +1055,16 @@ export class PaperCanvas {
   disconnect(): void {
     const edge = this.selectedEdge();
     if (!edge || this.game.trainer.busy()) return;
-    const node = this.game.board().nodes.find((n) => n.id === edge.to)!;
-    this.game.edit(moveStack(this.game.board(), node.id, { x: node.x + 32, y: node.y + 40 }));
+    const board = this.game.board();
+    const target = board.nodes.find((n) => n.id === edge.to)!;
+    this.game.edit(
+      edge.port
+        ? {
+            ...board,
+            edges: board.edges.filter((e) => this.edgeKey(e) !== this.edgeKey(edge)),
+          }
+        : moveStack(board, target.id, { x: target.x + 32, y: target.y + 40 }),
+    );
     this.selectedEdge.set(null);
   }
   /** Tapping the trashcan deletes the selected block, for anyone who cannot drag. */
@@ -791,7 +1086,7 @@ export class PaperCanvas {
   }
   exists(tile: Tile): boolean {
     return (
-      ['image', 'classifier'].includes(tile.kind) &&
+      ['image', 'classifier', 'text', 'writer'].includes(tile.kind) &&
       this.game.board().nodes.some((n) => n.kind === tile.kind)
     );
   }
@@ -851,15 +1146,24 @@ export class PaperCanvas {
       kind: tile.kind,
       x: Math.round(center.x - BLOCK_WIDTH / 2),
       y: Math.round(center.y - BLOCKS[tile.kind].height / 2),
-      ...(tile.kind === 'dense' ? { units: this.defaultUnits() } : {}),
+      ...(tile.kind === 'dense'
+        ? {
+            units:
+              this.boardWorld() === 'text'
+                ? 48
+                : this.game.mode() === 'journey' && this.game.era() === 0
+                  ? 10
+                  : 32,
+          }
+        : {}),
+      ...(tile.kind === 'embedding' ? { units: 48 } : {}),
+      ...(tile.kind === 'attention' ? { heads: 4 } : {}),
       ...(tile.activation ? { activation: tile.activation } : {}),
       ...(tile.kind === 'custom'
         ? {
             repeat: 1,
-            blocks: starterRecipe(
-              this.game.activations().some((a) => a.value === 'relu') ? 'relu' : 'tanh',
-              () => crypto.randomUUID(),
-            ),
+            // A new custom block starts empty: drop Dense or activation blocks into it.
+            blocks: [],
           }
         : {}),
     };
@@ -903,6 +1207,7 @@ export class PaperCanvas {
     this.announcement.set(`${tile.name} is on the paper.`);
   }
   clearSelection(): void {
+    this.cancelShortcut();
     this.game.selected.set(null);
     this.picked.set([]);
     this.selectedEdge.set(null);
@@ -913,7 +1218,7 @@ export class PaperCanvas {
     const target = event.target as HTMLElement;
     if (
       target.closest(
-        'input,select,textarea,[contenteditable="true"],dialog,[role="dialog"],app-blocky',
+        'input,select,textarea,[contenteditable="true"],dialog,[role="dialog"],app-blocky,.shortcut-plate,.text-recipe',
       )
     )
       return;
@@ -923,6 +1228,7 @@ export class PaperCanvas {
     }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
       event.preventDefault();
+      this.cancelShortcut();
       event.shiftKey ? this.game.redo() : this.game.undo();
       return;
     }

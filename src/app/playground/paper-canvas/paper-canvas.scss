@@ -339,6 +339,24 @@
   background: transparent;
   --tile-color: #ffb86b;
 }
+/* Text level blocks, matching their cards (block-card.scss). */
+$text-colors: (
+  text: #ffe14a,
+  embedding: #74a6ff,
+  position: #a8c8ff,
+  layernorm: #c8f08f,
+  attention: #9be7ff,
+  add: #ffd9b0,
+  writer: #bc9aff,
+);
+@each $kind, $color in $text-colors {
+  .tile.#{$kind} {
+    --tile-color: #{$color};
+  }
+  .tile-ghost.#{$kind} {
+    background: $color;
+  }
+}
 .tile:disabled {
   box-shadow: none;
   cursor: not-allowed;
@@ -630,19 +648,7 @@ button:disabled {
 }
 
 /* Click! Both studs pop, a ring bursts from the socket and the card is pressed down. */
-.port.clicked::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 36px;
-  height: 36px;
-  margin: -18px 0 0 -18px;
-  border: 3px solid #171717;
-  border-radius: 50%;
-  pointer-events: none;
-  animation: click-ring 0.5s ease-out forwards;
-}
+
 .node.clicked-in app-block-card {
   animation: press-in 0.32s ease-out;
 }
@@ -657,16 +663,7 @@ button:disabled {
     transform: scale(1.35);
   }
 }
-@keyframes click-ring {
-  from {
-    transform: scale(0.6);
-    opacity: 1;
-  }
-  to {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-}
+
 @keyframes press-in {
   35% {
     transform: translateY(4px);
@@ -687,7 +684,6 @@ button:disabled {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .port.clicked::after,
   .node.clicked-in app-block-card,
   .node.fresh app-block-card,
   .trash.gulp mat-icon.mat-icon {
@@ -715,4 +711,151 @@ button:disabled {
 
 .node:has(.inner-card.cdk-drag-dragging) {
   z-index: 30 !important;
+}
+
+/* Text branches use the stack connectors as hit targets; shortcuts get their own side socket. */
+.sequence-wire {
+  stroke: #74a6ff;
+  stroke-width: 4;
+}
+.shortcut-wire {
+  stroke: #ffb86b;
+}
+.token-wire {
+  stroke: #ffe14a;
+}
+.port {
+  position: absolute;
+  width: 100%;
+  height: 18px;
+  left: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  z-index: 2;
+  cursor: crosshair;
+  touch-action: none;
+}
+.port.input {
+  top: 0;
+}
+.port.output {
+  bottom: -18px;
+}
+.port:not(.skip-port) .port-shape,
+.port-label {
+  display: none;
+}
+.port:focus-visible,
+.port.active {
+  outline: 3px solid #ff5b59;
+}
+.port.compatible {
+  background: #60f09480;
+}
+.port.incompatible {
+  background: #ed454540;
+}
+.port.skip-port {
+  top: 0;
+  height: 18px;
+}
+.skip-port .port-shape,
+.skip-port .port-label {
+  display: none;
+}
+.shortcut-knob {
+  position: absolute;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #171717;
+  border-radius: 50%;
+  background: #ffb86b;
+  font-size: 20px;
+  font-weight: 900;
+  touch-action: none;
+  cursor: grab;
+}
+.shortcut-plate {
+  position: absolute;
+  z-index: 4;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+  cursor: grab;
+  touch-action: none;
+}
+.shortcut-plate::before {
+  content: '';
+  position: absolute;
+  inset: -12px 0 -18px;
+}
+.shortcut-plate svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.shortcut-plate path {
+  fill: #ffb86b;
+  stroke: #171717;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.shortcut-plate text {
+  font-size: 11.5px;
+  font-weight: 900;
+}
+.shortcut-plate.carried {
+  z-index: 30;
+}
+.shortcut-plate.new-plate {
+  pointer-events: none;
+}
+.shortcut-plate:focus-visible {
+  outline: 3px dashed #225acb;
+  outline-offset: 8px;
+}
+
+.text-recipe {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  z-index: 6;
+  max-width: min(420px, calc(100% - 160px));
+  background: #fff7cd;
+  border: 2px solid #171717;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  max-height: calc(100% - 110px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.text-recipe summary {
+  cursor: pointer;
+  font-weight: 900;
+}
+.text-recipe p {
+  margin: 12px 0;
+}
+.text-recipe ol {
+  padding-left: 24px;
+}
+.text-recipe li {
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) {
+  .text-recipe {
+    left: 12px;
+    max-width: calc(100% - 144px);
+    font-size: 13px;
+  }
+  .text-recipe[open] {
+    max-width: calc(100% - 24px);
+    z-index: 10;
+  }
 }

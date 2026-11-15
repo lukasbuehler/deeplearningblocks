@@ -1,0 +1,217 @@
+<div class="backdrop" (click)="close.emit()"></div>
+<section
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="inspector-title"
+  cdkTrapFocus
+  [cdkTrapFocusAutoCapture]="true"
+  (keydown.escape)="close.emit()"
+>
+  <header>
+    <div>
+      <span class="eyebrow">LOOK INSIDE YOUR BLOCK</span>
+      <h2 id="inspector-title">{{ title() }}</h2>
+    </div>
+    <button type="button" aria-label="Close block inspector" (click)="close.emit()">✕</button>
+  </header>
+  <p class="intro">{{ help() }}</p>
+  @if (target().innerId) {
+    <p class="badge">Custom recipe · Copy {{ target().copy ?? 1 }}</p>
+  }
+  @if (node()?.kind === 'activation') {
+    <svg
+      class="activation-graph"
+      viewBox="0 0 390 355"
+      role="img"
+      [attr.aria-label]="activation() + ' activation function graph'"
+    >
+      <path class="axis" [attr.d]="'M30 ' + graphY(0) + 'H360 M190 25V325'" />
+      <text x="365" [attr.y]="graphY(0) + 5">x</text>
+      <text x="200" y="28">f(x)</text>
+      <text x="22" [attr.y]="graphY(0) + 20">−4</text>
+      <text x="180" [attr.y]="graphY(0) + 20">0</text>
+      <text x="344" [attr.y]="graphY(0) + 20">4</text>
+      @for (tick of yTicks(); track tick) {
+        @if (tick !== 0) {
+          <text x="180" [attr.y]="graphY(tick) + 5" text-anchor="end">{{ tick }}</text>
+        }
+      }
+      <path class="curve" [attr.d]="curve()" />
+      <path class="guide" [attr.d]="'M' + dot().x + ',' + graphY(0) + ' V' + dot().y + ' H190'" />
+      <circle [attr.cx]="dot().x" [attr.cy]="dot().y" r="7" />
+    </svg>
+    <label class="slider"
+      >Try an input
+      <input
+        type="range"
+        min="-4"
+        max="4"
+        step="0.05"
+        [value]="example()"
+        (input)="setNumber($event, 'example')"
+        aria-label="Activation example input"
+    /></label>
+    <p class="calculation">
+      {{ example() | number: '1.0-3' }} → <b>{{ evaluate(example()) | number: '1.0-3' }}</b>
+    </p>
+    <p class="note">
+      This slider explores the function. Your model’s current numbers appear below.
+    </p>
+    <details>
+      <summary>Show the math</summary>
+      <p class="formula">{{ formula() }}</p>
+      <p>
+        x is one input number. f(x) is its output. This rule applies separately to every number and
+        has no learned weights.
+      </p>
+    </details>
+  }
+  @if (node()?.kind === 'softmax') {
+    <p class="formula" aria-label="Softmax formula">
+      p<sub>i</sub> = e<sup>x<sub>i</sub></sup> / Σ<sub>j</sub> e<sup>x<sub>j</sub></sup>
+    </p>
+    <p>
+      Turn each score x into eˣ, then divide by their total. All the output chances add to 1 (100%).
+    </p>
+    <details>
+      <summary>How the computer calculates it</summary>
+      <p class="formula">pᵢ = exp(xᵢ − m) / Σⱼ exp(xⱼ − m), m = max(x)</p>
+      <p>
+        Subtracting the biggest score keeps the numbers manageable and gives the same probabilities.
+        Softmax has no learned weights.
+      </p>
+    </details>
+  }
+  @if (loading() && !snapshot()) {
+    <p role="status">Opening your model…</p>
+  }
+  @if (error()) {
+    <p role="status" class="notice">{{ error() }}</p>
+  }
+  @if (snapshot(); as s) {
+    <div class="snapshot-label">
+      <b>{{ modelPhase() }}</b
+      ><span>{{
+        game.dataset().kind === 'text'
+          ? game.snippet()
+            ? 'Last letter of the current Shakespeare snippet'
+            : 'Last letter of your writer prompt'
+          : game.pixels()
+            ? 'Current image on your board'
+            : 'Zero input until an image loads'
+      }}</span>
+    </div>
+    @if (node()?.kind === 'dense') {
+      <label class="neuron-picker"
+        >Look at neuron
+        <input
+          type="number"
+          min="1"
+          [max]="s.outputs.length"
+          [value]="selected() + 1"
+          (input)="setNumber($event, 'neuron')"
+        />
+        of {{ s.outputs.length }}</label
+      >
+      <p>
+        Each square is one incoming weight. <b class="positive">Blue is positive.</b>
+        <b class="negative">Orange is negative.</b> Stronger color means a larger size.
+      </p>
+      <div
+        class="heatmap"
+        [style.grid-template-columns]="'repeat(' + columns() + ', 1fr)'"
+        role="img"
+        [attr.aria-label]="'Incoming weights for neuron ' + (selected() + 1)"
+      >
+        @for (v of heatmap(); track v.index) {
+          <span
+            [style.background]="v.color"
+            [attr.title]="'Input ' + (v.index + 1) + ': weight ' + v.weight + ', value ' + v.input"
+          ></span>
+        }
+      </div>
+      <p class="note">
+        Darkest color: weight size {{ weightScale() | number: '1.0-5' }}. Hover a square or read the
+        numbers below.
+      </p>
+      @if (s.inputs.length === 784) {
+        <p class="note">The weights follow the same 28 × 28 positions as the input pixels.</p>
+      }
+      <p class="calculation">
+        Weighted inputs {{ sum() | number: '1.0-5' }} + bias {{ bias() | number: '1.0-5' }} =
+        <b>{{ s.outputs[selected()] | number: '1.0-5' }}</b>
+      </p>
+      <details>
+        <summary>Show the math</summary>
+        <p class="formula">zⱼ = Σᵢ xᵢ wᵢⱼ + bⱼ</p>
+        <p>
+          For neuron j: multiply each input xᵢ by its weight wᵢⱼ, add all products, then add bias
+          bⱼ. Dense returns this score. An activation is a separate block.
+        </p>
+      </details>
+      <h3>Connections to neuron {{ selected() + 1 }}</h3>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Input</th>
+              <th>Value x</th>
+              <th>Weight w</th>
+              <th>x × w</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of connectionRows(); track row.index) {
+              <tr>
+                <th>{{ row.index + 1 }}</th>
+                <td>{{ row.input | number: '1.0-5' }}</td>
+                <td>{{ row.weight | number: '1.0-5' }}</td>
+                <td>{{ row.product | number: '1.0-5' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      @if (node()?.kind === 'softmax') {
+        <p class="calculation">
+          Output total: <b>{{ 100 * outputTotal() | number: '1.0-2' }}%</b>
+        </p>
+      }
+      <h3>Your model’s input and output numbers</h3>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Number</th>
+              <th>Input</th>
+              <th>Output</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of numberRows(); track row.index) {
+              <tr>
+                <th>{{ row.index + 1 }}</th>
+                <td>{{ row.input | number: '1.0-5' }}</td>
+                <td>
+                  {{ row.output | number: '1.0-5' }}
+                  @if (node()?.kind === 'softmax') {
+                    <small>{{ 100 * row.output | number: '1.0-2' }}%</small>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <nav class="pagination" aria-label="Input numbers">
+      <button [disabled]="page() === 0" (click)="page.set(page() - 1)">Previous</button
+      ><span
+        >{{ page() * 16 + 1 }}–{{ min((page() + 1) * 16, rowCount()) }} of {{ rowCount() }}</span
+      ><button [disabled]="(page() + 1) * 16 >= rowCount()" (click)="page.set(page() + 1)">
+        Next
+      </button>
+    </nav>
+  }
+</section>

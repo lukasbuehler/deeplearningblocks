@@ -21,6 +21,9 @@
     @if (outputFeedback()) {
       <path [class]="'connector-glow ' + outputFeedback()" [attr.d]="outputEdge()" />
     }
+    @if (skipFeedback()) {
+      <path [class]="'connector-glow ' + skipFeedback()" [attr.d]="skipEdge()" />
+    }
     <path [attr.d]="outline()" />
     @for (label of connectorLabels(); track $index) {
       <text [attr.x]="label.x" [attr.y]="label.y" text-anchor="middle">{{ label.text }}</text>
@@ -69,9 +72,10 @@
       type="button"
       [class.open]="helpOpen()"
       [attr.aria-label]="'What does ' + name() + ' do?'"
-      [attr.aria-expanded]="helpOpen()"
+      [attr.aria-expanded]="inspectable() ? null : helpOpen()"
+      [attr.aria-haspopup]="inspectable() ? 'dialog' : null"
       title="What does this block do?"
-      (click)="$event.stopPropagation(); helpOpen.set(!helpOpen())"
+      (click)="$event.stopPropagation(); openHelp()"
     >
       <mat-icon>question_mark</mat-icon>
     </button>
@@ -154,7 +158,13 @@
         </label>
       </div>
       <p class="detail">
-        {{ inputWired() ? 'Set by the block above' : 'Your pick until attached' }}
+        {{
+          textWorld()
+            ? 'Same weights for every letter'
+            : inputWired()
+              ? 'Set by the block above'
+              : 'Your pick until attached'
+        }}
         @if (inputSize() !== undefined) {
           · {{ ((inputSize()! + 1) * node().units!).toLocaleString('en-US') }} weights
         }
@@ -186,7 +196,6 @@
             : inputSize() + ' scores → ' + inputSize() + ' probabilities'
         }}
       </p>
-      <p class="detail">No weights. Just probabilities.</p>
     }
     @case ('custom') {
       <ol
@@ -213,6 +222,8 @@
           >
             <app-block-card
               [node]="card.node"
+              [dataset]="dataset()"
+              (inspect)="inspect.emit({ id: node().id, innerId: card.node.id, copy: card.copy })"
               [connectorShape]="card.connectors"
               [nested]="true"
               [inputSize]="card.input"
@@ -273,6 +284,10 @@
               <li>
                 <app-block-card
                   [node]="card.node"
+                  [dataset]="dataset()"
+                  (inspect)="
+                    inspect.emit({ id: node().id, innerId: card.node.id, copy: card.copy })
+                  "
                   [connectorShape]="card.connectors"
                   [nested]="true"
                   [inputSize]="card.input"
@@ -288,6 +303,147 @@
       <p class="detail frame-foot">
         {{ customDetail() }} · {{ repeat() }} {{ repeat() === 1 ? 'copy' : 'copies' }}
       </p>
+    }
+    @case ('text') {
+      <div class="text-window" aria-label="A famous line with its next letter hidden">
+        @if (snippet(); as q) {
+          <span class="window-letters">{{ visible(q.letters) }}</span
+          ><span class="next-letter" [attr.title]="'Next letter: ' + showNext(q.next)">?</span>
+        } @else {
+          <span class="window-letters">Loading Shakespeare…</span>
+        }
+      </div>
+      <p class="detail">What letter comes next? The model plays this guessing game.</p>
+      <button
+        class="next-snippet"
+        (click)="$event.stopPropagation(); nextDigit.emit()"
+        [disabled]="!snippet() || busy()"
+      >
+        Another line <mat-icon>refresh</mat-icon>
+      </button>
+    }
+    @case ('embedding') {
+      <div class="sizes">
+        <label>
+          <span>Numbers per letter</span>
+          <input
+            type="number"
+            min="1"
+            [max]="maxDenseUnits"
+            [value]="node().units"
+            [disabled]="busy()"
+            (blur)="changeUnits($event)"
+            (keydown.enter)="changeUnits($event)"
+          />
+        </label>
+      </div>
+      <p class="detail">
+        {{ vocab }} letters × {{ node().units }} = {{ textWeights() | number }} weights
+      </p>
+    }
+    @case ('position') {
+      <div class="seats" aria-hidden="true">
+        <b>1</b><b>2</b><b>3</b><span>…</span><b>{{ context }}</b>
+      </div>
+      <p class="detail">
+        {{ context }} seats × {{ inputSize() ?? 'N' }}
+        @if (textWeights() !== undefined) {
+          = {{ textWeights() | number }} weights
+        }
+      </p>
+    }
+    @case ('layernorm') {
+      <div class="flatten-picture"><b>big · tiny</b><span>→</span><b>steady</b></div>
+      <p class="detail">
+        Each letter on its own ·
+        {{ textWeights() === undefined ? 'N' : (textWeights() | number) }} weights
+      </p>
+    }
+    @case ('attention') {
+      <div class="heads" role="group" aria-label="Number of heads">
+        <span>Heads</span>
+        @for (h of headChoices; track h) {
+          <button
+            type="button"
+            [class.chosen]="node().heads === h"
+            [attr.aria-pressed]="node().heads === h"
+            [disabled]="busy()"
+            (click)="$event.stopPropagation(); setHeads(h)"
+          >
+            {{ h }}
+          </button>
+        }
+      </div>
+      <p class="detail">
+        @if (inputSize() !== undefined && inputSize()! % (node().heads ?? 1) === 0) {
+          {{ node().heads }} heads × {{ inputSize()! / node().heads! }} numbers each
+        } @else if (inputSize() !== undefined) {
+          {{ node().heads }} heads can’t share {{ inputSize() }} numbers equally
+        } @else {
+          Needs letters × numbers
+        }
+      </p>
+      <p class="detail">
+        No peeking at later letters ·
+        {{ textWeights() === undefined ? 'N' : (textWeights() | number) }} weights
+      </p>
+    }
+    @case ('add') {
+      <div class="flatten-picture"><b>Main road</b><span>+</span><b>Shortcut plate</b></div>
+      <p class="detail">Number by number · no weights</p>
+    }
+    @case ('writer') {
+      <div class="page" aria-live="polite" [class.empty]="!written()">
+        @if (written(); as w) {
+          <b>{{ w.prompt }}</b
+          >{{ w.text }}
+          @if (writing()) {
+            <i class="caret" aria-hidden="true"></i>
+          }
+        } @else {
+          Connect Softmax, then press Train. Watch it learn to write!
+        }
+      </div>
+      <p class="detail">{{ written()?.caption ?? 'It writes one letter at a time.' }}</p>
+      <label class="prompt">
+        <span>Start with</span>
+        <textarea
+          rows="2"
+          maxlength="200"
+          [value]="prompt()"
+          [disabled]="busy() || writing()"
+          (change)="changePrompt($event)"
+        ></textarea>
+      </label>
+      <div class="write-row">
+        <label class="temperature" title="Temperature: careful picks or wild picks">
+          <span>Careful</span>
+          <input
+            type="range"
+            min="0.2"
+            max="1.5"
+            step="0.1"
+            [value]="temperature()"
+            [disabled]="busy() || writing()"
+            aria-label="Temperature"
+            (change)="changeTemperature($event)"
+          />
+          <span>Wild</span>
+        </label>
+        @if (writing()) {
+          <button (click)="$event.stopPropagation(); stopWrite.emit()">
+            Stop <mat-icon>stop</mat-icon>
+          </button>
+        } @else {
+          <button
+            (click)="$event.stopPropagation(); write.emit()"
+            [disabled]="busy() || !trained()"
+            [attr.title]="trained() ? 'Write new text' : 'Train first'"
+          >
+            Write <mat-icon>edit</mat-icon>
+          </button>
+        }
+      </div>
     }
     @case ('classifier') {
       <div class="prediction">

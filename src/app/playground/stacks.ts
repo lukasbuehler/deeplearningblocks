@@ -11,7 +11,7 @@ import {
 
 /** A block and everything it carries below, in data order. */
 export function stackIds(board: Board, id: string): string[] {
-  const next = new Map(board.edges.map((e) => [e.from, e.to]));
+  const next = new Map(board.edges.filter((e) => !e.port).map((e) => [e.from, e.to]));
   const ids: string[] = [];
   while (id && !ids.includes(id)) {
     ids.push(id);
@@ -23,7 +23,7 @@ export function stackIds(board: Board, id: string): string[] {
 /** Align each chain under its first block. Saved wire-based networks become stacks as well. */
 export function layoutStacks(board: Board): Board {
   const nodes = new Map(board.nodes.map((n) => [n.id, n]));
-  const incoming = new Set(board.edges.map((e) => e.to));
+  const incoming = new Set(board.edges.filter((e) => !e.port).map((e) => e.to));
   const placed = new Set<string>();
   for (const root of board.nodes.filter((n) => !incoming.has(n.id))) {
     let previous: BlockNode | undefined;
@@ -54,7 +54,7 @@ export function moveStack(board: Board, id: string, position: Point): Board {
   const moving = new Set(stackIds(board, id));
   return {
     ...board,
-    edges: board.edges.filter((e) => e.to !== id),
+    edges: board.edges.filter((e) => e.to !== id || !!e.port),
     nodes: board.nodes.map((n) =>
       moving.has(n.id)
         ? {
@@ -99,7 +99,9 @@ export function stackDropTarget(board: Board, moved: BlockNode): StackDrop | nul
       const d = Math.hypot(out.x - input.x, out.y - input.y) * board.viewport.zoom;
       if (d > distance) continue;
       distance = d;
-      const split = draft.edges.find((e) => e.from === source.id || e.to === target.id);
+      const split = draft.edges.find(
+        (e) => !e.port && (e.from === source.id || e.to === target.id),
+      );
       if (split) {
         const base = { ...draft, edges: draft.edges.filter((e) => e !== split) };
         const firstError = newConnectionError(base, split.from, head.id);
@@ -146,7 +148,9 @@ export function applyStackDrop(board: Board, moved: BlockNode, drop: StackDrop):
   if (drop.split)
     result = {
       ...result,
-      edges: result.edges.filter((e) => e.from !== drop.split!.from || e.to !== drop.split!.to),
+      edges: result.edges.filter(
+        (e) => e.from !== drop.split!.from || e.to !== drop.split!.to || !!e.port,
+      ),
     };
   result = connect(result, drop.from, drop.to);
   if (drop.split) result = connect(result, stackIds(board, moved.id).at(-1)!, drop.split.to);

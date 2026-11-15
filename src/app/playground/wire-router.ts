@@ -1,4 +1,4 @@
-import { BlockNode, Point, nodeSize, portPosition } from './graph';
+import { BlockNode, InputPort, Point, nodeSize, portPosition } from './graph';
 interface Rect {
   left: number;
   right: number;
@@ -32,9 +32,10 @@ export function routeWire(
   to: BlockNode,
   nodes: BlockNode[],
   lastRoute?: Point[],
+  port?: InputPort,
 ): Point[] {
   const start = portPosition(from, 'output'),
-    end = portPosition(to, 'input');
+    end = portPosition(to, 'input', port);
   if (start.x === end.x && start.y === end.y) return [start, end];
   const boxes = nodes.map((n) => {
     const size = nodeSize(n);
@@ -46,9 +47,20 @@ export function routeWire(
     };
   });
   const others = boxes.filter((_, i) => nodes[i].id !== from.id && nodes[i].id !== to.id);
-  if (start.x === end.x && end.y >= start.y && clear(start, end, others)) return [start, end];
-  const a = { x: start.x, y: start.y + 24 },
-    b = { x: end.x, y: end.y - 24 };
+  if (!port && start.x === end.x && end.y >= start.y && clear(start, end, others))
+    return [start, end];
+  const attached = nodes.find(
+    (n) =>
+      n.id !== from.id && n.y === start.y && start.x > n.x && start.x < n.x + nodeSize(n).width,
+  );
+  // A touching stack occupies the space below the stud. Branch sideways along its joint.
+  const a = attached
+      ? {
+          x: Math.max(from.x + nodeSize(from).width, attached.x + nodeSize(attached).width) + 24,
+          y: start.y,
+        }
+      : { x: start.x, y: start.y + 24 },
+    b = port ? { x: end.x + 24, y: end.y } : { x: end.x, y: end.y - 24 };
   // Overlapping cards can physically cover a port. Ignore only those impossible obstacles.
   const obstacles = boxes.filter((r) => !inside(a, r) && !inside(b, r));
   const sorted = (values: number[]) => [...new Set(values)].sort((a, b) => a - b);

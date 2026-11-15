@@ -202,3 +202,33 @@ test('image and vector sockets reject each other even when their positions match
   assert.match(drop.pairs[0].error!, /Flatten/);
   assert.equal(stackSnapTarget(original, moved), null);
 });
+
+test('text stacks follow the main road and preserve shortcut wires when carried or snapped', async () => {
+  const { transformerBoard } = await import('./text-fixtures');
+  const { compileBoard } = await import('./graph');
+  const { stackIds } = await import('./stacks');
+  const original = transformerBoard();
+  const board = layoutStacks(original);
+  assert.equal(compileBoard(board).network?.signature, compileBoard(original).network?.signature);
+  assert.deepEqual(
+    stackIds(board, 'pos'),
+    original.nodes.slice(2).map((n) => n.id),
+  );
+  for (const e of board.edges.filter((e) => !e.port)) {
+    const source = board.nodes.find((n) => n.id === e.from)!;
+    const target = board.nodes.find((n) => n.id === e.to)!;
+    assert.deepEqual(portPosition(source, 'output'), portPosition(target, 'input'));
+  }
+  const moved = moveStack(board, 'add1', { x: 600, y: 200 });
+  assert.ok(moved.edges.some((e) => e.from === 'pos' && e.to === 'add1' && e.port === 'skip'));
+  assert.ok(!moved.edges.some((e) => e.from === 'attn' && e.to === 'add1'));
+  const reattached = attachStacks(moved, 'attn', 'add1');
+  assert.equal(
+    compileBoard(reattached).network?.signature,
+    compileBoard(original).network?.signature,
+  );
+  assert.deepEqual(
+    reattached.edges.filter((e) => e.port),
+    original.edges.filter((e) => e.port),
+  );
+});
