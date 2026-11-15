@@ -5,7 +5,11 @@
  *   npx tsx scripts/build-landing-art.ts
  */
 import { writeFileSync } from 'node:fs';
-import { blockOutline, connectorLabels, type Connector } from '../src/app/playground/block-connectors';
+import {
+  blockOutline,
+  connectorLabels,
+  type Connector,
+} from '../src/app/playground/block-connectors';
 import { BLOCK_WIDTH } from '../src/app/playground/graph';
 
 const INK = '#171717';
@@ -51,9 +55,30 @@ const pieces: Piece[] = [
     output: image,
     art: `<rect x="257" y="16" width="61" height="61" rx="6" fill="${INK}"/><g fill="#fffdf1">${seven}</g>`,
   },
-  { title: 'Flatten', detail: '28×28 pixels → 784 numbers', color: '#74a6ff', height: 82, input: image, output: pixels },
-  { title: 'Dense', detail: '784 → 10 neurons', color: '#ff7770', height: 82, input: pixels, output: scores },
-  { title: 'Softmax', detail: 'Scores → chances', color: '#ffacdf', height: 82, input: scores, output: chances },
+  {
+    title: 'Flatten',
+    detail: '28×28 pixels → 784 numbers',
+    color: '#74a6ff',
+    height: 82,
+    input: image,
+    output: pixels,
+  },
+  {
+    title: 'Dense',
+    detail: '784 → 10 neurons',
+    color: '#ff7770',
+    height: 82,
+    input: pixels,
+    output: scores,
+  },
+  {
+    title: 'Softmax',
+    detail: 'Scores → chances',
+    color: '#ffacdf',
+    height: 82,
+    input: scores,
+    output: chances,
+  },
   {
     title: 'Digit guess',
     detail: 'It’s a 7!',
@@ -72,7 +97,10 @@ const blocks = pieces.map((piece) => {
     ...connectorLabels(piece.input, W, 0),
     ...connectorLabels(piece.output, W, piece.height),
   ]
-    .map((l) => `<text x="${l.x}" y="${l.y}" text-anchor="middle" font-size="11" font-weight="800">${l.text}</text>`)
+    .map(
+      (l) =>
+        `<text x="${l.x}" y="${l.y}" text-anchor="middle" font-size="11" font-weight="800">${l.text}</text>`,
+    )
     .join('');
   const top = y;
   y += piece.height;
@@ -81,7 +109,6 @@ const blocks = pieces.map((piece) => {
     ? `translate(${40 + lift.x} ${top + lift.y}) rotate(${lift.turn} ${W / 2} ${piece.height / 2})`
     : `translate(40 ${top})`;
   return `<g transform="${move}">
-  <path d="${outline}" transform="translate(6 6)" fill="${INK}"/>
   <path d="${outline}" fill="${piece.color}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
   <text x="22" y="${piece.lift ? 40 : 46}" font-size="${piece.art && !piece.lift ? 24 : 27}" font-weight="900" letter-spacing="-0.5">${piece.title}</text>
   <text x="22" y="${piece.lift ? 64 : 70}" font-size="15" font-weight="650">${piece.detail}</text>
@@ -89,13 +116,15 @@ const blocks = pieces.map((piece) => {
 </g>`;
 });
 
-// Blocky, from the favicon, cheering the stack on.
-const blocky = `<g transform="translate(398 18) scale(1.6) translate(-26.75 -13.25)" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round">
-  <rect x="35" y="15" width="16" height="11" rx="3" fill="#ffe14a"/><rect x="64" y="15" width="16" height="11" rx="3" fill="#ffe14a"/>
-  <rect x="32" y="26" width="57" height="49" rx="9" fill="${INK}"/><rect x="29" y="23" width="57" height="49" rx="9" fill="#ffe14a"/>
-  <path d="M47 57Q58 66 69 57" fill="none" stroke-linecap="round"/>
-  <g stroke="none"><ellipse cx="45" cy="42" rx="4.5" ry="6.5" fill="${INK}"/><ellipse cx="69" cy="42" rx="4.5" ry="6.5" fill="${INK}"/>
-  <circle cx="37" cy="53" r="4" fill="#ff6962"/><circle cx="77" cy="53" r="4" fill="#ff6962"/></g>
+// Blocky, as in the playground, arms down, cheering the stack on.
+const blocky = `<g transform="translate(365 2) scale(1.5)" stroke="${INK}" stroke-width="3" stroke-linejoin="round">
+  <path d="M32 37H11V31H0V45H7V50H32Z" fill="#ff6962" transform="rotate(-62 29 43)"/>
+  <path d="M80 37H101V31H114V45H107V50H80Z" fill="#ff6962" transform="rotate(62 83 43)"/>
+  <rect x="35" y="14" width="16" height="13" rx="3" fill="#ffe14a"/><rect x="66" y="14" width="16" height="13" rx="3" fill="#ffe14a"/>
+  <rect x="33" y="27" width="57" height="51" rx="9" fill="${INK}"/><rect x="29" y="23" width="57" height="51" rx="9" fill="#ffe14a"/>
+  <path d="M47 58Q58 67 69 58" fill="none" stroke-linecap="round"/>
+  <g stroke="none"><ellipse cx="45" cy="43" rx="4" ry="6" fill="${INK}"/><ellipse cx="69" cy="43" rx="4" ry="6" fill="${INK}"/>
+  <circle cx="37" cy="54" r="4" fill="#ff6962"/><circle cx="77" cy="54" r="4" fill="#ff6962"/></g>
 </g>
 <path d="M452 132C462 196 432 300 392 352" fill="none" stroke="${INK}" stroke-width="3" stroke-dasharray="7 7" stroke-linecap="round"/>
 <path d="M386 334L390 356L410 344" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
