@@ -6,4 +6,6 @@
     "directory": "./dist/deeplearningblocks/browser",
     "not_found_handling": "404-page",
   },
+  // Pull request builds run `wrangler preview`, which needs this block. Settings above apply.
+  "previews": {},
 }
