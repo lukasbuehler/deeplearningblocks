@@ -4,6 +4,7 @@ import {
   BLOCKS,
   Board,
   FRAME,
+  customLayout,
   compileBoard,
   customBlockName,
   describeNetwork,
@@ -11,7 +12,15 @@ import {
   nodeSize,
   portPosition,
 } from './graph';
-import { makeCustomBlock, nextPickable, pickedChain, takeApart } from './custom-blocks';
+import {
+  extractFromRecipe,
+  insertIntoRecipe,
+  makeCustomBlock,
+  nextPickable,
+  pickedChain,
+  takeApart,
+} from './custom-blocks';
+import { freshGame, loadGame, saveGame } from './storage';
 import { pytorchModel } from './pytorch-export';
 import { blockName } from './block-catalog';
 
@@ -40,10 +49,14 @@ const newId = () => `copy-${counter++}`;
 
 test('picked blocks must be one wired chain of Dense and activation blocks', () => {
   assert.deepEqual(pickedChain(board, ['relu', 'hidden']), ['hidden', 'relu']);
-  assert.match(pickedChain(board, ['hidden', 'scores']) as string, /wired together/);
+  assert.match(pickedChain(board, ['hidden', 'scores']) as string, /attached together/);
   assert.match(pickedChain(board, ['flatten', 'hidden']) as string, /Dense and activation/);
   assert.equal(nextPickable(board, ['hidden']), 'relu');
   assert.equal(nextPickable(board, ['scores']), null);
+});
+
+test('making a custom block requires at least two selected pieces', () => {
+  assert.match(makeCustomBlock(board, ['hidden'], 'single') as string, /at least two/);
 });
 
 test('making a custom block keeps the computation and taking it apart restores the blocks', () => {
@@ -108,12 +121,9 @@ test('an expanded custom block grows around full-size inner blocks without chang
   const custom = made.nodes.find((n) => n.id === 'mine')!;
   const open = { ...custom, expanded: true };
   const size = nodeSize(open);
-  assert.equal(
-    size.height,
-    FRAME.head + BLOCKS.dense.height + FRAME.gap + BLOCKS.activation.height + FRAME.foot,
-  );
+  assert.equal(size.height, customLayout(open).controlsTop + 44 + FRAME.foot);
   assert.equal(portPosition(open, 'output').y, open.y + size.height);
-  assert.ok(size.width > nodeSize(custom).width);
+  assert.equal(size.width, nodeSize(custom).width);
 
   const expanded: Board = { ...made, nodes: made.nodes.map((n) => (n.id === 'mine' ? open : n)) };
   assert.equal(compileBoard(expanded).network!.signature, compileBoard(made).network!.signature);
@@ -133,4 +143,48 @@ test('custom blocks are named by the part before "block"', () => {
   const custom = made.nodes.find((n) => n.id === 'mine')!;
   assert.equal(blockName(custom), 'Custom block');
   assert.equal(blockName({ ...custom, name: 'Transformer' }), 'Transformer block');
+});
+
+test('blocks move out of and back into the shared recipe without losing configuration', () => {
+  const made = makeCustomBlock(board, ['hidden', 'relu'], 'mine') as Board;
+  const pulled = extractFromRecipe(made, 'mine', 'hidden', { x: 800, y: 50 }, newId);
+  assert.deepEqual(
+    pulled.nodes.find((n) => n.id === 'mine')!.blocks!.map((n) => n.id),
+    ['relu'],
+  );
+  const loose = pulled.nodes.find((n) => n.id === 'hidden')!;
+  assert.equal(loose.units, 32);
+  const restored = insertIntoRecipe(pulled, 'mine', ['hidden'], 0) as Board;
+  assert.deepEqual(
+    restored.nodes.find((n) => n.id === 'mine')!.blocks,
+    made.nodes.find((n) => n.id === 'mine')!.blocks,
+  );
+  assert.equal(restored.nodes.filter((n) => n.id === 'hidden').length, 0);
+  assert.equal(compileBoard(restored).network!.signature, compileBoard(made).network!.signature);
+});
+
+test('repeat counts and empty editable recipes survive a save and reload', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    },
+  });
+  try {
+    const save = freshGame();
+    save.mode = 'sandbox';
+    save.sandbox.board = {
+      ...save.sandbox.board,
+      nodes: [{ id: 'empty', kind: 'custom', x: 0, y: 0, repeat: 3, blocks: [], expanded: true }],
+      edges: [],
+    };
+    assert.ok(saveGame(save));
+    assert.deepEqual(loadGame().sandbox.board.nodes[0], save.sandbox.board.nodes[0]);
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'localStorage', descriptor);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
+  }
 });

@@ -7,9 +7,9 @@
           <mat-icon>close</mat-icon>
         </button>
       </header>
-      <p role="status">{{ hint().text }}</p>
+      <p role="status">{{ hint()?.text }}</p>
       @if (details()) {
-        <p class="why">{{ hint().why }}</p>
+        <p class="why">{{ hint()?.why }}</p>
       }
       <div class="actions">
         <button (click)="show.emit()">Show me <mat-icon>open_in_new</mat-icon></button
@@ -21,6 +21,7 @@
   }
   <button
     class="character"
+    [disabled]="!hint()"
     [attr.aria-label]="prefs().muted ? 'Unmute Blocky and ask for a clue' : 'Ask Blocky for a clue'"
     [attr.aria-expanded]="open() && !prefs().muted"
     (click)="ask()"

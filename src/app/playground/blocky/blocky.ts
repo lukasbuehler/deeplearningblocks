@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { BlockyHint } from '../blocky-hints';
 const KEY = 'dlb-blocky-v1';
+export const AUTO_HINT_DELAY = 15_000;
 function preferences(): { muted: boolean; dismissed: string[] } {
   try {
     const value = JSON.parse(localStorage.getItem(KEY) ?? '{}');
@@ -31,25 +32,33 @@ function preferences(): { muted: boolean; dismissed: string[] } {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Blocky {
-  readonly hint = input.required<BlockyHint>();
+  readonly hint = input.required<BlockyHint | null>();
   readonly context = input.required<string>();
+  readonly hasHint = computed(() => this.hint() !== null);
   readonly suppressed = input(false);
   readonly angle = input(0);
   readonly show = output<void>();
   readonly highlight = output<boolean>();
   readonly prefs = signal(preferences());
   private readonly revealed = signal('');
-  readonly open = computed(() => this.revealed() === this.key() && !this.prefs().muted);
+  readonly open = computed(
+    () =>
+      this.hasHint() && !this.suppressed() && this.revealed() === this.key() && !this.prefs().muted,
+  );
   readonly details = signal(false);
-  readonly key = computed(() => this.context() + ':' + this.hint().id);
+  readonly key = computed(() => this.context() + ':' + (this.hint()?.id ?? 'none'));
   constructor() {
     effect((cleanup) => {
       const key = this.key(),
         suppressed = this.suppressed(),
         muted = this.prefs().muted;
       this.details.set(false);
-      if (suppressed || muted || this.prefs().dismissed.includes(key)) return;
-      const timer = setTimeout(() => this.revealed.set(key), 1800);
+      if (suppressed || muted || !this.hasHint()) {
+        this.revealed.set('');
+        return;
+      }
+      if (this.prefs().dismissed.includes(key)) return;
+      const timer = setTimeout(() => this.revealed.set(key), AUTO_HINT_DELAY);
       cleanup(() => clearTimeout(timer));
     });
     effect(() => this.highlight.emit(this.open() && !this.suppressed() && !this.prefs().muted));
@@ -62,6 +71,7 @@ export class Blocky {
     });
   }
   ask(): void {
+    if (!this.hasHint()) return;
     if (this.prefs().muted) this.prefs.update((p) => ({ ...p, muted: false }));
     // A manual request is immediate, even for a previously dismissed clue.
     this.revealed.set(this.key());

@@ -1,4 +1,4 @@
-import { Board } from './playground/graph';
+import { BLOCKS, Board } from './playground/graph';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -18,6 +18,99 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
+  });
+
+  it('offers custom-block grouping only after selecting at least two blocks', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const game = fixture.componentInstance.game;
+    game.edit({
+      ...game.board(),
+      nodes: [
+        ...game.board().nodes,
+        { id: 'picked-dense', kind: 'dense', units: 10, x: 0, y: 0 },
+        { id: 'picked-activation', kind: 'activation', activation: 'sigmoid', x: 0, y: 142 },
+      ],
+      edges: [{ from: 'picked-dense', to: 'picked-activation' }],
+    });
+    fixture.detectChanges();
+    const canvas = fixture.componentInstance.canvas()!;
+    canvas.selectNode('picked-dense');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.pick-actions')).toBeNull();
+    canvas.selectNode('picked-activation', new MouseEvent('click', { shiftKey: true }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.pick-actions').textContent).toContain(
+      'Make a block',
+    );
+    fixture.destroy();
+  });
+
+  it('lights both incompatible edges red while dragging and clears them after the drag', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const canvas = fixture.componentInstance.canvas()!;
+    canvas.game.edit({
+      viewport: { x: 0, y: 0, zoom: 1 },
+      nodes: [
+        { id: 'wide', kind: 'dense', units: 32, x: 80, y: 50 },
+        { id: 'probabilities', kind: 'softmax', x: 80, y: 192 },
+        { id: 'guess', kind: 'classifier', x: 600, y: 400 },
+      ],
+      edges: [{ from: 'wide', to: 'probabilities' }],
+    });
+    canvas.draft.set({
+      id: 'wide',
+      kind: 'dense',
+      units: 32,
+      x: 600,
+      y: 400 - BLOCKS.dense.height - BLOCKS.softmax.height - 8,
+    });
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(
+      root.querySelector('[data-node="probabilities"] [data-output-feedback="invalid"]'),
+    ).not.toBeNull();
+    expect(
+      root.querySelector('[data-node="guess"] [data-input-feedback="invalid"]'),
+    ).not.toBeNull();
+    expect(root.querySelectorAll('.connector-glow.invalid').length).toBe(2);
+    expect(canvas.snap()).toBeNull();
+    canvas.draft.set(null);
+    fixture.detectChanges();
+    expect(root.querySelector('.connector-glow')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('previews accepted and rejected recipe drops using the actual recipe rules', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const canvas = fixture.componentInstance.canvas()!;
+    canvas.game.edit({
+      viewport: { x: 0, y: 0, zoom: 1 },
+      nodes: [
+        { id: 'recipe', kind: 'custom', x: 80, y: 50, blocks: [], repeat: 1 },
+        { id: 'piece', kind: 'dense', units: 32, x: 600, y: 50 },
+      ],
+      edges: [],
+    });
+    fixture.detectChanges();
+    const zone = fixture.nativeElement.querySelector('[data-custom-recipe]') as HTMLElement;
+    const rect = zone.getBoundingClientRect();
+    canvas.dragIntent.set({ point: { x: rect.left + 10, y: rect.top + 10 } });
+    canvas.draft.set({ id: 'piece', kind: 'dense', units: 32, x: 100, y: 150 });
+    fixture.detectChanges();
+    expect(zone.classList.contains('drop-valid')).toBeTrue();
+    canvas.game.edit({
+      ...canvas.game.board(),
+      nodes: canvas.game.board().nodes.map((n) => (n.id === 'piece' ? { ...n, kind: 'image' } : n)),
+    });
+    canvas.draft.set({ id: 'piece', kind: 'image', x: 100, y: 150 });
+    fixture.detectChanges();
+    expect(zone.classList.contains('drop-invalid')).toBeTrue();
+    expect(zone.classList.contains('drop-valid')).toBeFalse();
+    expect(canvas.dropCandidate()).toBeNull();
+    fixture.destroy();
   });
 
   it('should render title', () => {
