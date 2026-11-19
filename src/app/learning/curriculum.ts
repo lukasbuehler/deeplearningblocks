@@ -50,6 +50,18 @@ export const ERAS = [
     source: 'https://www.cs.toronto.edu/~hinton/absps/reluICML.pdf',
     sourceLabel: 'Nair & Hinton’s 2010 paper',
   },
+  {
+    year: '2017',
+    title: 'Attention is all you need',
+    short: 'A tiny transformer',
+    description:
+      'Vaswani and colleagues at Google built the Transformer around attention: every word can look back at the words that matter to it. Today’s chatbots grew from this idea. Build a tiny one that writes like Shakespeare, one letter at a time.',
+    challenge:
+      'Build a transformer block: attention and a Dense–ReLU–Dense part, each wrapped in a shortcut with Add, plus Layer norm.',
+    note: 'The 2017 paper translated sentences with an encoder and a decoder. Like GPT and Andrej Karpathy’s nanoGPT, this level uses only the decoder side, puts Layer norm before each part, and reads single letters. Attention and shortcuts existed before 2017.',
+    source: 'https://arxiv.org/abs/1706.03762',
+    sourceLabel: 'Attention Is All You Need (2017)',
+  },
 ] as const;
 export const ACTIVATIONS: { value: Activation; label: string; era: number; explanation: string }[] =
   [

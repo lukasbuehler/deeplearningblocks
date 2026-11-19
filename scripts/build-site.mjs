@@ -1,6 +1,6 @@
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { crawlFiles, loadSiteSettings, siteHead } from './site-html.mjs';
-import { structuredData } from './structured-data.mjs';
+import { renderHomePage } from './site-pages.mjs';
 import { LEGAL_PAGES, renderLegalPages, siteFooter } from './legal-pages.mjs';
 
 const output = new URL('../dist/deeplearningblocks/browser/', import.meta.url);
@@ -13,12 +13,7 @@ const [appHtml, template, home, legalPages] = await Promise.all([
   readFile(new URL('../src/site/home.html', import.meta.url), 'utf8'),
   renderLegalPages(),
 ]);
-const landing = template
-  .replace(
-    '</head>',
-    () => '<link rel="stylesheet" href="/landing.css" />\n' + structuredData(site) + '  </head>',
-  )
-  .replace('<app-root></app-root>', () => home + footer);
+const landing = renderHomePage(template, home, site, footer);
 const play = appHtml
   .replace('<title>Deep Learning Blocks</title>', '<title>Play | Deep Learning Blocks</title>')
   .replace(
@@ -48,7 +43,7 @@ const { robots, sitemap } = crawlFiles(
 const sitemapFile = new URL('sitemap.xml', output);
 
 await Promise.all([
-  writeFile(index, siteHead(landing, site)),
+  writeFile(index, landing),
   writeFile(new URL('play.html', output), siteHead(play, { ...site, indexable: false }, '/play')),
   writeFile(new URL('404.html', output), notFound),
   ...legalPages.map((page) =>

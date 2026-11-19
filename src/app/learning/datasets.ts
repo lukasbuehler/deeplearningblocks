@@ -1,7 +1,10 @@
-/** Current lessons share 28 × 28 grayscale images and ten classes. */
-export type DatasetId = 'mnist' | 'fashion-mnist';
+import { SHAKESPEARE_ALPHABET } from './shakespeare';
+
+/** Picture lessons share 28 × 28 grayscale images and ten classes. Text lessons read letters. */
+export type DatasetId = 'mnist' | 'fashion-mnist' | 'tiny-shakespeare';
 export interface Dataset {
   id: DatasetId;
+  kind: 'images' | 'text';
   name: string;
   subject: string;
   inputTitle: string;
@@ -17,6 +20,7 @@ export interface Dataset {
 export const DATASETS: Record<DatasetId, Dataset> = {
   mnist: {
     id: 'mnist',
+    kind: 'images',
     name: 'MNIST',
     subject: 'Handwritten digits',
     inputTitle: 'Handwritten digit',
@@ -31,6 +35,7 @@ export const DATASETS: Record<DatasetId, Dataset> = {
   },
   'fashion-mnist': {
     id: 'fashion-mnist',
+    kind: 'images',
     name: 'Fashion-MNIST',
     subject: 'Clothing recognition',
     inputTitle: 'Mystery clothing',
@@ -53,6 +58,25 @@ export const DATASETS: Record<DatasetId, Dataset> = {
     torchvision: 'FashionMNIST',
     source: 'https://github.com/zalandoresearch/fashion-mnist',
     credit: 'Han Xiao, Kashif Rasul and Roland Vollgraf, Zalando Research (2017). MIT license.',
+  },
+  'tiny-shakespeare': {
+    id: 'tiny-shakespeare',
+    kind: 'text',
+    name: 'Tiny Shakespeare',
+    subject: 'Shakespeare’s plays',
+    inputTitle: 'Shakespeare text',
+    outputTitle: 'Shakespeare writer',
+    question: 'What comes next?',
+    // One class per letter. Newline and space get visible names.
+    classes: [...SHAKESPEARE_ALPHABET].map((l) =>
+      l === '\n' ? 'new line' : l === ' ' ? 'space' : l,
+    ),
+    symbols: [...SHAKESPEARE_ALPHABET].map((l) => (l === '\n' ? '↵' : l === ' ' ? '␣' : l)),
+    drawable: false,
+    torchvision: '',
+    source: 'https://huggingface.co/datasets/karpathy/tiny_shakespeare',
+    credit:
+      'About 40,000 lines from Shakespeare’s plays (public domain), prepared by Andrej Karpathy for char-rnn (2015). MIT license.',
   },
 };
 /** Saves made before datasets were introduced always used MNIST. */

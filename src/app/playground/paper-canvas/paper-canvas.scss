@@ -27,7 +27,6 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 236px;
   cursor: grab;
   touch-action: none;
 }
@@ -38,9 +37,6 @@
   outline: 3px dashed #171717;
   outline-offset: 10px;
   border-radius: 12px;
-}
-.snap-ready {
-  filter: drop-shadow(0 0 8px #16ad6a);
 }
 .wires {
   position: absolute;
@@ -85,98 +81,6 @@
   stroke: #171717;
   stroke-width: 3;
   stroke-dasharray: 8 8;
-}
-.port {
-  position: absolute;
-  width: 54px;
-  height: 30px;
-  left: calc(50% - 27px);
-  border: 0;
-  background: transparent;
-  padding: 0;
-  z-index: 2;
-  cursor: crosshair;
-  touch-action: none;
-}
-// Keep connector hit targets usable when the paper is zoomed out.
-.port::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: max(54px, calc(44px / var(--zoom)));
-  height: max(30px, calc(44px / var(--zoom)));
-}
-.output::before {
-  top: 15px;
-}
-.input::before {
-  bottom: 15px;
-}
-.input {
-  top: -15px;
-}
-.output {
-  bottom: -15px;
-}
-.port-shape {
-  display: block;
-  margin: auto;
-  width: 37px;
-  height: 24px;
-  background: #fffdf1;
-  border: 3px solid #171717;
-  border-radius: 6px;
-  box-shadow:
-    inset 6px 0 0 #fffdf1,
-    inset 8px 0 0 #171717,
-    inset -6px 0 0 #fffdf1,
-    inset -8px 0 0 #171717;
-}
-.output .port-shape {
-  background: #171717;
-  box-shadow:
-    inset 6px 0 0 #171717,
-    inset 8px 0 0 #fffdf1,
-    inset -6px 0 0 #171717,
-    inset -8px 0 0 #fffdf1;
-}
-.image-port .port-shape {
-  border-radius: 2px;
-  width: 26px;
-  box-shadow: inset 0 0 0 3px #ffe14a;
-  background: #171717;
-}
-.input.image-port .port-shape {
-  background: #ffe14a;
-  box-shadow: none;
-}
-.port-label {
-  position: absolute;
-  left: 58px;
-  white-space: nowrap;
-  top: 5px;
-  font-size: 9px;
-  font-weight: 800;
-  background: #fffdf1;
-  border: 1px solid #171717;
-  padding: 2px 5px;
-  border-radius: 3px;
-  pointer-events: none;
-}
-.input .port-label {
-  left: auto;
-  right: 58px;
-}
-.compatible .port-shape {
-  background: #60f094;
-  box-shadow: 0 0 0 5px #60f09480;
-}
-.active .port-shape {
-  outline: 4px solid #ff5b59;
-}
-.port:disabled {
-  cursor: not-allowed;
 }
 .first-prompt {
   position: absolute;
@@ -228,6 +132,44 @@
   text-align: center;
   font-weight: 800;
 }
+.trash {
+  position: absolute;
+  left: 24px;
+  bottom: 78px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 3px solid #171717;
+  border-radius: 12px;
+  background: #fffdf1;
+  box-shadow: 3px 3px 0 #171717;
+  color: #171717;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+.trash mat-icon.mat-icon {
+  width: 30px;
+  height: 30px;
+  font-size: 30px;
+}
+.trash:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+/* While a block is dragged the can grows into an obvious target; it turns red underneath one. */
+.trash.armed {
+  opacity: 1;
+  transform: scale(1.3);
+  transform-origin: bottom left;
+}
+.trash.hot {
+  background: #ff7770;
+  transform: scale(1.5) rotate(-6deg);
+}
 .canvas-hint {
   position: absolute;
   bottom: 36px;
@@ -264,7 +206,7 @@
   right: 24px;
   bottom: 89px;
   z-index: 5;
-  width: min(520px, calc(100% - 32px));
+  width: min(660px, calc(100% - 32px));
   max-height: calc(100% - 130px);
   overflow: auto;
   padding: 22px;
@@ -303,65 +245,129 @@
 }
 .tiles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px 16px;
+  padding-block: 8px 16px;
 }
 .tile {
-  padding: 10px 6px;
+  position: relative;
+  isolation: isolate;
+  padding: 30px 14px 28px;
   text-align: left;
-  border: 2px solid #171717;
-  border-radius: 7px;
-  box-shadow: 3px 3px 0 #171717;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   touch-action: none;
   cursor: grab;
-  min-height: 117px;
+  min-height: 146px;
 }
-.tile > span {
-  font-size: 27px;
-  display: block;
-  margin-bottom: 6px;
-  line-height: 1;
+.tile-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  z-index: -1;
+  pointer-events: none;
+}
+.tile-outline path {
+  fill: var(--tile-color);
+  stroke: #171717;
+  stroke-width: 2.5;
+}
+.tile-outline text {
+  fill: #171717;
+  font: 900 12px var(--font, sans-serif);
 }
 .tile > b {
   display: block;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 900;
 }
 .tile > small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.4;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 .image {
   background: #ffe14a;
 }
+.tile.image {
+  background: transparent;
+  --tile-color: #ffe14a;
+}
 .flatten {
   background: #74a6ff;
+}
+.tile.flatten {
+  background: transparent;
+  --tile-color: #74a6ff;
 }
 .dense {
   background: #ff7770;
 }
+.tile.dense {
+  background: transparent;
+  --tile-color: #ff7770;
+}
 .softmax {
   background: #ffacdf;
+}
+.tile.softmax {
+  background: transparent;
+  --tile-color: #ffacdf;
 }
 .activation {
   background: #75e4a0;
 }
+.tile.activation {
+  background: transparent;
+  --tile-color: #75e4a0;
+}
 .classifier {
   background: #bc9aff;
+}
+.tile.classifier {
+  background: transparent;
+  --tile-color: #bc9aff;
 }
 .custom {
   background: #ffb86b;
 }
+.tile.custom {
+  background: transparent;
+  --tile-color: #ffb86b;
+}
+/* Text level blocks, matching their cards (block-card.scss). */
+$text-colors: (
+  text: #ffe14a,
+  embedding: #74a6ff,
+  position: #a8c8ff,
+  layernorm: #c8f08f,
+  attention: #9be7ff,
+  add: #ffd9b0,
+  writer: #bc9aff,
+);
+@each $kind, $color in $text-colors {
+  .tile.#{$kind} {
+    --tile-color: #{$color};
+  }
+  .tile-ghost.#{$kind} {
+    background: $color;
+  }
+}
 .tile:disabled {
-  box-shadow: 1px 1px 0 #171717;
+  box-shadow: none;
   cursor: not-allowed;
 }
 .tile.locked {
-  background: #e8e5d8;
+  --tile-color: #e8e5d8;
   color: #696456;
-  border-style: dashed;
+  background: transparent;
+  .tile-outline path {
+    stroke-dasharray: 5 4;
+  }
 }
 .tile:not(.locked):disabled {
   opacity: 0.5;
@@ -376,7 +382,6 @@
   font-weight: 900;
   pointer-events: none;
 }
-.connection-prompt,
 .wire-actions {
   position: absolute;
   bottom: 83px;
@@ -390,12 +395,6 @@
   font-size: 12px;
   z-index: 4;
   white-space: nowrap;
-}
-.connection-prompt button {
-  border: 0;
-  background: none;
-  font-size: 20px;
-  margin-left: 15px;
 }
 .wire-actions {
   background: #fff;
@@ -411,7 +410,7 @@
   border-radius: 4px;
 }
 .first-prompt {
-  z-index: 0;
+  z-index: 2;
 }
 .node.picked::after {
   content: '';
@@ -474,6 +473,44 @@ button:disabled {
   z-index: 1;
 }
 @media (max-width: 1000px) {
+  .trash {
+    position: absolute;
+    left: 24px;
+    bottom: 78px;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: 3px solid #171717;
+    border-radius: 12px;
+    background: #fffdf1;
+    box-shadow: 3px 3px 0 #171717;
+    color: #171717;
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease;
+  }
+  .trash mat-icon.mat-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 30px;
+  }
+  .trash:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  /* While a block is dragged the can grows into an obvious target; it turns red underneath one. */
+  .trash.armed {
+    opacity: 1;
+    transform: scale(1.3);
+    transform-origin: bottom left;
+  }
+  .trash.hot {
+    background: #ff7770;
+    transform: scale(1.5) rotate(-6deg);
+  }
   .canvas-hint {
     display: none;
   }
@@ -491,18 +528,18 @@ button:disabled {
     padding: 16px;
   }
   .tiles {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 7px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 12px;
   }
   .tile {
-    padding: 8px 4px;
-    min-height: 106px;
+    padding: 28px 12px;
+    min-height: 146px;
   }
   .tile > b {
-    font-size: 11px;
+    font-size: 15px;
   }
   .tile > small {
-    font-size: 8px;
+    font-size: 12px;
   }
   .canvas-tools {
     left: 12px;
@@ -529,17 +566,15 @@ button:disabled {
     opacity: 0.85;
     font-size: 9px;
   }
+  /* Sit right of the trashcan (left 24px + 56px wide), which would otherwise cover Detach. */
   .wire-actions {
-    left: 16px;
+    left: 96px;
     transform: none;
     b {
       display: none;
     }
     gap: 6px;
     font-size: 10px;
-  }
-  .connection-prompt {
-    font-size: 11px;
   }
   .tray-heading h2 {
     font-size: 18px;
@@ -587,11 +622,6 @@ button:disabled {
   opacity: 0.65;
 }
 
-.probability-port .port-shape {
-  border-radius: 50%;
-  background: #ffacdf;
-}
-
 .blocky-pointer.toolbar-pointer {
   position: fixed;
   width: 100vw;
@@ -602,7 +632,7 @@ button:disabled {
 .wire-badge {
   position: absolute;
   z-index: 5;
-  transform: translateX(-50%);
+  transform: translate(-100%, -50%);
   pointer-events: none;
   padding: 3px 8px;
   border: 2px solid #171717;
@@ -613,16 +643,220 @@ button:disabled {
   font-size: 12px;
   white-space: nowrap;
 }
-:is(.active, .compatible, .incompatible) .port-label {
-  outline: 3px solid #171717;
+/* An open "?" bubble sits above neighbouring cards. */
+.node:has(> app-block-card.help-open) {
+  z-index: 20 !important;
 }
-.active .port-label {
-  background: #ffe14a;
+
+/* Click! Both studs pop, a ring bursts from the socket and the card is pressed down. */
+
+.node.clicked-in app-block-card {
+  animation: press-in 0.32s ease-out;
 }
-.compatible .port-label {
-  background: #75e4a0;
+.node.fresh app-block-card {
+  animation: land 0.4s cubic-bezier(0.3, 1.5, 0.5, 1);
 }
-.incompatible .port-label {
-  outline-style: dashed;
-  background: #ffe4df;
+.trash.gulp mat-icon.mat-icon {
+  animation: gulp 0.5s ease-out;
+}
+@keyframes stud-pop {
+  40% {
+    transform: scale(1.35);
+  }
+}
+
+@keyframes press-in {
+  35% {
+    transform: translateY(4px);
+  }
+}
+@keyframes land {
+  from {
+    transform: scale(0.85);
+    opacity: 0.4;
+  }
+}
+@keyframes gulp {
+  30% {
+    transform: scale(1.3) rotate(-12deg);
+  }
+  60% {
+    transform: scale(0.9) rotate(8deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .node.clicked-in app-block-card,
+  .node.fresh app-block-card,
+  .trash.gulp mat-icon.mat-icon {
+    animation: none;
+  }
+}
+.canvas-tools .sound {
+  display: grid;
+  place-items: center;
+  border-left: 2px solid #171717;
+}
+.canvas-tools .sound mat-icon.mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.node:has(.inner-card.cdk-drag-dragging) {
+  z-index: 30 !important;
+}
+
+/* Text branches use the stack connectors as hit targets; shortcuts get their own side socket. */
+.sequence-wire {
+  stroke: #74a6ff;
+  stroke-width: 4;
+}
+.shortcut-wire {
+  stroke: #ffb86b;
+}
+.token-wire {
+  stroke: #ffe14a;
+}
+.port {
+  position: absolute;
+  width: 100%;
+  height: 18px;
+  left: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  z-index: 2;
+  cursor: crosshair;
+  touch-action: none;
+}
+.port.input {
+  top: 0;
+}
+.port.output {
+  bottom: -18px;
+}
+.port:not(.skip-port) .port-shape,
+.port-label {
+  display: none;
+}
+.port:focus-visible,
+.port.active {
+  outline: 3px solid #ff5b59;
+}
+.port.compatible {
+  background: #60f09480;
+}
+.port.incompatible {
+  background: #ed454540;
+}
+.port.skip-port {
+  top: 0;
+  height: 18px;
+}
+.skip-port .port-shape,
+.skip-port .port-label {
+  display: none;
+}
+.shortcut-knob {
+  position: absolute;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #171717;
+  border-radius: 50%;
+  background: #ffb86b;
+  font-size: 20px;
+  font-weight: 900;
+  touch-action: none;
+  cursor: grab;
+}
+.shortcut-plate {
+  position: absolute;
+  z-index: 4;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+  cursor: grab;
+  touch-action: none;
+}
+.shortcut-plate::before {
+  content: '';
+  position: absolute;
+  inset: -12px 0 -18px;
+}
+.shortcut-plate svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.shortcut-plate path {
+  fill: #ffb86b;
+  stroke: #171717;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.shortcut-plate text {
+  font-size: 11.5px;
+  font-weight: 900;
+}
+.shortcut-plate.carried {
+  z-index: 30;
+}
+.shortcut-plate.new-plate {
+  pointer-events: none;
+}
+.shortcut-plate:focus-visible {
+  outline: 3px dashed #225acb;
+  outline-offset: 8px;
+}
+
+.text-recipe {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  z-index: 6;
+  max-width: min(420px, calc(100% - 160px));
+  background: #fff7cd;
+  border: 2px solid #171717;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  max-height: calc(100% - 110px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.text-recipe summary {
+  cursor: pointer;
+  font-weight: 900;
+}
+.text-recipe p {
+  margin: 12px 0;
+}
+.text-recipe ol {
+  padding-left: 24px;
+}
+.text-recipe li {
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) {
+  .text-recipe {
+    left: 12px;
+    max-width: calc(100% - 144px);
+    font-size: 13px;
+  }
+  .text-recipe[open] {
+    max-width: calc(100% - 24px);
+    z-index: 10;
+  }
 }

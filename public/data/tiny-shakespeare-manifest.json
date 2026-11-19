@@ -1,0 +1,15 @@
+{
+  "source": "https://raw.githubusercontent.com/karpathy/char-rnn/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/data/tinyshakespeare/input.txt",
+  "dataset": "https://huggingface.co/datasets/karpathy/tiny_shakespeare",
+  "characters": 1115394,
+  "alphabet": "\n !$&',-.3:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+  "split": {
+    "train": 0.9,
+    "validation": 0.1,
+    "policy": "first 90% / last 10%, contiguous"
+  },
+  "sha256": {
+    "text": "86c4e6aa9db7c042ec79f339dcb96d42b0075e16b8fc2e86bf0ca57e2dc565ed",
+    "gzip": "13125fe8f49092165d7d489e3944db52d1ba546e64a60080cc9523bcd0c5e46a"
+  }
+}

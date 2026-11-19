@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Studs and Sockets</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;700;800;900&display=swap">
+<style>
+  /* Layout: the app's paper. Left column builds a stack, right column draws it; a gallery of every plug below. */
+  :root {
+    --paper: #fffdf1;
+    --dots: #d8d2bd;
+    --ink: #171717;
+    --muted: #5d584b;
+    --card: #ffffff;
+    --good: #2f9e57;
+    --bad: #e2463f;
+    /* Block colors, as in the app. */
+    --b-image: #ffe14a;
+    --b-flatten: #74a6ff;
+    --b-dense: #ff7770;
+    --b-act: #75e4a0;
+    --b-softmax: #ffacdf;
+    --b-guess: #bc9aff;
+    --neutral: #ece6d3;
+    --font: 'Figtree', 'Avenir Next', 'Trebuchet MS', 'Segoe UI', sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    background-image: radial-gradient(var(--dots) 1px, transparent 1.2px);
+    background-size: 24px 24px;
+    color: var(--ink);
+    font: 500 16px/1.5 var(--font);
+  }
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 36px;
+  }
+  h1 { font-size: clamp(34px, 6vw, 54px); line-height: 1; letter-spacing: -1.5px; margin: 0; font-weight: 900; text-wrap: balance; }
+  h2 { font-size: 26px; letter-spacing: -0.6px; margin: 0; font-weight: 900; text-wrap: balance; }
+  p { margin: 0; max-width: 64ch; }
+  .lede { display: grid; gap: 10px; }
+  .lede p { color: var(--muted); font-size: 18px; }
+  .panel {
+    background: var(--card);
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--ink);
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+  .builder { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .builder { grid-template-columns: minmax(0, 1fr); } }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .label { font-size: 12px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+  button {
+    font: 800 14px/1 var(--font);
+    color: var(--ink);
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 9px 12px;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  button:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+  button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
+  button:focus-visible { outline: 3px dashed var(--ink); outline-offset: 3px; }
+  button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+  button:disabled { opacity: 0.35; cursor: default; transform: none; box-shadow: 2px 2px 0 var(--ink); }
+  .add button { border-width: 3px; }
+  .stack-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .stack-list li {
+    display: flex; align-items: center; gap: 8px;
+    border: 2px solid var(--ink); border-radius: 10px; padding: 8px 10px;
+  }
+  .stack-list .name { font-weight: 900; flex: 1; min-width: 0; }
+  .icon { padding: 6px 8px; font-size: 15px; box-shadow: none; }
+  .icon:hover, .icon:active { transform: none; box-shadow: none; background: #ffffffa0; }
+  .stepper { display: flex; align-items: center; gap: 4px; }
+  .stepper b { min-width: 34px; text-align: center; font-variant-numeric: tabular-nums; }
+  .notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .notes li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+  .notes .badge {
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 900; font-size: 13px; color: #fff; border: 2px solid var(--ink);
+  }
+  .notes .ok { background: var(--good); }
+  .notes .no { background: var(--bad); }
+  .drawing { overflow-x: auto; }
+  .drawing svg { display: block; width: 100%; max-width: 560px; height: auto; margin: 0 auto; }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 18px; }
+  .piece { display: grid; gap: 6px; border: 2px solid var(--ink); border-radius: 12px; background: var(--card); padding: 12px; }
+  .piece svg { width: 100%; height: auto; }
+  .piece b { font-size: 17px; }
+  .piece span { color: var(--muted); font-size: 14px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .snap { animation: snap 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); transform-origin: center; transform-box: fill-box; }
+    @keyframes snap { 40% { transform: scale(1.4); } }
+  }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="lede">
+    <span class="label">Deep Learning Blocks · connector prototype</span>
+    <h1>Studs and sockets</h1>
+    <p>Every block hands its numbers on through studs in its own color. The next block needs a socket cut in exactly the opposite shape. The outline shows the kind of data, and the number on the big stud shows the size.</p>
+  </header>
+
+  <section class="panel">
+    <div class="row" style="justify-content: space-between">
+      <h2>Build a stack</h2>
+      <div class="row" style="gap: 14px">
+        <div class="row" role="group" aria-label="Connector style">
+          <span class="label">Style</span>
+          <button id="v-studs" aria-pressed="true">Studs</button>
+          <button id="v-tab" aria-pressed="false">One puzzle tab</button>
+        </div>
+      </div>
+    </div>
+    <div class="builder">
+      <div style="display: grid; gap: 16px; min-width: 0">
+        <div style="display: grid; gap: 8px">
+          <span class="label">Try a stack</span>
+          <div class="row" id="presets"></div>
+        </div>
+        <span class="label">Blocks, in the order the data goes</span>
+        <ol class="stack-list" id="list" aria-label="Blocks in the order the data goes"></ol>
+        <div style="display: grid; gap: 8px">
+          <span class="label">Add a block</span>
+          <div class="row add" id="palette"></div>
+        </div>
+        <div style="display: grid; gap: 8px">
+          <span class="label">Does it fit?</span>
+          <ul class="notes" id="notes" aria-live="polite"></ul>
+        </div>
+      </div>
+      <div class="drawing" id="stack"></div>
+    </div>
+  </section>
+
+  <section style="display: grid; gap: 16px">
+    <h2>Every kind of plug</h2>
+    <p>Each pair shows the studs a block hands on and the socket cut into the next block. The steps on each stud count the directions of the data, like the cuts on a key. The sockets are real holes: you can see the paper through them.</p>
+    <div class="gallery" id="gallery"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  // ---- Data types ---------------------------------------------------------
+  // dt: 'num' (any numbers), 'px' (picture pixels), 'prob' (chances that add up to 100%).
+  // dims: [] scalar, [N] list, [H, W] picture, [H, W, C] color picture. null = not known yet.
+  const T = (dt, dims) => ({ dt, dims });
+  const rank = (t) => t.dims.length;
+  const fullLabel = (t) => (t.dims.length ? t.dims.map((d) => (d == null ? '?' : d)).join('×') : '1');
+  const product = (dims) => (dims.some((d) => d == null) ? null : dims.reduce((a, b) => a * b, 1));
+
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  // dir: -1 = studs point up (tower, data climbs), +1 = studs point down (data falls).
+  const state = { variant: 'studs', dir: 1, stack: [] };
+
+  // ---- Blocks -------------------------------------------------------------
+  // Sockets: { exact: T } or { any: 'picture' | 'list' | 'numbers' }. Adaptive sockets mold to a plug that fits.
+  const BLOCKS = {
+    image: { name: 'Handwritten digit', color: '--b-image', socket: null, out: () => T('px', [28, 28]), detail: () => 'A 28 × 28 picture' },
+    photo: { name: 'Color photo', color: '--b-image', socket: null, out: () => T('px', [32, 32, 3]), detail: () => '32 × 32 pixels, red + green + blue' },
+    flatten: {
+      name: 'Flatten', color: '--b-flatten', socket: { any: 'picture' },
+      out: (input) => T('num', [input ? product(input.dims) : null]),
+      detail: (input) => (input ? `${fullLabel(input)} → ${product(input.dims)} numbers in a row` : 'Lays the rows of a picture end to end'),
+    },
+    dense: {
+      name: 'Dense', color: '--b-dense', socket: { any: 'list' }, units: 32,
+      out: (_, b) => T('num', [b.units]),
+      detail: (input, b) => (input ? `${input.dims[0]} inputs × ${b.units} neurons = ${(input.dims[0] * b.units).toLocaleString('en-US')} weights` : `${b.units} neurons. The socket stretches to any list.`),
+    },
+    relu: {
+      name: 'ReLU', color: '--b-act', socket: { any: 'numbers' },
+      out: (input) => (input ? T('num', input.dims) : T('num', [null])),
+      detail: () => 'Keeps positives, zeroes negatives',
+    },
+    softmax: {
+      name: 'Softmax', color: '--b-softmax', socket: { any: 'list' },
+      out: (input) => T('prob', [input ? input.dims[0] : null]),
+      detail: (input) => (input ? `${input.dims[0]} scores → ${input.dims[0]} chances` : 'Turns scores into chances'),
+    },
+    guess: { name: 'Digit guess', color: '--b-guess', socket: { exact: T('prob', [10]) }, out: null, detail: () => 'Needs 10 chances, one per digit' },
+  };
+
+  /** Can this plug go into this socket? Returns a kid-sized reason when it cannot. */
+  function fit(plug, socket) {
+    if (!plug) return { ok: false, reason: 'Nothing before this block hands it any numbers.' };
+    if (socket.exact) {
+      const want = socket.exact;
+      if (plug.dt !== want.dt)
+        return {
+          ok: false,
+          reason: plug.dt === 'num'
+            ? 'These are scores, not chances. Put Softmax in between to turn them into chances.'
+            : 'This is a picture. It has to become 10 chances first.',
+        };
+      if (fullLabel(plug) !== fullLabel(want))
+        return { ok: false, reason: `It needs ${fullLabel(want)} chances but got ${fullLabel(plug)}. Set the Dense before Softmax to ${fullLabel(want)} neurons.` };
+      return { ok: true };
+    }
+    if (socket.any === 'picture')
+      return plug.dt === 'px' ? { ok: true } : { ok: false, reason: 'Flatten unrolls pictures, and this is already a list.' };
+    if (plug.dt === 'px')
+      return { ok: false, reason: 'This is a picture with square, stepped studs. Put Flatten in between to make it one row of numbers.' };
+    if (plug.dt === 'prob')
+      return { ok: false, reason: 'These are already chances. Chances are a finished answer and go into Digit guess.' };
+    if (socket.any === 'list' && rank(plug) !== 1) return { ok: false, reason: 'This socket needs a single row of numbers.' };
+    return { ok: true };
+  }
+
+  /** What a socket looks like on its own, before anything molds it. */
+  function socketShape(socket) {
+    if (socket.exact) return { type: socket.exact, generic: null };
+    if (socket.any === 'picture') return { type: T('px', [null, null]), generic: 'any picture' };
+    if (socket.any === 'list') return { type: T('num', [null]), generic: 'any list' };
+    return { type: T('num', [null]), generic: 'any numbers' };
+  }
+
+  // ---- Stud geometry ------------------------------------------------------
+  const SMALL = 14, GAP = 5, STEP = 3;
+  const toothHeight = (tiers) => 9 + 5 * tiers;
+
+  /**
+   * Teeth along the connector, filling `avail` pixels of the block's edge.
+   * Small lists show one stud per number; long ones get a big labelled stud with small studs out to the edges.
+   */
+  function layout(t, generic, avail) {
+    const tiers = Math.max(1, rank(t));
+    const sw = SMALL + (tiers - 1) * 2 * STEP;
+    const widthDim = rank(t) ? t.dims[rank(t) === 3 ? 1 : rank(t) - 1] : 1;
+    const big = (label) => ({ big: true, label, w: Math.max(30, 14 + label.length * 7.2) + (tiers - 1) * 2 * STEP });
+    const small = () => ({ big: false, w: sw });
+    let teeth, gap = GAP;
+    if (generic) teeth = [{ big: true, generic: true, label: generic, w: Math.min(avail, 170) }];
+    else if (state.variant === 'tab') teeth = [big(fullLabel(t))];
+    else if (rank(t) === 0) teeth = [small()];
+    else if (rank(t) === 1 && widthDim != null && widthDim <= 6) {
+      teeth = Array.from({ length: widthDim }, small);
+      if (widthDim > 1) gap = Math.min(40, (avail - widthDim * sw) / (widthDim - 1));
+    } else {
+      const b = big(fullLabel(t));
+      // One stud fewer per side than would fit, spread out so they still reach the edges.
+      const k = Math.max(2, Math.floor((avail - b.w) / 2 / (sw + GAP)) - 1);
+      teeth = [...Array.from({ length: k }, small), b, ...Array.from({ length: k }, small)];
+      gap = (avail - b.w - 2 * k * sw) / (2 * k);
+    }
+    const total = teeth.reduce((s, x) => s + x.w, 0) + gap * (teeth.length - 1);
+    let x = -total / 2;
+    for (const tooth of teeth) { tooth.x = x; x += tooth.w + gap; }
+    return { teeth, tiers, h: toothHeight(tiers) };
+  }
+
+  /** One stud's outline as an open "U" from the edge at y, pointing in `dir` (+1 down, -1 up). */
+  function uPath(dt, x, y, w, h, tiers, big, dir) {
+    const Y = (k) => y + dir * k, sweep = dir > 0 ? 0 : 1;
+    if (dt === 'prob') {
+      if (!big) return `M${x},${y}A${w / 2},${h} 0 0 ${sweep} ${x + w},${y}`;
+      // The small pie stud split down the middle, with a flat run between the halves for the number.
+      const r = SMALL / 2;
+      return `M${x},${y}A${r},${h} 0 0 ${sweep} ${x + r},${Y(h)}H${x + w - r}A${r},${h} 0 0 ${sweep} ${x + w},${y}`;
+    }
+    const th = h / tiers;
+    let lx = x, rx = x + w, d = `M${x},${y}`;
+    for (let i = 0; i < tiers - 1; i++) { d += `V${Y((i + 1) * th)}H${lx + STEP}`; lx += STEP; rx -= STEP; }
+    const yb = Y(h);
+    if (dt === 'px') d += `V${yb}H${rx}`;
+    else { const r = Math.min(5, (rx - lx) / 2); d += `V${yb - dir * r}Q${lx},${yb} ${lx + r},${yb}H${rx - r}Q${rx},${yb} ${rx},${yb - dir * r}`; }
+    for (let i = tiers - 2; i >= 0; i--) { d += `V${Y((i + 1) * th)}H${rx + STEP}`; rx += STEP; }
+    return d + `V${y}`;
+  }
+
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  function toothLabel(tooth, x, y, h, dir) {
+    if (!tooth.big) return '';
+    const baseline = dir > 0 ? y + Math.min(h - 3, 12.5) : y - 4;
+    const size = tooth.generic ? 11 : 11.5;
+    return `<text x="${x + tooth.w / 2}" y="${baseline}" text-anchor="middle" font-size="${size}" font-weight="900" fill="${css('--ink')}" font-family="var(--font)">${esc(tooth.label)}</text>`;
+  }
+
+  /** Studs sticking out of a block's edge at y, in the block's own color. */
+  function drawPlug(t, cx, y, avail, color, dir, cls = '') {
+    const L = layout(t, null, avail), ink = css('--ink');
+    return `<g class="${cls}">` + L.teeth.map((tooth) => {
+      const x = cx + tooth.x;
+      const d = uPath(t.dt, x, y, tooth.w, L.h, L.tiers, tooth.big, dir);
+      // Paint over the block's border at the stud's root so block and stud read as one piece.
+      return `<path d="${d}Z" fill="${color}"/><rect x="${x + 1.5}" y="${dir > 0 ? y - 2 : y - 1}" width="${tooth.w - 3}" height="3" fill="${color}"/>`
+        + `<path d="${d}" fill="none" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>` + toothLabel(tooth, x, y, L.h, dir);
+    }).join('') + '</g>';
+  }
+
+  /**
+   * A socket cut into a block's edge at y: the exact negative of the plug.
+   * `cut` goes into the block's mask (black removes paint, so the hole is see-through); `ink` is the outline and engraving.
+   */
+  function drawSocket(t, cx, y, avail, generic, dir) {
+    const L = layout(t, generic, avail), ink = css('--ink');
+    let cut = '', lines = '';
+    for (const tooth of L.teeth) {
+      const x = cx + tooth.x, d = uPath(t.dt, x, y, tooth.w, L.h, L.tiers, tooth.big, dir);
+      if (generic) {
+        lines += `<path d="${d}" fill="none" stroke="${ink}" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="5 4"/>`;
+      } else {
+        // Also cut the block's border at the mouth of the hole.
+        cut += `<path d="${d}Z" fill="#000"/><rect x="${x + 1.5}" y="${dir > 0 ? y - 3 : y - 1}" width="${tooth.w - 3}" height="4" fill="#000"/>`;
+        lines += `<path d="${d}" fill="none" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`;
+      }
+      lines += toothLabel(tooth, x, y, L.h, dir);
+    }
+    return { cut, lines };
+  }
+
+  /** A block body masked so its sockets are real holes. */
+  function blockBody(id, x, y, w, h, color, cut, text) {
+    const ink = css('--ink');
+    const mask = `<mask id="${id}" maskUnits="userSpaceOnUse" x="-50" y="-50" width="2000" height="4000"><rect x="-50" y="-50" width="2000" height="4000" fill="#fff"/>${cut}</mask>`;
+    return {
+      shadow: mask,
+      body: `<g mask="url(#${id})"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="11" fill="${color}" stroke="${ink}" stroke-width="3"/></g>`
+        + (text ? text.map(([ty, size, str]) => `<text x="${x + 18}" y="${ty}" font-size="${size}" font-weight="${size > 16 ? 900 : 700}" fill="${ink}" font-family="var(--font)">${esc(str)}</text>`).join('') : ''),
+    };
+  }
+
+  // ---- The stack ----------------------------------------------------------
+  let lastClicks = new Set();
+  function render() {
+    const W = 380, BW = 330, BX = 16, BH = 92, MISS = 58, PAD = 34, AVAIL = BW - 40, dir = state.dir;
+    const cx = BX + BW / 2;
+    const ink = css('--ink');
+
+    // First pass in data order: what each block gets, and how far along the flow it sits.
+    let plug = null, s = 0;
+    const rows = state.stack.map((b, i) => {
+      const def = BLOCKS[b.kind];
+      let input = null, joint = null;
+      if (i > 0) {
+        joint = def.socket ? fit(plug, def.socket) : { ok: false, reason: `${def.name} has no socket. It only starts a stack.` };
+        input = joint.ok ? plug : null;
+        s += BH + (joint.ok ? 0 : MISS);
+      }
+      const row = { b, def, input, joint, inPlug: plug, s };
+      plug = def.out ? def.out(input, b) : null;
+      row.out = plug;
+      return row;
+    });
+    const total = rows.length ? rows[rows.length - 1].s + BH : 0;
+    for (const r of rows) {
+      r.top = PAD + (dir > 0 ? r.s : total - r.s - BH);
+      r.inEdge = dir > 0 ? r.top : r.top + BH;
+      r.outEdge = dir > 0 ? r.top + BH : r.top;
+    }
+
+    const layers = { shadow: '', body: '', socket: '', plug: '', marks: '' };
+    const notes = [], clicks = new Set();
+    rows.forEach((r, i) => {
+      const color = css(r.def.color);
+      let cut = '';
+      if (r.def.socket) {
+        const shape = i > 0 && r.joint.ok ? { type: r.inPlug, generic: null } : socketShape(r.def.socket);
+        const sock = drawSocket(shape.type, cx, r.inEdge, AVAIL, shape.generic, dir);
+        cut = sock.cut;
+        layers.socket += sock.lines;
+      }
+      const ty = dir > 0 ? [r.top + 46, r.top + 70] : [r.top + 34, r.top + 58];
+      const body = blockBody(`m${i}`, BX, r.top, BW, BH, color, cut, [[ty[0], 21, r.def.name], [ty[1], 13, r.def.detail(r.input, r.b)]]);
+      layers.shadow += body.shadow;
+      layers.body += body.body;
+      if (r.out) layers.plug += drawPlug(r.out, cx, r.outEdge, AVAIL, color, dir);
+
+      if (i > 0) {
+        const prev = rows[i - 1];
+        const key = `${prev.b.kind}>${r.b.kind}:${fullLabel(r.inPlug ?? T('num', []))}:${dir}`;
+        const midY = r.joint.ok ? r.inEdge : (prev.outEdge + r.inEdge) / 2;
+        if (r.joint.ok) {
+          clicks.add(key);
+          layers.marks += `<g class="${lastClicks.has(key) ? '' : 'snap'}"><circle cx="${BX + BW + 2}" cy="${midY}" r="12" fill="${css('--good')}" stroke="${ink}" stroke-width="2.5"/><path d="M${BX + BW - 4},${midY} l4,4 l7,-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></g>`;
+          notes.push({ ok: true, n: i, text: `${prev.def.name} clicks into ${r.def.name}.` });
+        } else {
+          layers.marks += `<line x1="${BX + 30}" x2="${BX + BW - 30}" y1="${midY}" y2="${midY}" stroke="${css('--bad')}" stroke-width="3" stroke-dasharray="7 6"/>`
+            + `<circle cx="${BX + BW + 2}" cy="${midY}" r="12" fill="${css('--bad')}" stroke="${ink}" stroke-width="2.5"/><text x="${BX + BW + 2}" y="${midY + 5}" text-anchor="middle" font-size="14" font-weight="900" fill="#fff" font-family="var(--font)">${i}</text>`;
+          notes.push({ ok: false, n: i, text: r.joint.reason });
+        }
+      }
+    });
+    lastClicks = clicks;
+    const H = PAD + total + 44;
+    document.getElementById('stack').innerHTML = rows.length
+      ? `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The stack, drawn with its studs and sockets">${layers.shadow}${layers.body}${layers.socket}${layers.plug}${layers.marks}</svg>`
+      : '<p>Add a block to start a stack.</p>';
+    document.getElementById('notes').innerHTML = notes.length
+      ? notes.map((n) => `<li><span class="badge ${n.ok ? 'ok' : 'no'}">${n.ok ? '✓' : n.n}</span><span>${esc(n.text)}</span></li>`).join('')
+      : '<li>Stack two blocks to see whether they fit.</li>';
+    renderList();
+    renderGallery();
+  }
+
+  function renderList() {
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    state.stack.forEach((b, i) => {
+      const def = BLOCKS[b.kind];
+      const li = document.createElement('li');
+      li.style.background = css(def.color);
+      li.innerHTML = `<span class="name">${esc(def.name)}</span>`
+        + (b.kind === 'dense' ? `<span class="stepper"><button class="icon" data-act="less" aria-label="Fewer neurons">−</button><b>${b.units}</b><button class="icon" data-act="more" aria-label="More neurons">+</button></span>` : '')
+        + `<button class="icon" data-act="up" aria-label="Move ${esc(def.name)} earlier" ${i === 0 ? 'disabled' : ''}>↑</button>`
+        + `<button class="icon" data-act="down" aria-label="Move ${esc(def.name)} later" ${i === state.stack.length - 1 ? 'disabled' : ''}>↓</button>`
+        + `<button class="icon" data-act="remove" aria-label="Remove ${esc(def.name)}">✕</button>`;
+      li.addEventListener('click', (e) => {
+        const act = e.target.closest('button')?.dataset.act;
+        if (!act) return;
+        const s = state.stack;
+        if (act === 'less') b.units = Math.max(1, b.units === 64 ? 32 : b.units === 32 ? 10 : b.units - 1);
+        if (act === 'more') b.units = b.units < 10 ? b.units + 1 : b.units === 10 ? 32 : b.units === 32 ? 64 : 128;
+        if (act === 'up') [s[i - 1], s[i]] = [s[i], s[i - 1]];
+        if (act === 'down') [s[i + 1], s[i]] = [s[i], s[i + 1]];
+        if (act === 'remove') s.splice(i, 1);
+        render();
+      });
+      list.appendChild(li);
+    });
+  }
+
+  const PRESETS = {
+    'Digit reader': [['image'], ['flatten'], ['dense', 10], ['softmax'], ['guess']],
+    'Forgot Flatten': [['image'], ['dense', 10], ['softmax'], ['guess']],
+    'Dense goes to 32': [['image'], ['flatten'], ['dense', 32], ['softmax'], ['guess']],
+    'No Softmax': [['image'], ['flatten'], ['dense', 10], ['guess']],
+    'Color photo': [['photo'], ['flatten'], ['dense', 64], ['relu'], ['dense', 10], ['softmax'], ['guess']],
+  };
+  function load(name) {
+    state.stack = PRESETS[name].map(([kind, units]) => ({ kind, units: units ?? BLOCKS[kind].units }));
+    lastClicks = new Set();
+    render();
+  }
+  const presets = document.getElementById('presets');
+  for (const name of Object.keys(PRESETS)) {
+    const b = document.createElement('button');
+    b.textContent = name;
+    b.addEventListener('click', () => load(name));
+    presets.appendChild(b);
+  }
+  const palette = document.getElementById('palette');
+  for (const [kind, def] of Object.entries(BLOCKS)) {
+    const b = document.createElement('button');
+    b.textContent = def.name;
+    b.style.background = css(def.color);
+    b.addEventListener('click', () => { state.stack.push({ kind, units: def.units }); render(); });
+    palette.appendChild(b);
+  }
+
+  // ---- Gallery ------------------------------------------------------------
+  const PIECES = [
+    { t: T('num', []), from: '--b-dense', name: 'One number', note: 'One stud. A score, a loss, a temperature.' },
+    { t: T('num', [4]), from: '--b-dense', name: 'A short list', note: 'Small lists show every stud.' },
+    { t: T('num', [784]), from: '--b-flatten', name: 'A long list', note: 'Long lists get one big stud with the size on it, and small studs out to the edges.' },
+    { t: T('px', [28, 28]), from: '--b-image', name: 'A picture', note: 'Square studs, two steps: rows and columns.' },
+    { t: T('px', [32, 32, 3]), from: '--b-image', name: 'A color picture', note: 'Three steps: rows, columns and red, green, blue.' },
+    { t: T('prob', [10]), from: '--b-softmax', name: 'Chances', note: 'Rounded like slices of a pie. Only Softmax makes these.' },
+  ];
+  function renderGallery() {
+    const dir = state.dir, W = 260, BX = 14, BW = 232, BH = 44, cx = BX + BW / 2, AVAIL = BW - 28;
+    document.getElementById('gallery').innerHTML = PIECES.map((p, i) => {
+      // The giver sits before the taker in the data's direction: above when studs point down, below when they point up.
+      const giverTop = dir > 0 ? 8 : 98, takerTop = dir > 0 ? 98 : 8;
+      const plugEdge = dir > 0 ? giverTop + BH : giverTop, socketEdge = dir > 0 ? takerTop : takerTop + BH;
+      const sock = drawSocket(p.t, cx, socketEdge, AVAIL, null, dir);
+      const giver = blockBody(`g${i}a`, BX, giverTop, BW, BH, css(p.from), '');
+      const taker = blockBody(`g${i}b`, BX, takerTop, BW, BH, css('--neutral'), sock.cut);
+      const svg = `<svg viewBox="0 0 ${W} 156" role="img" aria-label="${esc(p.name)}: studs and the socket they fit">${giver.shadow}${taker.shadow}${giver.body}${taker.body}${sock.lines}${drawPlug(p.t, cx, plugEdge, AVAIL, css(p.from), dir)}</svg>`;
+      return `<figure class="piece" style="margin:0">${svg}<b>${esc(p.name)} · ${esc(fullLabel(p.t))}</b><span>${esc(p.note)}</span></figure>`;
+    }).join('');
+  }
+
+  // ---- Controls -----------------------------------------------------------
+  const pair = (a, b, on) => { a.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-pressed', String(!on)); };
+  const vStuds = document.getElementById('v-studs'), vTab = document.getElementById('v-tab');
+  vStuds.addEventListener('click', () => { state.variant = 'studs'; pair(vStuds, vTab, true); render(); });
+  vTab.addEventListener('click', () => { state.variant = 'tab'; pair(vStuds, vTab, false); render(); });
+
+  load('Dense goes to 32');
+})();
+</script>
+
+</body>
+</html>

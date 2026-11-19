@@ -1,9 +1,17 @@
-<section class="experiment-dock" [class.expanded]="expanded()" aria-label="Experiment notebook">
+<section
+  class="experiment-dock"
+  [class.expanded]="expanded()"
+  aria-label="Training and experiments"
+>
   <div class="dock-bar">
-    <button (click)="expanded.set(!expanded())" [attr.aria-expanded]="expanded()">
-      <mat-icon class="notebook-icon">lab_profile</mat-icon> My experiments
+    <button
+      (click)="expanded.set(!expanded())"
+      [attr.aria-expanded]="expanded()"
+      aria-controls="training-content"
+    >
+      <mat-icon class="notebook-icon">lab_profile</mat-icon> Training
       <span class="experiment-count">{{ game.workspace().experiments.length }}</span
-      ><mat-icon>{{ expanded() ? 'expand_more' : 'expand_less' }}</mat-icon>
+      ><mat-icon class="toggle-icon">{{ expanded() ? 'expand_more' : 'expand_less' }}</mat-icon>
     </button>
     <p role="status">
       {{
@@ -19,31 +27,64 @@
     >
   </div>
   @if (expanded()) {
-    <div class="dock-content">
+    <div id="training-content" class="dock-content">
       <div class="training-summary">
         <span class="eyebrow">TRY. CHANGE. DISCOVER.</span>
         <h2>{{ game.trainer.status() }}</h2>
-        <p>{{ game.dataset().name }}<br />3,000 examples · 5 passes · 500 test images</p>
+        <p>{{ game.dataset().name }}<br />{{ words().recipe }}</p>
         @if (game.trainer.busy()) {
           <progress
             [value]="game.trainer.epochs().length"
-            max="5"
+            [max]="words().rounds"
             aria-label="Training progress"
           ></progress>
         }
         @if (latest(); as result) {
           <div class="score">
             <strong>{{ result.accuracy | percent: '1.1-1' }}</strong
-            ><span>last test accuracy<br />random guessing ≈ 10%</span>
+            ><span>{{ words().score }}<br />{{ words().chance }}</span>
           </div>
         } @else {
           <p>Finish an experiment to put your first result here.</p>
         }
       </div>
+      <div class="training-recipe">
+        <h2>How this model trains</h2>
+        <p>These are the settings used by Train.</p>
+        <dl>
+          @for (setting of settings(); track setting.name) {
+            <div>
+              <dt>{{ setting.name }}</dt>
+              <dd>{{ setting.value }}</dd>
+            </div>
+          }
+        </dl>
+        <details>
+          <summary>What do these settings mean?</summary>
+          <p>
+            <b>Adam</b> adjusts the weights to reduce mistakes. The <b>learning rate</b> sets how
+            big its adjustments are. A <b>batch</b> is the group of examples used for one update. A
+            <b>pass (epoch)</b> goes through all training examples; a <b>step</b> updates the
+            weights once.
+          </p>
+          <p>
+            <b>Loss</b> measures how wrong the predictions are. Lower is better on the examples
+            being measured. Held-out examples are kept out of weight updates.
+          </p>
+          <p>
+            Adam’s momentum settings: β₁ = {{ adam.beta1 }}, β₂ = {{ adam.beta2 }}. Its
+            numerical-stability epsilon uses the active backend’s default.
+          </p>
+        </details>
+      </div>
       <div class="loss-chart">
-        <span class="eyebrow">LEARNING CURVE / TRAINING LOSS</span>
+        <span class="eyebrow">{{ words().curve }}</span>
         @if (game.trainer.epochs().length) {
-          <svg viewBox="0 0 230 80" role="img" aria-label="Training loss by pass">
+          <svg
+            viewBox="0 0 230 80"
+            role="img"
+            [attr.aria-label]="text() ? 'Held-out loss by round' : 'Training loss by pass'"
+          >
             <path
               d="M10 15H220 M10 42H220 M10 70H220"
               fill="none"
@@ -53,7 +94,7 @@
             <polyline [attr.points]="lossPoints()" fill="none" stroke="#171717" stroke-width="3" />
           </svg>
           <p>
-            Pass {{ game.trainer.epochs().length }} ·
+            {{ words().round }} {{ game.trainer.epochs().length }} ·
             {{ game.trainer.epochs().at(-1)?.loss | number: '1.3-3' }} loss
           </p>
         } @else {
@@ -62,15 +103,15 @@
           </div>
         }
       </div>
-      <div class="notebook-table">
+      <div class="notebook-table" tabindex="0" aria-label="Experiment history">
         <table>
           <thead>
             <tr>
               <th>Try</th>
               <th>Dataset</th>
               <th>Your recipe</th>
-              <th>Test accuracy</th>
-              <th>Test loss</th>
+              <th>{{ words().accuracy }}</th>
+              <th>{{ words().loss }}</th>
             </tr>
           </thead>
           <tbody>
