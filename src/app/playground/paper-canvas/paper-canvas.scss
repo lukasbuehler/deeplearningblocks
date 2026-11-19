@@ -566,8 +566,9 @@ button:disabled {
     opacity: 0.85;
     font-size: 9px;
   }
+  /* Sit right of the trashcan (left 24px + 56px wide), which would otherwise cover Detach. */
   .wire-actions {
-    left: 16px;
+    left: 96px;
     transform: none;
     b {
       display: none;
