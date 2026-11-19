@@ -27,6 +27,8 @@ export function buildTextModel(tf: typeof TF, network: NetworkSpec, seed = 2017)
   // Match PyTorch's defaults: embeddings ~ N(0, 1), linear layers ~ U(±1/√inputs).
   const variable = (initial: TF.Tensor) => {
     const v = tf.variable(initial);
+    // The variable keeps its own copy; release the initializer so rebuilt models do not leak.
+    initial.dispose();
     variables.push(v);
     return v;
   };
@@ -247,6 +249,8 @@ export async function generateText(
     ids.push(id);
     written.push(id);
     if (onLetter?.(id) === false) break;
+    // Reading scores on the CPU backend never yields, so let the page draw and handle Stop.
+    await new Promise((resolve) => setTimeout(resolve));
   }
   return written;
 }
