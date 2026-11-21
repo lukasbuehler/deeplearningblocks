@@ -18,6 +18,10 @@ test('fills operator details and escapes them', () => {
       '<a href="mailto:ada@example.com">ada@example.com</a>|2026',
   );
   assert.match(siteFooter(info, 2026), /© 2026 Ada &lt;Lovelace&gt;/);
+  assert.equal(
+    fillLegal('{{ inquiry }}', info),
+    '<a href="mailto:ada@example.com?subject=Project%20inquiry">Send a project inquiry</a>',
+  );
   assert.throws(() => fillLegal('{{ phone }}', info), /Unknown legal placeholder/);
 });
 

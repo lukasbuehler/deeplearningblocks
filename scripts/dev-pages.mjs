@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { renderLegalPages } from './legal-pages.mjs';
+import { LEGAL_PAGES, renderLegalPages } from './legal-pages.mjs';
 import { renderHomePage } from './site-pages.mjs';
 import { siteHead } from './site-html.mjs';
 
@@ -14,14 +14,16 @@ export async function renderDevPage(pathname) {
     ]);
     return renderHomePage(template, home, site);
   }
-  if (!['/privacy', '/terms', '/imprint'].includes(path)) return null;
+  if (!LEGAL_PAGES.some((page) => page.path === path)) return null;
   const page = (await renderLegalPages()).find((page) => page.path === path);
   return siteHead(page.html, site, path);
 }
 
 // Exact page routes only: /play, assets and the dev server's own endpoints stay with Angular.
+const pageNames = LEGAL_PAGES.map((page) => page.file).join('|');
+
 export default {
-  '^/(?:index\\.html|(?:privacy|terms|imprint)(?:\\.html)?/?)?(?:\\?.*)?$': {
+  [`^/(?:index\\.html|(?:${pageNames})(?:\\.html)?/?)?(?:\\?.*)?$`]: {
     async bypass(request, response) {
       if (!response || !['GET', 'HEAD'].includes(request.method)) return request.url;
       const html = await renderDevPage(new URL(request.url, 'http://localhost').pathname);
