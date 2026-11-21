@@ -24,7 +24,8 @@ export const LEGAL_PAGES = [
     path: '/contact',
     file: 'contact',
     title: 'Get in touch',
-    description: 'Send feedback, report a bug or ask a question about Deep Learning Blocks.',
+    description:
+      'Hire me to build a project for your company, send feedback or report a bug in Deep Learning Blocks.',
   },
 ];
 
@@ -35,7 +36,7 @@ const escape = (value) =>
   );
 
 /**
- * Fills {{name}}, {{email}}, {{address}}, {{updated}} and {{year}} in legal and footer markup.
+ * Fills {{name}}, {{email}}, {{inquiry}}, {{address}}, {{updated}} and {{year}} in legal and footer markup.
  * Spaces inside the braces are allowed because Prettier's Angular formatter adds them.
  */
 export function fillLegal(html, info = legal, year = new Date().getFullYear()) {
@@ -43,6 +44,7 @@ export function fillLegal(html, info = legal, year = new Date().getFullYear()) {
   const values = {
     name: escape(info.name),
     email: `<a href="mailto:${escape(info.email)}">${escape(info.email)}</a>`,
+    inquiry: `<a href="mailto:${escape(info.email)}?subject=Project%20inquiry">Send a project inquiry</a>`,
     address: lines.join('<br />'),
     updated: escape(info.updated),
     year: String(year),
