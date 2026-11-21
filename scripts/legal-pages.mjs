@@ -20,6 +20,12 @@ export const LEGAL_PAGES = [
     title: 'Imprint',
     description: 'Who operates Deep Learning Blocks and how to reach them.',
   },
+  {
+    path: '/contact',
+    file: 'contact',
+    title: 'Get in touch',
+    description: 'Send feedback, report a bug or ask a question about Deep Learning Blocks.',
+  },
 ];
 
 const escape = (value) =>
@@ -52,6 +58,7 @@ export function siteFooter(info = legal, year) {
     `<footer class="site-footer">
   <p>© {{year}} {{name}}. All rights reserved.</p>
   <nav aria-label="Legal">
+    <a href="/contact">Contact</a>
     <a href="/privacy">Privacy</a>
     <a href="/terms">Terms</a>
     <a href="/imprint">Imprint</a>

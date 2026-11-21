@@ -11,6 +11,7 @@ test('local home and legal routes render the actual static pages', async () => {
     ['/privacy', 'Privacy Policy'],
     ['/terms', 'Terms of Use'],
     ['/imprint', 'Imprint'],
+    ['/contact', 'Get in touch'],
   ]) {
     const html = await renderDevPage(path);
     assert.ok(html.includes(`<title>${title}`));
@@ -21,7 +22,7 @@ test('local home and legal routes render the actual static pages', async () => {
 
 test('development page routing leaves the playground, assets and live-reload endpoints alone', async () => {
   const pattern = new RegExp(Object.keys(proxy)[0]);
-  for (const path of ['/', '/?hello=1', '/privacy', '/terms/', '/imprint.html'])
+  for (const path of ['/', '/?hello=1', '/privacy', '/terms/', '/imprint.html', '/contact'])
     assert.ok(pattern.test(path), path);
   for (const path of [
     '/play',
